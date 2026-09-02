@@ -47,7 +47,7 @@ public class GameUI : MonoBehaviour
 
         // Поведение кнопок (структура — в сцене, обработчики — здесь)
         if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
-        if (retryBtn != null) retryBtn.onClick.AddListener(() => GameManager.Instance.Retry());
+        if (retryBtn != null) retryBtn.onClick.AddListener(RetryWithInterstitial);
         if (homeBtn != null) homeBtn.onClick.AddListener(() => GameManager.Instance.GoHome());
         if (pauseToggleBtn != null) pauseToggleBtn.onClick.AddListener(TogglePause);
         if (resumeBtn != null) resumeBtn.onClick.AddListener(TogglePause);
@@ -59,6 +59,33 @@ public class GameUI : MonoBehaviour
         SetScreen(Screen.Start);
         RefreshHud();
         StartCoroutine(Pulse(tapToPlayText, 1f, 1.05f, 0.8f));
+    }
+
+    /// <summary>
+    /// Тап «Заново» на Death-экране (единственная точка показа interstitial по ТЗ).
+    /// Реклама не готова / формула не выполнена → рестарт мгновенно.
+    /// Реклама показана → рестарт строго по закрытию (InterstitialClosed),
+    /// с fallback при ошибке показа (там InterstitialClosed тоже выстреливает).
+    /// </summary>
+    private void RetryWithInterstitial()
+    {
+        var ads = YandexAdsManager.Instance;
+        if (ads != null && ads.TryShowInterstitial())
+        {
+            bool done = false;
+            void OnClosed()
+            {
+                if (done) return;
+                done = true;
+                ads.InterstitialClosed -= OnClosed;
+                GameManager.Instance.Retry();
+            }
+            ads.InterstitialClosed += OnClosed;
+        }
+        else
+        {
+            GameManager.Instance.Retry();
+        }
     }
 
     private void OnDestroy()

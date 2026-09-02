@@ -82,6 +82,9 @@ public class GameManager : MonoBehaviour
 
     public void BeginRun()
     {
+        // Реклама (ТЗ interstitial): старт сессии — точка отсчёта длительности забега
+        if (YandexAdsManager.Instance != null) YandexAdsManager.Instance.RegisterSessionStart();
+
         _elapsed = 0f;
         _score.ResetRun();
         _difficultyManager.ResetRun();
@@ -113,6 +116,9 @@ public class GameManager : MonoBehaviour
     {
         if (State != GameState.Playing) return;
         State = GameState.Dead;
+
+        // Реклама (ТЗ interstitial): смерть = конец сессии (длительность + инкремент счётчика)
+        if (YandexAdsManager.Instance != null) YandexAdsManager.Instance.RegisterSessionEnd();
 
         ship.Kill();
         _particles.Burst(ship.transform.position, Palette.Ship, 8, 2f, 4f, 0.6f, 0.15f, 0.3f);

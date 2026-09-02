@@ -48,6 +48,11 @@ public class Bootstrap : MonoBehaviour
         var audioGo = new GameObject("AudioManager");
         audioGo.AddComponent<AudioManager>();
 
+        // Реклама: нижний sticky-баннер Яндекса (появляется на старте, HUD — вверху).
+        // Singleton с DontDestroyOnLoad; в редакторе — лог-заглушка.
+        var adsGo = new GameObject("YandexAdsManager");
+        adsGo.AddComponent<YandexAdsManager>();
+
         var poolParent = transform;
         var spawnerGo = new GameObject("Spawners");
         spawnerGo.transform.SetParent(poolParent);
