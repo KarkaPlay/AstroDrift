@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b565560e543c43f5bdb1c72edd1bde9, type: 3}
+  m_Name: StarFieldConfig
+  m_EditorClassIdentifier: Assembly-CSharp::StarFieldConfig
+  layers:
+  - name: Far
+    count: 160
+    parallax: 0.1
+    color: {r: 0.2735849, g: 0.2735849, b: 0.2735849, a: 1}
+    baseSize: 0.05
+    sizeMultiplierMin: 0.5
+    sizeMultiplierMax: 2
+    sortingLayerName: Default
+    orderInLayer: -10
+  - name: Near
+    count: 60
+    parallax: 0.4
+    color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
+    baseSize: 0.1
+    sizeMultiplierMin: 0.5
+    sizeMultiplierMax: 2
+    sortingLayerName: Default
+    orderInLayer: -9
+  margin: 1
+  respawnBelt: 10
