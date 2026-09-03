@@ -17,6 +17,9 @@ using Unity.Cinemachine;
 ///   т.е. по forward корабля): no ручных якорей и ручного SmoothDamp.
 /// • Позицию камеры пишет ТОЛЬКО CinemachineBrain — один писатель, без
 ///   рассинхрона update-циклов (джиттер «на кадр» устранён стандартным пайплайном).
+///   Исключение — CameraDirector: на время хореографических полётов (§5/§6)
+///   Brain выключается, позицию пишет он; в конце полёта кадр фиксируется
+///   через ForceFrame и Brain включается обратно в том же кадре.
 /// • Shake — CinemachineImpulseSource на камере (см. CameraShake), офсет применяет
 ///   CinemachineImpulseListener на CM_VCam (в CM3 listener должен жить на vcam).
 /// </summary>
@@ -61,7 +64,77 @@ public class CameraFollow : MonoBehaviour
 
     public void SetTarget(Transform t)
     {
+        BindVcam(); // порядок Awake не гарантирован (Bootstrap может быть раньше) — ленивая привязка
         if (_vcam != null) _vcam.Follow = t;
+    }
+
+    /// <summary>Текущая цель композера (для CameraDirector).</summary>
+    public Transform FollowTarget
+    {
+        get
+        {
+            BindVcam();
+            return _vcam != null ? _vcam.Follow : null;
+        }
+    }
+
+    /// <summary>Сменить орто-размер линзы vcam (меню-зум ↔ игровой, ArtDirection §2/§5).</summary>
+    public void SetLensOrtho(float ortho)
+    {
+        BindVcam();
+        if (_vcam == null) return;
+        var lens = _vcam.Lens;
+        lens.OrthographicSize = ortho;
+        _vcam.Lens = lens;
+    }
+
+    /// <summary>
+    /// Композиция по вертикали: где цель сидит в кадре (Composition.ScreenPosition.y).
+    /// Меню ≈ 0.11 (корабль ~60 % высоты, между Best и CTA — §2), игра = 0.2 (нижняя треть).
+    /// </summary>
+    public void SetComposerScreenY(float y)
+    {
+        BindVcam();
+        if (_composer == null) return;
+        var comp = _composer.Composition;
+        comp.ScreenPosition = new Vector3(comp.ScreenPosition.x, y, 0f);
+        _composer.Composition = comp;
+    }
+
+    /// <summary>
+    /// Зафиксировать камеру в кадре цели с заданным орто (вход/выход из ручного
+    /// пролёта CameraDirector): та же математика, что SnapToShip.
+    /// </summary>
+    public void ForceFrame(float ortho)
+    {
+        BindVcam();
+        if (_vcam == null || _vcam.Follow == null || _composer == null) return;
+        Vector3 pos = FramePosFor(_vcam.Follow.position, ortho);
+        _vcam.ForceCameraPosition(pos, Quaternion.identity);
+    }
+
+    /// <summary>Сброс кэша lookahead/дэмпинга после телепорта цели (§6.1, рестарт).</summary>
+    public void NotifyTargetWarped(Vector3 delta)
+    {
+        BindVcam();
+        if (_vcam == null || _vcam.Follow == null) return;
+        _vcam.OnTargetObjectWarped(_vcam.Follow, delta);
+    }
+
+    /// <summary>
+    /// Позиция камеры, при которой точка anchor лежит в целевой точке кадра
+    /// (Composition.ScreenPosition) при орто-размере ortho. Общая математика
+    /// для SnapToShip и CameraDirector.
+    /// </summary>
+    public Vector3 FramePosFor(Vector3 anchor, float ortho)
+    {
+        BindVcam();
+        if (_composer == null || _cam == null) return anchor + Vector3.back * 10f;
+        float screenH = 2f * ortho;
+        anchor.x -= _composer.Composition.ScreenPosition.x * screenH * _cam.aspect;
+        anchor.y += _composer.Composition.ScreenPosition.y * screenH; // Y экранный: +вниз
+        anchor.z = -_composer.CameraDistance;
+        return anchor;
     }
 
     /// <summary>
@@ -71,20 +144,13 @@ public class CameraFollow : MonoBehaviour
     /// </summary>
     public void SnapToShip()
     {
+        BindVcam();
         if (_vcam == null || _vcam.Follow == null || _composer == null) return;
         Vector3 pos = _vcam.Follow.position;
 
         // Телепорт цели (рестарт = прыжок в origin): сбрасываем кэш lookahead/дэмпинга
         // композера штатным способом CM3, иначе он тянет старую позицию цели.
         _vcam.OnTargetObjectWarped(_vcam.Follow, pos - _vcam.transform.position);
-
-        // ScreenPosition в долях полного размера экрана: в ортографии
-        // полная высота = 2 * orthoSize. Смещаем камеру в противоположную сторону,
-        // чтобы цель легла в заданную точку кадра.
-        float screenH = 2f * _vcam.Lens.OrthographicSize;
-        pos.x -= _composer.Composition.ScreenPosition.x * screenH * _cam.aspect;
-        pos.y += _composer.Composition.ScreenPosition.y * screenH; // Y экранный: +вниз
-        pos.z = -_composer.CameraDistance;
-        _vcam.ForceCameraPosition(pos, Quaternion.identity);
+        ForceFrame(_vcam.Lens.OrthographicSize);
     }
 }

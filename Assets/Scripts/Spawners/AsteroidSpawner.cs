@@ -19,6 +19,10 @@ public class AsteroidSpawner : MonoBehaviour
     private float _elapsed;
     private bool _firstSpawned;
     private int _activeCount;
+    private float _safeZone; // ArtDirection §5/§6: спавн угроз не раньше конца безопасной зоны
+
+    /// <summary>Безопасная зона забега: 1.6 s (первый старт) / 0.6 s (рестарт). ArtDirection §5–§6.</summary>
+    public void SetSafeZone(float seconds) => _safeZone = Mathf.Max(0f, seconds);
 
     public void Init(GameConfig cfg, DifficultyConfig diff, Camera camera, Transform poolParent)
     {
@@ -68,6 +72,21 @@ public class AsteroidSpawner : MonoBehaviour
     private void OnAsteroidDespawned(Vector3 pos) => _activeCount--;
     private void OnAsteroidCombo(Vector3 pos) => _activeCount--; // астероид уничтожен комбо (без очков)
 
+    /// <summary>
+    /// Continue-чистка зоны (GDD_DeathScreen_Continue §5.2/§10.5): гасим астероиды
+    /// в радиусе radius от center через пул, БЕЗ GameEvents (без очков/juice).
+    /// Корректирует _activeCount на фактически погашенные.
+    /// </summary>
+    public int ClearNear(Vector3 center, float radius)
+    {
+        float r2 = radius * radius;
+        int cleared = _largePool.ReleaseWhere(p => ((Vector2)p.transform.position - (Vector2)center).sqrMagnitude <= r2)
+                    + _mediumPool.ReleaseWhere(p => ((Vector2)p.transform.position - (Vector2)center).sqrMagnitude <= r2)
+                    + _smallPool.ReleaseWhere(p => ((Vector2)p.transform.position - (Vector2)center).sqrMagnitude <= r2);
+        _activeCount = Mathf.Max(0, _activeCount - cleared);
+        return cleared;
+    }
+
     /// <summary>Перезапуск забега: гасим все активные астероиды (3 пула), сброс таймеров и счётчика.
     /// ReleaseAll не спамит GameEvents — очки/juice при рестарте не нужны.</summary>
     public void ResetSpawner()
@@ -85,6 +104,9 @@ public class AsteroidSpawner : MonoBehaviour
     {
         if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing) return;
         _elapsed += Time.deltaTime;
+
+        // Безопасная зона (ArtDirection §5/§6): первые 1.6 s старта / 0.6 s рестарта — пустота.
+        if (_elapsed < _safeZone) return;
 
         // Первый астероид: 3-я секунда, прямо по курсу (GDD §6 «риски»)
         if (!_firstSpawned && _elapsed >= config.firstAsteroidDelay)

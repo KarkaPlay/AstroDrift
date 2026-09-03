@@ -40,6 +40,14 @@ public class ShipController : MonoBehaviour
         _collider.radius = config != null ? config.shipRadius : 0.25f;
         _angularSpeed = config != null ? config.shipAngularSpeed : 180f;
         _speed = config != null ? config.shipSpeed : 5f;
+
+        // ux4-4: TrailRenderer.autodestruct убивал дочерний Trail-объект после смерти
+        // (трейл дорисовывался → Destroy) — после рестарта след пропадал навсегда.
+        foreach (var trail in GetComponentsInChildren<TrailRenderer>(true))
+        {
+            trail.autodestruct = false;
+            trail.emitting = false;
+        }
     }
 
     /// <summary>Инициализация, когда конфиг назначается кодом (Bootstrap).</summary>
@@ -57,15 +65,22 @@ public class ShipController : MonoBehaviour
         transform.position = startPos;
         transform.rotation = Quaternion.identity; // нос вверх
         _dead = false;
+        // ux4-R2 (фикс №1): страховка от остаточной инерции — кинематическое тело
+        // движется по velocity; после смерти/дрейфа в меню оно обязано стоять.
+        _rb.linearVelocity = Vector2.zero;
+        _rb.angularVelocity = 0f;
 
         // Баг «след исчезает после рестарта»: Kill() отключал TrailRenderer и
-        // коллайдер, BeginRun их не возвращал. Восстанавливаем всё явно + очищаем
+        // коллайдер, BeginRun их не возвращал; autodestruct (ux4-4) к тому же
+        // уничтожал сам Trail-объект. Восстанавливаем всё явно + очищаем
         // Points-очередь, чтобы не тянулись линии от старых (до-смертных) позиций.
         // Trail — ДОЧЕРНИЙ объект корабля: ищем через GetComponentsInChildren(true).
         foreach (var trail in GetComponentsInChildren<TrailRenderer>(true))
         {
+            trail.gameObject.SetActive(true);
             trail.enabled = true;
             trail.Clear();
+            trail.emitting = true;
         }
         _collider.enabled = true;
         _renderer.enabled = true;
@@ -84,11 +99,18 @@ public class ShipController : MonoBehaviour
     public void Kill()
     {
         _dead = true;
+        // ux4-R2 (фикс №1, КРИТИЧНО): после Kill() FixedUpdate перестаёт писать
+        // velocity, а кинематическое тело продолжает лететь по последнему заданному
+        // вектору — отсюда дрейф после смерти (и «вынос» корабля после Retry/Home).
+        // Полная остановка в момент смерти: velocity/angularVelocity = 0.
+        _rb.linearVelocity = Vector2.zero;
+        _rb.angularVelocity = 0f;
         _renderer.enabled = false;
         _collider.enabled = false;
         // Trail — ДОЧЕРНИЙ объект корабля: гасим все трейлы в детях (включая неактивные)
         foreach (var trail in GetComponentsInChildren<TrailRenderer>(true))
         {
+            trail.emitting = false;
             trail.enabled = false;
             trail.Clear();
         }
@@ -96,15 +118,18 @@ public class ShipController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (_dead || GameManager.Instance == null || GameManager.Instance.State != GameState.Playing)
+        // InputEnabled (ArtDirection §5/§6): управление разблокируется на t=1.6 s (старт)
+        // / t=0.5 s (рестарт) — до этого камера в хореографическом полёте, корабль стоит.
+        if (_dead || GameManager.Instance == null || GameManager.Instance.State != GameState.Playing
+            || !GameManager.Instance.InputEnabled)
             return;
 
         // Ввод: 0 = прямо, +1 = влево (против ЧС), -1 = вправо (по ЧС). Обе стороны = прямо.
         // EnhancedTouch — API нового Input System, работает на мобильных при activeInputHandler = Input System.
         int dir = 0;
+        bool left = false, right = false;
         if (EnhancedTouchSupport.enabled)
         {
-            bool left = false, right = false;
             var touches = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches;
             for (int i = 0; i < touches.Count; i++)
             {
@@ -117,11 +142,19 @@ public class ShipController : MonoBehaviour
                     else right = true;
                 }
             }
-            dir = left != right ? (left ? 1 : -1) : 0;
         }
+        // ux4-1: в Editor мыши нет среди activeTouches — зажатая ЛКМ работает как тач
+        // (левая/правая половина экрана). Тач + мышь не конфликтуют: на устройстве мыши нет.
+        var mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.isPressed)
+        {
+            if (mouse.position.ReadValue().x < Screen.width * 0.5f) left = true;
+            else right = true;
+        }
+        dir = left != right ? (left ? 1 : -1) : 0;
         // Fallback для клавиатуры (editor/десктоп-тесты)
         var kb = Keyboard.current;
-        if (kb != null)
+        if (dir == 0 && kb != null)
         {
             if (kb.aKey.isPressed) dir = 1;
             else if (kb.dKey.isPressed) dir = -1;

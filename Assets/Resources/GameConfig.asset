@@ -15,22 +15,18 @@ MonoBehaviour:
   shipSpeed: 5
   shipAngularSpeed: 180
   shipRadius: 0.25
-  shipTrailLife: 0.3
   shipInvulnerableTime: 0.5
   fireInterval: 0.35
   bulletSpeed: 18
   bulletLife: 1.5
   bulletRadius: 0.08
-  bulletDiameter: 0.15
   bulletKickback: 0.02
-  maxBullets: 15
   asteroidSizes:
   - sizeName: "\u041A\u0440\u0443\u043F\u043D\u044B\u0439"
     radius: 1
     minVerts: 7
     maxVerts: 8
     hp: 3
-    score: 50
     childSize: 1
     childCount: 2
   - sizeName: "\u0421\u0440\u0435\u0434\u043D\u0438\u0439"
@@ -38,7 +34,6 @@ MonoBehaviour:
     minVerts: 5
     maxVerts: 6
     hp: 2
-    score: 25
     childSize: 2
     childCount: 2
   - sizeName: "\u041C\u0435\u043B\u043A\u0438\u0439"
@@ -46,7 +41,6 @@ MonoBehaviour:
     minVerts: 4
     maxVerts: 5
     hp: 1
-    score: 10
     childSize: 2
     childCount: 0
   asteroidSpawnMargin: 3
@@ -57,28 +51,40 @@ MonoBehaviour:
   hitFlashTime: 0.03
   hitShakeAmplitude: 0.05
   hitShakeDuration: 0.04
-  missileSpeed: 3.5
-  missileTurnRate: 70
   missileLife: 12
   missileWarnTime: 1.5
-  missileRadius: 0.15
   missileHp: 1
   missileScore: 100
   missileWarnBlinkOn: 0.3
   missileWarnBlinkOff: 0.2
-  maxMissiles: 4
   comboWindow: 3
   comboMissileAsteroid: 200
   smallAsteroidScore: 10
   mediumAsteroidScore: 25
   largeAsteroidScore: 50
-  cameraOrthoSize: 12
-  cameraLookAhead: 1.5
-  cameraSmoothTime: 0.15
   deathSlowmoScale: 0.3
   deathSlowmoDuration: 0.9
-  deathFlashAlpha: 0.35
-  deathFlashDuration: 0.5
+  menuZoomDivisor: 2.25
+  menuShipScreenY: 0.11
+  startFlyDuration: 2
+  startUnlockTime: 1.6
+  startSafeZone: 1.6
+  restartFlyDuration: 0.6
+  restartZoomOutDuration: 1.4
+  restartUnlockTime: 0.5
+  restartSafeZone: 0.6
+  homeFlyDuration: 0.8
+  deathZoomInFactor: 1.15
+  deathZoomInDelay: 0.25
+  deathZoomInDuration: 0.4
+  hudFadeDuration: 0.35
+  continueOfferDuration: 5
+  continueClearRadius: 8
+  continueInvulnerableTime: 2
+  continueSafeZone: 1.5
+  continueUnlockTime: 0.5
+  continueZoomOutDuration: 1.2
+  rewardedQuietSeconds: 60
   shakeHit:
     amplitude: 0.03
     duration: 0.05

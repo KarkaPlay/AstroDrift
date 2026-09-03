@@ -41,7 +41,8 @@ public class ShipWeapon : MonoBehaviour
     {
         if (_ship == null || _pool == null || _ship.IsDead) return;
         var gm = GameManager.Instance;
-        if (gm == null || gm.State != GameState.Playing) return;
+        // InputEnabled (ArtDirection §5/§6): стрельба вместе с управлением — не во время камерного пролёта.
+        if (gm == null || gm.State != GameState.Playing || !gm.InputEnabled) return;
 
         _cooldown -= Time.deltaTime;
         if (_cooldown <= 0f)

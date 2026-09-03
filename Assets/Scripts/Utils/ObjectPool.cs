@@ -48,6 +48,21 @@ public class ObjectPool
     }
 
     /// <summary>
+    /// Гасит и возвращает в пул ТОЛЬКО активные объекты, удовлетворяющие предикату
+    /// (continue-чистка зоны, GDD_DeathScreen_Continue §5.2). Без GameEvents —
+    /// очки/juice при continue не нужны. Возвращает число погашенных объектов.
+    /// </summary>
+    public int ReleaseWhere(Func<Poolable, bool> predicate)
+    {
+        if (predicate == null) return 0;
+        var doomed = new List<Poolable>();
+        foreach (var item in _active)
+            if (predicate(item)) doomed.Add(item);
+        foreach (var item in doomed) Release(item);
+        return doomed.Count;
+    }
+
+    /// <summary>
     /// Гасит все активные объекты: деактивирует, возвращает в _free, reparent'ит под _parent.
     /// Вызывает только Poolable.OnPoolReleaseAll (без GameEvents — очки/juice не нужны при рестарте).
     /// </summary>

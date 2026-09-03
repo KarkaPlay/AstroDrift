@@ -16,6 +16,10 @@ public class MissileSpawner : MonoBehaviour
     private float _timer;
     private float _elapsed;
     private int _activeCount;
+    private float _safeZone; // ArtDirection §5/§6: спавн угроз не раньше конца безопасной зоны
+
+    /// <summary>Безопасная зона забега: 1.6 s (первый старт) / 0.6 s (рестарт). ArtDirection §5–§6.</summary>
+    public void SetSafeZone(float seconds) => _safeZone = Mathf.Max(0f, seconds);
 
     public void Init(GameConfig cfg, DifficultyConfig diff, Camera camera, Transform poolParent)
     {
@@ -59,6 +63,9 @@ public class MissileSpawner : MonoBehaviour
     {
         if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing) return;
         _elapsed += Time.deltaTime;
+
+        // Безопасная зона (ArtDirection §5/§6): первые 1.6 s старта / 0.6 s рестарта — пустота.
+        if (_elapsed < _safeZone) return;
 
         float interval = difficulty.MissileIntervalAt(_elapsed);
         if (interval <= 0f) return; // фаза 1 — ракет нет

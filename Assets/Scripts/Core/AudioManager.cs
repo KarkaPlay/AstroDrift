@@ -1,22 +1,30 @@
 using UnityEngine;
 
 /// <summary>
-/// 6 звуков в стиле BFXR, синтезируются процедурно в рантайме (DevTask шаг 11:
-/// «Сгенерировать в BFXR… или процедурно»). Никаких аудио-ассетов — звук
-/// строится из sine/noise + envelope, проигрывается через пул AudioSource.
-/// Громкость тихая. Абстракция: методы-события, чтобы позже подменить ассетами.
+/// 6 звуков в стиле BFXR. По умолчанию синтезируются процедурно в рантайме
+/// (DevTask шаг 11: «Сгенерировать в BFXR… или процедурно»). Если в конфиге
+/// AudioConfig (Assets/Resources/AudioConfig.asset) назначен AudioClip — играет
+/// ассет с громкостью из конфига; пустое поле = fallback на синтез.
+/// Проигрывается через пул AudioSource. Громкость тихая.
+/// Свои файлы (wav/ogg/mp3) кладите в Assets/Audio и перетащите в поля конфига.
 /// </summary>
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
 
     [SerializeField] private int poolSize = 8;
-    [SerializeField] private float masterVolume = 0.35f;
 
-    private AudioSource[] _sources;
-    private int _cursor;
+    /// <summary>
+    /// Rewarded-показ (GDD_DeathScreen_Continue §7): приглушить/вернуть звук.
+    /// AudioListener не влияет на нативный звук рекламного SDK — гасим только игру.
+    /// </summary>
+    public void SetMuted(bool muted) => AudioListener.volume = muted ? 0f : 1f;
 
-    // Готовые сэмплы
+    private float _masterVolume = 0.35f; // fallback, если конфига нет
+
+    private AudioConfig config; // Assets/Resources/AudioConfig.asset, может отсутствовать
+
+    // Клипы: из конфига, иначе процедурный синтез
     private AudioClip _shot;
     private AudioClip _hit;
     private AudioClip _smallExplosion;
@@ -24,9 +32,19 @@ public class AudioManager : MonoBehaviour
     private AudioClip _death;
     private AudioClip _record;
 
+    // Громкости событий (из конфига или дефолты как раньше)
+    private float _volShot = 0.5f, _volHit = 0.6f, _volSmall = 0.7f,
+                  _volBig = 0.9f, _volDeath = 1f, _volRecord = 0.8f;
+
+    private AudioSource[] _sources;
+    private int _cursor;
+
     private void Awake()
     {
         Instance = this;
+
+        LoadConfig();
+
         _sources = new AudioSource[poolSize];
         for (int i = 0; i < poolSize; i++)
         {
@@ -35,16 +53,39 @@ public class AudioManager : MonoBehaviour
             var src = go.AddComponent<AudioSource>();
             src.playOnAwake = false;
             src.spatialBlend = 0f;
-            src.volume = masterVolume;
             _sources[i] = src;
         }
 
-        _shot = SynthesizeShot();
-        _hit = SynthesizeHit();
-        _smallExplosion = SynthesizeSmallExplosion();
-        _bigExplosion = SynthesizeBigExplosion();
-        _death = SynthesizeDeath();
-        _record = SynthesizeRecord();
+        // Синтез только для звуков, не подменённых в конфиге
+        _shot = ResolveClip(config?.shot, SynthesizeShot(), ref _volShot);
+        _hit = ResolveClip(config?.hit, SynthesizeHit(), ref _volHit);
+        _smallExplosion = ResolveClip(config?.smallExplosion, SynthesizeSmallExplosion(), ref _volSmall);
+        _bigExplosion = ResolveClip(config?.bigExplosion, SynthesizeBigExplosion(), ref _volBig);
+        _death = ResolveClip(config?.death, SynthesizeDeath(), ref _volDeath);
+        _record = ResolveClip(config?.record, SynthesizeRecord(), ref _volRecord);
+    }
+
+    /// <summary>
+    /// Грузит AudioConfig из Resources. Конфига нет — работает как раньше
+    /// (синтез, masterVolume 0.35). Null-safe.
+    /// </summary>
+    private void LoadConfig()
+    {
+        config = Resources.Load<AudioConfig>("AudioConfig");
+        if (config == null) return;
+
+        _masterVolume = config.masterVolume;
+    }
+
+    /// <summary>Клип из конфига, если назначен (громкость тоже из конфига), иначе синтез с дефолтной громкостью.</summary>
+    private static AudioClip ResolveClip(AudioConfig.SoundEntry entry, AudioClip synthesized, ref float volume)
+    {
+        if (entry != null && entry.clip != null)
+        {
+            volume = entry.volume;
+            return entry.clip;
+        }
+        return synthesized;
     }
 
     private AudioSource NextSource()
@@ -53,22 +94,22 @@ public class AudioManager : MonoBehaviour
         return _sources[_cursor];
     }
 
-    private void Play(AudioClip clip, float volume = 1f)
+    private void Play(AudioClip clip, float volume)
     {
         var src = NextSource();
         src.clip = clip;
-        src.volume = masterVolume * volume;
+        src.volume = _masterVolume * volume;
         src.Play();
     }
 
-    public void PlayShot() => Play(_shot, 0.5f);
-    public void PlayHit() => Play(_hit, 0.6f);
-    public void PlaySmallExplosion() => Play(_smallExplosion, 0.7f);
-    public void PlayBigExplosion() => Play(_bigExplosion, 0.9f);
-    public void PlayDeath() => Play(_death, 1f);
-    public void PlayRecord() => Play(_record, 0.8f);
+    public void PlayShot() => Play(_shot, _volShot);
+    public void PlayHit() => Play(_hit, _volHit);
+    public void PlaySmallExplosion() => Play(_smallExplosion, _volSmall);
+    public void PlayBigExplosion() => Play(_bigExplosion, _volBig);
+    public void PlayDeath() => Play(_death, _volDeath);
+    public void PlayRecord() => Play(_record, _volRecord);
 
-    // ——— Синтез (BFXR-стиль) ———
+    // ——— Синтез (BFXR-стиль), fallback при пустом конфиге ———
 
     private static AudioClip MakeClip(float[] samples, string name, float sampleRate = 44100f)
     {

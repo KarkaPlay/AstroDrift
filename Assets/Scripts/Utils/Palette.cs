@@ -31,6 +31,11 @@ public static class Palette
     public static readonly Color UiPanelFrame = Hex("#2A2A2A");
     public static readonly Color UiOverlay = new Color(0f, 0f, 0f, 0.6f); // затемнение паузы
 
+    // UI-акцент v2 (Menu & Transitions, ArtDirection §7) — использовать точечно:
+    // не более одного золотого элемента в кадре (NEW BEST / сегмент CTA-линии).
+    public static readonly Color UiAccent = Hex("#FFD700"); // = Gold, семантический алиас
+    public static readonly Color UiLine = Hex("#2A2A2A");   // тонкие разделители кнопок = UiPanelFrame, алиас
+
     public static Color AsteroidShade(float t)
     {
         // Серый оттенок 0.45–0.70 (VisualStyle §5) с сохранением яркости в HDR для лёгкого свечения краёв.

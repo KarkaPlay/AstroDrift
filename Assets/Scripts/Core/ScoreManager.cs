@@ -111,6 +111,15 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Continue (GDD_DeathScreen_Continue §3/§10.5): счёт и множитель сохраняются,
+    /// комбо-таймер перезапускается на полное окно.
+    /// </summary>
+    public void RestartComboWindow()
+    {
+        _comboTimer = config != null ? config.comboWindow : 3f;
+    }
+
     public void ResetRun()
     {
         Score = 0;
