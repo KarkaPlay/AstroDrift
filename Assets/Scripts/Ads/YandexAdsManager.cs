@@ -11,9 +11,13 @@ using UnityEngine;
 ///
 /// Interstitial (ТЗ, утверждено Game Designer'ом — числа менять нельзя):
 /// единственная точка показа — тап «Заново» на Death-экране. Формула показа
-/// (все 3 условия): totalSessionCount > 3  И  timeSinceLastInterstitial >= 180с
-/// И  lastSessionDuration >= 20с. Иначе — рестарт без рекламы.
-/// Счётчики сессий и метка последнего показа — в PlayerPrefs (за всё время установки).
+/// (все 4 условия): totalSessionCount > 3  И  timeSinceLastInterstitial >= 180с
+/// И  lastSessionDuration >= 20с  И  timeSinceAnyAd >= adsQuietSeconds
+/// (тихое окно после ЛЮБОЙ рекламы — interstitial ИЛИ rewarded; фикс дефекта:
+/// раньше окно считалось только от rewarded, и interstitial мог показаться
+/// через ~10 с после него). Иначе — рестарт без рекламы.
+/// Rewarded-путь таймер НЕ проверяет вовсе: Rewarded показывается всегда по клику.
+/// Счётчики сессий и метки последних показов — в PlayerPrefs (за всё время установки).
 ///
 /// Ad Unit ID: поля bannerAdUnitId / interstitialAdUnitId в инспекторе
 /// (default = demo-banner-yandex / demo-interstitial-yandex).
@@ -173,6 +177,9 @@ public class YandexAdsManager : MonoBehaviour
         _rewardedCallbackFired = true;
         rewardedShowing = false;
         AudioManager.Instance?.SetMuted(false);
+        // Завершённый просмотр = УСПЕШНЫЙ показ rewarded → общий тихий таймер тикает
+        // (фикс дефекта: без этого on Android метка не писалась и гейт её не видел).
+        if (result) MarkRewardedShown();
         var cb = _rewardedResult;
         _rewardedResult = null;
         Debug.Log($"[YandexAds] Rewarded результат: {(result ? "НАГРАДА выдана" : "без награды/ошибка")}.");
@@ -348,7 +355,12 @@ public class YandexAdsManager : MonoBehaviour
 #endif
     }
 
-    /// <summary>Проверка формулы ТЗ (4 условия: + тихое окно после reward, GDD §10.1.5). Метки — из PlayerPrefs.</summary>
+    /// <summary>
+    /// Проверка формулы ТЗ (4 условия, GDD §10.1.5 + фикс дефекта «тихое окно»).
+    /// 4-е условие — ОБЩИЙ таймер: sinceAd = время с ЛЮБОЙ успешной рекламы
+    /// (interstitial ИЛИ rewarded). Раньше считался только rewarded — из-за этого
+    /// interstitial мог показаться через ~10 с после interstitial'а. Метки — из PlayerPrefs.
+    /// </summary>
     private bool PassesFrequencyFormula(bool log)
     {
         int total = PlayerPrefs.GetInt(PrefsSessionCount, 0);
@@ -362,22 +374,27 @@ public class YandexAdsManager : MonoBehaviour
         double sinceLast = now - last;
         double sinceRewarded = lastRew > 0.0 ? now - lastRew : double.PositiveInfinity;
 
+        // Общий гейт: время с ПОСЛЕДНЕЙ рекламы любого типа (min меток = самая свежая).
+        double sinceAd = Math.Min(
+            last > 0.0 ? now - last : double.PositiveInfinity,
+            sinceRewarded);
+
         bool pastGrace = total > graceSessions;
         bool intervalOk = sinceLast >= minIntervalSeconds;
         bool durationOk = _lastSessionDurationSeconds >= minSessionDurationSeconds;
         float quiet = GameManager.Instance != null && GameManager.Instance.Config != null
-            ? GameManager.Instance.Config.rewardedQuietSeconds
+            ? GameManager.Instance.Config.adsQuietSeconds
             : 60f;
-        bool rewardedOk = sinceRewarded >= quiet;
+        bool quietOk = sinceAd >= quiet;
 
-        if (log && !(pastGrace && intervalOk && durationOk && rewardedOk))
+        if (log && !(pastGrace && intervalOk && durationOk && quietOk))
         {
             Debug.Log($"[YandexAds] Interstitial НЕ показываем: totalSessionCount={total} (>3: {pastGrace}), " +
                       $"sinceLast={sinceLast:F0}с (>=180: {intervalOk}), " +
                       $"lastSessionDuration={_lastSessionDurationSeconds:F1}с (>=20: {durationOk}), " +
-                      $"sinceRewarded={(double.IsPositiveInfinity(sinceRewarded) ? "-" : sinceRewarded.ToString("F0") + "с")} (>={quiet:F0}: {rewardedOk}).");
+                      $"sinceAd={(double.IsPositiveInfinity(sinceAd) ? "-" : sinceAd.ToString("F0") + "с")} (>={quiet:F0} тихое окно: {quietOk}).");
         }
-        return pastGrace && intervalOk && durationOk && rewardedOk;
+        return pastGrace && intervalOk && durationOk && quietOk;
     }
 
     /// <summary>Записать метку показа (Unix-секунды, строкой — точность double).</summary>

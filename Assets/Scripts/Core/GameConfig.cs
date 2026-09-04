@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Все тюнящиеся числа игры (DevTask правило 5). Значения — из GDD/VisualStyle.
@@ -94,8 +95,10 @@ public class GameConfig : ScriptableObject
     public float continueUnlockTime = 0.5f;
     [Tooltip("§5.2: камера — zoom-out «кадр смерти → игровой» на месте, сек")]
     public float continueZoomOutDuration = 1.2f;
-    [Tooltip("§7: interstitial не показывается раньше, чем через это время после reward, сек")]
-    public float rewardedQuietSeconds = 60f;
+    [Tooltip("Тихое окно после ЛЮБОЙ рекламы (interstitial или rewarded): interstitial " +
+             "не показывается раньше, чем через это время, сек. Rewarded — не гейтится.")]
+    [FormerlySerializedAs("rewardedQuietSeconds")]
+    public float adsQuietSeconds = 60f;
 
     [Header("Screen shake (GDD §8 / DevTask шаг 10)")]
     public ShakePreset shakeHit = new ShakePreset(0.03f, 0.05f);       // попадание по астероиду
