@@ -16,6 +16,29 @@ public class Bootstrap : MonoBehaviour
 
     private void Awake()
     {
+        // --- app_first_launch (ТЗ PlatformServices §9.1): строго ЗДЕСЬ, в начале Awake,
+        // а НЕ в RuntimeInitializeOnLoadMethod(BeforeSceneLoad). Порядок вызова разных
+        // BeforeSceneLoad-методов Unity не гарантирует: событие в BeforeSceneLoad
+        // могло уйти раньше, чем RuStoreInstaller
+        // регистрировал AppMetricaAnalyticsService, оно терялось в NullAnalyticsService
+        // (только лог). Событие одно на установку — потеря невосполнима. Awake сцены
+        // гарантированно позже ВСЕХ BeforeSceneLoad → сервисы уже зарегистрированы.
+        // Не «оптимизировать» назад в BeforeSceneLoad!
+        if (!PlatformServices.Save.HasKey("analytics_first_launch"))
+        {
+            PlatformServices.Save.SetInt("analytics_first_launch", 1);
+            PlatformServices.Save.Flush();
+            Analytics.Log("app_first_launch");
+        }
+
+#if !UNITY_EDITOR
+        // --- Guard профиля (ТЗ PlatformServices §9.2): забыли Switch Build Profile →
+        // APK компилируется и запускается с заглушками, молча, с нулевым доходом.
+        // В редакторе заглушки штатны — проверяем только девайс-билды.
+        if (PlatformServices.Ads is NullAdsService)
+            Debug.LogError("[Platform] Ads service is a STUB in a device build! Wrong Build Profile?");
+#endif
+
         // Конфиги: если не назначены в инспекторе — грузим из Resources (создаёт AstroDriftSetup)
         if (config == null) config = Resources.Load<GameConfig>("GameConfig");
         if (difficulty == null) difficulty = Resources.Load<DifficultyConfig>("DifficultyConfig");
@@ -48,10 +71,11 @@ public class Bootstrap : MonoBehaviour
         var audioGo = new GameObject("AudioManager");
         audioGo.AddComponent<AudioManager>();
 
-        // Реклама: нижний sticky-баннер Яндекса (появляется на старте, HUD — вверху).
-        // Singleton с DontDestroyOnLoad; в редакторе — лог-заглушка.
-        var adsGo = new GameObject("YandexAdsManager");
-        adsGo.AddComponent<YandexAdsManager>();
+        // Реклама: игровой флоу (формула interstitial, сессии, mute) — AdsFlow.
+        // Singleton с DontDestroyOnLoad; SDK подключается через PlatformServices.Ads
+        // (RuStore-инсталлер либо заглушка в редакторе).
+        var adsGo = new GameObject("AdsFlow");
+        adsGo.AddComponent<AdsFlow>();
 
         var poolParent = transform;
         var spawnerGo = new GameObject("Spawners");

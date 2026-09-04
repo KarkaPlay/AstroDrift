@@ -170,7 +170,7 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.Save();
 
         // Реклама: старт сессии — точка отсчёта длительности забега
-        if (YandexAdsManager.Instance != null) YandexAdsManager.Instance.RegisterSessionStart();
+        if (AdsFlow.Instance != null) AdsFlow.Instance.RegisterSessionStart();
 
         StopChoreo();
         _elapsed = 0f;
@@ -243,7 +243,7 @@ public class GameManager : MonoBehaviour
                 { "since_continue", _elapsed - _continueResumedAt },
             });
 
-        if (YandexAdsManager.Instance != null) YandexAdsManager.Instance.RegisterSessionEnd();
+        if (AdsFlow.Instance != null) AdsFlow.Instance.RegisterSessionEnd();
 
         Vector3 deathPos = ship.transform.position;
         _lastDeathPos = deathPos;
@@ -284,7 +284,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void ContinueRun()
     {
-        var ads = YandexAdsManager.Instance;
+        var ads = AdsFlow.Instance;
         if (ads != null) ads.ResumeSession(); // откат инкремента сессии смерти (§10.1.4)
 
         StopChoreo();

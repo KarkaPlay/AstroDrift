@@ -27,14 +27,14 @@ public class ScoreManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        Best = PlayerPrefs.GetInt(BestKey, 0);
+        Best = PlatformServices.Save.GetInt(BestKey, 0);
     }
 
     /// <summary>Инициализация, когда конфиг назначается кодом (Bootstrap).</summary>
     public void InitFrom(GameConfig cfg)
     {
         config = cfg;
-        Best = PlayerPrefs.GetInt(BestKey, 0);
+        Best = PlatformServices.Save.GetInt(BestKey, 0);
     }
 
     private void OnEnable()
@@ -106,8 +106,8 @@ public class ScoreManager : MonoBehaviour
         {
             Best = Score;
             NewBest = true;
-            PlayerPrefs.SetInt(BestKey, Best);
-            PlayerPrefs.Save();
+            PlatformServices.Save.SetInt(BestKey, Best);
+            PlatformServices.Save.Flush();
             // ТЗ §3: сегментация профиля (новички < 500 / середина / опытные > 2000)
             Analytics.ProfileSetNumber("best_score", Best);
         }
@@ -137,6 +137,6 @@ public class ScoreManager : MonoBehaviour
     /// </summary>
     private void OnApplicationPause(bool paused)
     {
-        if (paused) PlayerPrefs.Save();
+        if (paused) PlatformServices.Save.Flush();
     }
 }

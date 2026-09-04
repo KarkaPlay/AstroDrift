@@ -151,7 +151,7 @@ public class GameUI : MonoBehaviour
     {
         bool offerWasAlive = _offerActive;
         StopOfferTimer();
-        var ads = YandexAdsManager.Instance;
+        var ads = AdsFlow.Instance;
         if (ads != null && ads.TryShowInterstitial())
         {
             bool done = false;
@@ -189,7 +189,7 @@ public class GameUI : MonoBehaviour
         _offerActive = false;
 
         var gm = GameManager.Instance;
-        var ads = YandexAdsManager.Instance;
+        var ads = AdsFlow.Instance;
         if (gm == null || ads == null) return;
 
         Analytics.Log("continue_ad_started", new Dictionary<string, object>
@@ -465,7 +465,7 @@ public class GameUI : MonoBehaviour
 
         // Реклама не готова → предложение скрыто целиком (§9: не disabled-серое),
         // каскад без него, таймер не запускается. 1 continue за забег (§3).
-        bool adReady = YandexAdsManager.Instance != null && YandexAdsManager.Instance.IsRewardedReady;
+        bool adReady = AdsFlow.Instance != null && AdsFlow.Instance.IsRewardedReady;
         bool offerVisible = adReady && !_continueUsedThisRun;
 
         // §7: не более одного золотого элемента — NEW BEST золото → предложение белое;
