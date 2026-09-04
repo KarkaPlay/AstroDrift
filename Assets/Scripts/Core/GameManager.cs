@@ -162,6 +162,13 @@ public class GameManager : MonoBehaviour
         // Новый забег: флаг continue сбрасывается (1 continue за забег, GDD §3)
         _ui.ResetContinueFlag();
 
+        // ТЗ §2.2/§3: воронка сессии + профиль (счётчик забегов с начала установки)
+        int sessionRuns = PlayerPrefs.GetInt("totalSessionCount", 0);
+        Analytics.Log("run_started", new Dictionary<string, object> { { "session_runs", sessionRuns } });
+        Analytics.ProfileSetNumber("runs_total", PlayerPrefs.GetInt("analytics_runs_total", 0) + 1);
+        PlayerPrefs.SetInt("analytics_runs_total", PlayerPrefs.GetInt("analytics_runs_total", 0) + 1);
+        PlayerPrefs.Save();
+
         // Реклама: старт сессии — точка отсчёта длительности забега
         if (YandexAdsManager.Instance != null) YandexAdsManager.Instance.RegisterSessionStart();
 
@@ -214,6 +221,19 @@ public class GameManager : MonoBehaviour
         if (State != GameState.Playing) return;
         State = GameState.Dead;
         InputEnabled = false;
+
+        // ТЗ §2.3: забег как единица (death_screen_shown — про экран, они в паре 1:1).
+        // cause по коллайдеру: у Asteroid/Missile различимые компоненты; иначе "other" (не ронять лог).
+        string cause = other != null && other.GetComponent<Missile>() != null ? "missile"
+            : other != null && other.GetComponent<Asteroid>() != null ? "asteroid" : "other";
+        Analytics.Log("run_ended", new Dictionary<string, object>
+        {
+            { "score", _score != null ? _score.Score : 0 },
+            { "run_time", _elapsed },
+            { "cause", cause },
+            { "new_best", _score != null && _score.NewBest },
+            { "used_continue", _ui != null && _ui.ContinueUsedThisRun },
+        });
 
         // Метрика §8: смерть в первые 3 с после continue — сигнал, что grace слаб
         if (_continueResumedAt >= 0f && _elapsed - _continueResumedAt <= 3f)
@@ -374,6 +394,20 @@ public class GameManager : MonoBehaviour
 
     public void GoHome()
     {
+        // ТЗ §2.5: exit_to_home — только если continue_declined в этой смерти НЕ отправлялся
+        // (иначе двойной счёт одного тапа «Домой» с живым предложением continue)
+        bool declinedLogged = State == GameState.Dead && _ui != null && _ui.ContinueDeclinedLogged;
+        if (!declinedLogged)
+        {
+            string from = State == GameState.Dead ? "death"
+                : _ui != null && _ui.IsPauseScreen ? "pause" : "start";
+            Analytics.Log("exit_to_home", new Dictionary<string, object>
+            {
+                { "from", from },
+                { "was_alive", State != GameState.Dead },
+            });
+        }
+
         if (State == GameState.Dead)
             _ui.PlayPanelOut(); // §4.5: панели fade-out 0.25 s EaseInQuick
         else

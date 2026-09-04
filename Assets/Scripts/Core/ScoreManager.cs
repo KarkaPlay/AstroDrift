@@ -108,6 +108,8 @@ public class ScoreManager : MonoBehaviour
             NewBest = true;
             PlayerPrefs.SetInt(BestKey, Best);
             PlayerPrefs.Save();
+            // ТЗ §3: сегментация профиля (новички < 500 / середина / опытные > 2000)
+            Analytics.ProfileSetNumber("best_score", Best);
         }
     }
 

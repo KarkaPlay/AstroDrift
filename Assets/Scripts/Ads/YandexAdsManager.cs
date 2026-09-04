@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -338,6 +339,11 @@ public class YandexAdsManager : MonoBehaviour
 
         interstitialShowing = true;
         MarkInterstitialShown();
+        // ТЗ §2.6: фактическая частота interstitial против формулы (долг GDD §8)
+        Analytics.Log("interstitial_home_shown", new Dictionary<string, object>
+        {
+            { "session_count", PlayerPrefs.GetInt(PrefsSessionCount, 0) },
+        });
         Debug.Log("[YandexAds] Показ interstitial…");
         interstitial.Show();
         return true;
@@ -348,6 +354,11 @@ public class YandexAdsManager : MonoBehaviour
         }
 
         MarkInterstitialShown();
+        // ТЗ §2.6: Editor-ветка — та же воронка, что и на Android
+        Analytics.Log("interstitial_home_shown", new Dictionary<string, object>
+        {
+            { "session_count", PlayerPrefs.GetInt(PrefsSessionCount, 0) },
+        });
         Debug.Log("[YandexAds] EDITOR fake-показ interstitial (формула ТЗ выполнена). " +
                   "InterstitialClosed выстрелит в следующем кадре.");
         StartCoroutine(FireInterstitialClosedNextFrame());

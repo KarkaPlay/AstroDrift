@@ -65,6 +65,7 @@ public class GameUI : MonoBehaviour
     private float _offerLineRestWidth;     // ux5: исходная ширина линии-таймера (сцена), восстанавливается при каждом показе
     private bool _deathContinueAvailable;  // на этой смерти continue ещё доступен (1 за забег)
     private bool _continueUsedThisRun;     // флаг «continue уже был» для GameManager
+    private bool _continueDeclinedLogged;  // ТЗ §2.5: continue_declined уже отправлен в этой смерти (антидубль exit_to_home)
 
     // Сдвиги слоёв (px @1080×1920) — §4.1–§4.4
     private static readonly Vector2 SlideCta = new Vector2(0f, -40f);
@@ -140,7 +141,10 @@ public class GameUI : MonoBehaviour
                 done = true;
                 ads.InterstitialClosed -= OnClosed;
                 if (offerWasAlive)
+                {
+                    _continueDeclinedLogged = true; // ТЗ §2.5: блокируем дубль в exit_to_home
                     Analytics.Log("continue_declined", new Dictionary<string, object> { { "score", _score != null ? _score.Score : 0 } });
+                }
                 GameManager.Instance.GoHome();
             }
             ads.InterstitialClosed += OnClosed;
@@ -148,7 +152,10 @@ public class GameUI : MonoBehaviour
         else
         {
             if (offerWasAlive)
+            {
+                _continueDeclinedLogged = true; // ТЗ §2.5: блокируем дубль в exit_to_home
                 Analytics.Log("continue_declined", new Dictionary<string, object> { { "score", _score != null ? _score.Score : 0 } });
+            }
             GameManager.Instance.GoHome();
         }
     }
@@ -187,6 +194,8 @@ public class GameUI : MonoBehaviour
                     { "multiplier", _score != null ? _score.Multiplier : 1 },
                 });
                 _continueUsedThisRun = true;
+                // ТЗ §3: первый в жизни успешный continue — флаг «попробовал главную монетизационную фичу»
+                Analytics.ProfileSetString("used_continue_once", "yes");
                 gm.ContinueRun();
             }
             else
@@ -420,6 +429,7 @@ public class GameUI : MonoBehaviour
         StopTransitions();
         StopOfferTimer();
         _offerActive = false;
+        _continueDeclinedLogged = false; // новая смерть — правило §2.5 начинается заново
 
         deathScore.text = "SCORE " + Format(score);
         deathBest.text = "BEST " + Format(best);
@@ -507,6 +517,12 @@ public class GameUI : MonoBehaviour
     /// <summary>Флаги для GameManager: continue на этой смерти доступен / уже использован в забеге.</summary>
     public bool DeathContinueAvailable => _deathContinueAvailable;
     public bool ContinueUsedThisRun => _continueUsedThisRun;
+
+    /// <summary>ТЗ §2.5: continue_declined уже отправлен в этой смерти (антидубль exit_to_home).</summary>
+    public bool ContinueDeclinedLogged => _continueDeclinedLogged;
+
+    /// <summary>ТЗ §2.5: сейчас виден экран паузы (from = "pause" для exit_to_home).</summary>
+    public bool IsPauseScreen => _screen == Screen.Pause;
 
     /// <summary>Сброс флага «continue использован» (GameManager.BeginRun — новый забег).</summary>
     public void ResetContinueFlag() => _continueUsedThisRun = false;
@@ -765,11 +781,14 @@ public class GameUI : MonoBehaviour
         {
             Time.timeScale = 0f;
             PauseIn();
+            // ТЗ §2.4: один агрегат на оба ветвления — «какой % забегов прерывается паузой?»
+            Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "open" } });
         }
         else
         {
             Time.timeScale = 1f;
             PauseOut();
+            Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "close" } });
         }
     }
 

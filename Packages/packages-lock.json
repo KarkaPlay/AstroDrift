@@ -18,7 +18,7 @@
       "hash": "4ce7dd3cc54e37e2ed6dc59cb5a047f3dccb3f50"
     },
     "com.google.external-dependency-manager": {
-      "version": "1.2.178",
+      "version": "1.2.187",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
@@ -391,6 +391,15 @@
       "depth": 1,
       "source": "registry",
       "dependencies": {},
+      "url": "https://package.openupm.com"
+    },
+    "io.appmetrica.analytics": {
+      "version": "6.10.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.187"
+      },
       "url": "https://package.openupm.com"
     },
     "com.unity.modules.accessibility": {
