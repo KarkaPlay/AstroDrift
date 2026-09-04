@@ -82,6 +82,17 @@ public class GameUI : MonoBehaviour
         // Поведение кнопок (структура — в сцене, обработчики — здесь)
         if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
 
+        // Локализация статичных текстов (перечитываются при смене локали;
+        // динамические — в PlayDeathIn/RefreshHud)
+        L10n.Bind(title1, "title_main");
+        L10n.Bind(title2, "title_sub");
+        L10n.Bind(ctaText, "tap_to_play");
+        L10n.Bind(continueText, "continue_cta");
+        L10n.Bind(continueCaption, "continue_caption");
+        L10n.Bind(deathNewBest, "new_best");
+        L10n.Bind(homeBtn != null ? homeBtn.GetComponentInChildren<TMPro.TextMeshProUGUI>() : null, "home");
+        BindPauseTexts();
+
         // Фикс «тап по TAP TO PLAY не стартует игру»: TMP-тексты стартового экрана
         // (перекрывающие полноэкранную невидимую зону тапа) перехватывали raycast.
         // Тексты — не интерактивные элементы: выключаем их raycastTarget, тап всегда
@@ -107,6 +118,15 @@ public class GameUI : MonoBehaviour
         ShowStartImmediate();
         RefreshHud();
         StartCtaPulse();
+    }
+
+    /// <summary>Пауза-тексты живут на панели сцены (не сериализованы) — биндинг по Find.</summary>
+    private void BindPauseTexts()
+    {
+        if (pausePanel == null) return;
+        L10n.Bind(pausePanel.transform.Find("PauseTitle")?.GetComponent<TMPro.TextMeshProUGUI>(), "pause_title");
+        L10n.Bind(pausePanel.transform.Find("Btn_Resume")?.GetComponentInChildren<TMPro.TextMeshProUGUI>(), "resume");
+        L10n.Bind(pausePanel.transform.Find("Btn_Home")?.GetComponentInChildren<TMPro.TextMeshProUGUI>(), "home");
     }
 
     private void OnDestroy()
@@ -431,8 +451,9 @@ public class GameUI : MonoBehaviour
         _offerActive = false;
         _continueDeclinedLogged = false; // новая смерть — правило §2.5 начинается заново
 
-        deathScore.text = "SCORE " + Format(score);
-        deathBest.text = "BEST " + Format(best);
+        L10n.Bind(deathScore, "score", Format(score));
+        L10n.Bind(deathBest, "best", Format(best));
+        L10n.Bind(deathNewBest, "new_best");
         deathNewBest.gameObject.SetActive(newBest);
         if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
 
@@ -699,7 +720,7 @@ public class GameUI : MonoBehaviour
         }
         _lastMultiplier = m;
 
-        if (startBest != null) startBest.text = "BEST " + Format(_score.Best);
+        if (startBest != null) L10n.Bind(startBest, "best", Format(_score.Best));
     }
 
     private void PulseCombo()

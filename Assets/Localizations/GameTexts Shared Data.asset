@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: GameTexts Shared Data
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
+  m_TableCollectionName: GameTexts
+  m_TableCollectionNameGuidString: 1bded0120e55240948807243af1fd24a
+  m_Entries:
+  - m_Id: 1727750201344
+    m_Key: title_main
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728396124160
+    m_Key: title_sub
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728408707072
+    m_Key: tap_to_play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728408707073
+    m_Key: best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981760
+    m_Key: score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981761
+    m_Key: new_best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981762
+    m_Key: continue_cta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981763
+    m_Key: continue_caption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981764
+    m_Key: home
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981765
+    m_Key: pause_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981766
+    m_Key: resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1728500981767
+    m_Key: combo
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 918229747606749527
+  references:
+    version: 2
+    RefIds:
+    - rid: 918229747606749527
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1788529527104

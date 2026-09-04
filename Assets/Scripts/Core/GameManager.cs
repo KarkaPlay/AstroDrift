@@ -487,7 +487,12 @@ public class GameManager : MonoBehaviour
         _shake?.Shake(_config.shakeCombo.amplitude, _config.shakeCombo.duration);
         _particles.Burst(pos, Palette.Missile, 8, 3f, 5f, 0.6f, 0.12f, 0.25f);
         _particles.Burst(pos, Palette.Bullet, 6, 3f, 5f, 0.6f, 0.1f, 0.2f);
-        _floatingText.Spawn(pos + Vector3.up * 0.5f, "COMBO! +200", Palette.Gold, 4.2f, 0.9f);
+        // Строку форматируем до Spawn (FloatingTextPool берёт готовую строку);
+        // 200 — фиксированный бонус комбо (формат ключа combo: "COMBO! +{0}")
+        string comboText = L10n.GetFormatted("combo", "200");
+        _floatingText.Spawn(pos + Vector3.up * 0.5f,
+            string.IsNullOrEmpty(comboText) ? "COMBO! +200" : comboText,
+            Palette.Gold, 4.2f, 0.9f);
         AudioManager.Instance?.PlayBigExplosion();
     }
 }
