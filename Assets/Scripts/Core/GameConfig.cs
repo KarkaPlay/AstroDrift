@@ -13,7 +13,8 @@ public class GameConfig : ScriptableObject
     public float shipSpeed = 5f;            // 5 ю/с (стартовая; дальше — Difficulty)
     public float shipAngularSpeed = 180f;   // 180°/с (тюнинг 120–240)
     public float shipRadius = 0.25f;        // прощающий хитбокс
-    public float shipInvulnerableTime = 0.5f; // неуязвимость на старте
+    [Tooltip("НЕ ИСПОЛЬЗУЕТСЯ: старт без неуязвимости/мигания (решение владельца). Поле оставлено для совместимости ассета; мигает только неуязвимость после continue")]
+    public float shipInvulnerableTime = 0.5f;
 
     [Header("Оружие (GDD §4.2)")]
     public float fireInterval = 0.35f;      // сек между выстрелами
@@ -59,10 +60,10 @@ public class GameConfig : ScriptableObject
     public float menuShipScreenY = 0.11f;
     [Tooltip("§5: длительность отъезда камеры меню → игровой зум, сек")]
     public float startFlyDuration = 2.0f;
-    [Tooltip("§5: разблокировка управления после тапа, сек")]
-    public float startUnlockTime = 1.6f;
-    [Tooltip("§5: безопасная зона первого старта — спавн угроз не раньше, сек")]
-    public float startSafeZone = 1.6f;
+    [Tooltip("Старт §5: единое t активации систем — стрельба/спавн угроз/HUD (конец сейф-зоны). Управление разблокировано с t=0. Держать равным startAccelerateTime и startFlyDuration")]
+    public float startSystemsTime = 2.0f;
+    [Tooltip("Старт §5: разгон корабля 0 → shipSpeed за это время (ease-out), сек")]
+    public float startAccelerateTime = 2.0f;
     [Tooltip("§6.1: перелёт камеры «место смерти (zoom-in +15%)» → стартовый кадр, сек")]
     public float restartFlyDuration = 0.6f;
     [Tooltip("§6.1: дожим зума «стартовый кадр → игровой» после перелёта, сек")]

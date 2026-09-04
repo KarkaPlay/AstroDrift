@@ -6,9 +6,11 @@ public enum GameState { Ready, Playing, Dead }
 
 /// <summary>
 /// Стейт-машина забега (GDD §7) + хореография «Menu & Transitions v2» (ArtDirection §5–§6):
-/// • Start (§5): корабль уже в стартовой позиции; тап → UI уходит, камера 2.0 s EaseOutSoft
-///   отъезжает до игрового зума, управление на t = 1.6 s, HUD fade-in на t = 1.6 s,
-///   спавн угроз не раньше t = 1.6 s. Без чёрных фейдов, корабль не двигается.
+/// • Start (§5): корабль уже в стартовой позиции; тап → UI уходит (заголовок вверх, CTA fade),
+///   камера 2.0 s EaseOutSoft отъезжает до игрового зума, корабль сразу разгоняется
+///   0 → нормальная скорость за startAccelerateTime (управление с t = 0).
+///   Стрельба/спавн угроз/HUD — на t = startSystemsTime (= разгону = полёту камеры:
+///   один параметр, чтобы хореография не разъезжалась). Без чёрных фейдов, без мигания.
 /// • Retry (§6.1): камера 0.6 s EaseOutSoft летит «место смерти (zoom-in) → стартовый кадр»,
 ///   сброс мира — во время полёта; управление t = 0.5 s, спавн с t ≥ 0.6 s.
 ///   Точка входа RetryWithInterstitial сохранена: переход строго после InterstitialClosed.
@@ -49,6 +51,12 @@ public class GameManager : MonoBehaviour
     /// Читается ShipController/ShipWeapon — корабль стоит, стрельбы нет.
     /// </summary>
     public bool InputEnabled { get; private set; }
+
+    /// <summary>
+    /// Гейт стрельбы: управление с t=0 (первый старт), но стрельба/системы —
+    /// на t = startSystemsTime. На рестарте/continue включается сразу.
+    /// </summary>
+    public bool WeaponEnabled { get; private set; }
 
     private void Awake()
     {
@@ -112,6 +120,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         State = GameState.Ready;
         InputEnabled = false;
+        WeaponEnabled = false;
 
         // Корабль: в меню он главный герой кадра (§2) — стоит в игровой стартовой позиции.
         // BeginRun восстанавливает рендер/коллайдер/трейл после Kill() (смерть → Home)
@@ -162,36 +171,40 @@ public class GameManager : MonoBehaviour
         _difficultyManager.ResetRun();
         Time.timeScale = 1f;
         State = GameState.Playing;
-        InputEnabled = false; // §5: разблокировка на t = 1.6 s
+        InputEnabled = true;  // решение владельца: управление с t = 0 — корабль уже в разгоне
+        WeaponEnabled = false; // стрельба — только на t = startSystemsTime (§5)
 
         // Первый старт: корабль УЖЕ стоит в стартовой позиции из меню (§2) — не двигаем его.
-        // BeginRun по текущей позиции: скорость/неуязвимость/трейл — без телепорта.
-        _ship.BeginRun(_ship.transform.position, _difficultyManager.ShipSpeed);
+        // BeginRun по текущей позиции; разгон 0 → норм за startAccelerateTime (отклик на тап
+        // мгновенный, без мигания — стартовая неуязвимость убрана).
+        _ship.BeginRun(_ship.transform.position, _difficultyManager.ShipSpeed,
+            _config.startAccelerateTime);
         // Сброс таймеров/пулов — мгновенно, до полёта камеры (видимого «мигания» нет:
         // в кадре только корабль и звёзды).
         ResetWorld();
-        ApplySafeZone(_config.startSafeZone); // §5: спавн угроз не раньше t = 1.6 s
+        // §5: стрельба/спавн угроз/HUD — единое t активации систем (= длительности разгона
+        // и полёта камеры), чтобы сейф-зона не разъезжалась с хореографией.
+        ApplySafeZone(_config.startSystemsTime);
         _cameraFollow.SetTarget(_ship.transform);
         _cameraDirector.SnapMenu(); // страховка: кадр точно меню-зум до полёта
 
-        // §4.1 UI: CTA 0.25 s, заголовок 0.30 s EaseInQuick (каскад 70 мс)
+        // §4.1 UI: заголовок улетает вверх, CTA fade-out (кривые UiAnim)
         _ui.PlayStartToGame();
         _ui.RefreshHud();
 
-        // §5: камера 2.0 s EaseOutSharp→Soft отъезд до игрового зума; HUD на t = 1.6 s
-        float unlock = _config.startUnlockTime;
-        float safe = _config.startSafeZone;
-        _choreo = StartCoroutine(StartChoreo(unlock, safe));
+        // §5: камера летит те же startSystemsTime сек; управление уже разблокировано (t=0)
+        _choreo = StartCoroutine(StartChoreo());
     }
 
-    private IEnumerator StartChoreo(float unlock, float safe)
+    private IEnumerator StartChoreo()
     {
-        // Камера: полёт меню → игра, 2.0 s EaseOutSoft (параллельно с 0 мс)
+        // Камера: полёт меню → игра; разгон и активация систем — той же длительности,
+        // кадр непрерывно движется с t = 0 (никаких «застываний»).
         Coroutine fly = StartCoroutine(_cameraDirector.FlyToGameRoutine(_config.startFlyDuration));
-        // §5: HUD fade-in 0.35 s на t = 1.6 s (камера дожимает последние ~10 %)
-        _ui.HudIn(unlock, _config.hudFadeDuration);
-        yield return new WaitForSecondsRealtime(unlock);
-        InputEnabled = true; // игрок начинает управлять, камера дожимает хвост
+        // §5: HUD fade-in 0.35 s на t = startSystemsTime (конец сейф-зоны = стрельба/спавн)
+        _ui.HudIn(_config.startSystemsTime, _config.hudFadeDuration);
+        yield return new WaitForSecondsRealtime(_config.startSystemsTime);
+        WeaponEnabled = true; // стрельба + конец сейф-зоны: системы активируются синхронно
         yield return fly;
     }
 
@@ -301,6 +314,7 @@ public class GameManager : MonoBehaviour
             { "run_time", RunTime },
         });
 
+        WeaponEnabled = true; // continue: стрельба сразу (гейт только для первого старта)
         yield return new WaitForSecondsRealtime(_config.continueUnlockTime);
         InputEnabled = true;
         yield return zoom;
@@ -320,7 +334,8 @@ public class GameManager : MonoBehaviour
         _difficultyManager.ResetRun();
         Time.timeScale = 1f;
         State = GameState.Playing;
-        InputEnabled = false; // §6.1: разблокировка на t = 0.5 s
+        InputEnabled = false;  // §6.1: разблокировка на t = 0.5 s
+        WeaponEnabled = false; // §6.1: стрельба вместе с управлением, как было
 
         // §6.1: корабль телепортируется в стартовую позицию ВО ВРЕМЯ полёта камеры —
         // двигающийся кадр скрывает смену содержимого.
@@ -353,6 +368,7 @@ public class GameManager : MonoBehaviour
             _config.restartFlyDuration, _config.restartZoomOutDuration));
         yield return new WaitForSecondsRealtime(unlock);
         InputEnabled = true;
+        WeaponEnabled = true; // рестарт: стрельба как раньше — вместе с управлением
         yield return fly;
     }
 

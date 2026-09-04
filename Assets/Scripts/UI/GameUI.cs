@@ -80,6 +80,13 @@ public class GameUI : MonoBehaviour
 
         // Поведение кнопок (структура — в сцене, обработчики — здесь)
         if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
+
+        // Фикс «тап по TAP TO PLAY не стартует игру»: TMP-тексты стартового экрана
+        // (перекрывающие полноэкранную невидимую зону тапа) перехватывали raycast.
+        // Тексты — не интерактивные элементы: выключаем их raycastTarget, тап всегда
+        // доходит до tapToPlayBtn в любой точке экрана (включая сам текст).
+        foreach (var t in new[] { title1, title2, startBest, ctaText })
+            if (t != null) t.raycastTarget = false;
         if (continueBtn != null) continueBtn.onClick.AddListener(OnContinueTapped);
         if (homeBtn != null) homeBtn.onClick.AddListener(HomeWithInterstitial);
         if (pauseToggleBtn != null) pauseToggleBtn.onClick.AddListener(TogglePause);
@@ -363,20 +370,46 @@ public class GameUI : MonoBehaviour
 
     // ——— §4.1 Старт (тап по CTA): UI-часть (камера — в GameManager/CameraDirector) ———
 
+    /// <summary>Вектора ухода ВВЕРХ за экран (отрицательный Y-сдвиг = вверх в anchored-координатах).</summary>
+    private static readonly Vector2 ExitUpTitle = new Vector2(0f, -480f);
+    private static readonly Vector2 ExitUpBest = new Vector2(0f, -420f);
+
+    /// <summary>
+    /// Старт (решение владельца): UI уходит плавно и РАЗНОНАПРАВЛЕННО —
+    /// заголовок ASTRO DRIFT и BEST улетают ВВЕРХ за экран (slide-out, EaseInQuick),
+    /// «TAP TO PLAY» — чистый fade-out. Панель НЕ гасится мгновенно (резкий уход),
+    /// но сразу перестаёт ловить raycast (повторный BeginRun), а после завершения
+    /// анимаций полностью скрывается.
+    /// </summary>
     public void PlayStartToGame()
     {
         _screen = Screen.Hud;
         StopCtaPulse();
         StopTransitions();
-        // Фикс ux4-3: гасим ВСЮ стартовую панель сразу — её полноэкранное невидимое
-        // Image оставался raycast-таргетом в gameplay и ловил тапы (повторный BeginRun).
-        SetVisible(startPanel, false);
+        // Фикс ux4-3 (сохранён): панель сразу НЕ интерактивна — её полноэкранное
+        // невидимое Image больше не ловит тапы; альфа остаётся 1 — элементы уходят плавно.
+        var startCg = Cg(startPanel);
+        if (startCg != null)
+        {
+            startCg.blocksRaycasts = false;
+            startCg.interactable = false;
+        }
         SetVisible(hudRoot, false);
-        // CTA: fade + slide −40 px, 0.25 s EaseInQuick, 0 мс
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(ctaText), ctaText.rectTransform, SlideCta, false, 0.25f, 0f, UiAnim.EaseInQuick)));
-        // Заголовок + Best: fade + slide −60 px, 0.30 s EaseInQuick, 70 мс
-        foreach (var t in new[] { title1, title2, startBest })
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(t), t.rectTransform, SlideTitle, false, 0.30f, 0.07f, UiAnim.EaseInQuick)));
+        // CTA: чистый fade-out 0.25 s EaseInQuick, 0 мс (без слайда — решение владельца)
+        _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+        // Заголовок ASTRO DRIFT: улетает вверх за экран, 0.30 s EaseInQuick, каскад 70 мс
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1.rectTransform, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2.rectTransform, ExitUpTitle, false, 0.30f, 0.07f, UiAnim.EaseInQuick)));
+        // BEST: вверх следом, 0.30 s, 140 мс
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(startBest), startBest.rectTransform, ExitUpBest, false, 0.30f, 0.14f, UiAnim.EaseInQuick)));
+        // Страховка: после завершения ухода панель скрыта целиком (alpha=0)
+        _transitions.Add(StartCoroutine(HideStartPanelAfter(0.45f)));
+    }
+
+    private IEnumerator HideStartPanelAfter(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        if (_screen == Screen.Hud) SetVisible(startPanel, false);
     }
 
     // ——— §4.2 Смерть → Death panel (каскад, вход EaseOutSoft) ———

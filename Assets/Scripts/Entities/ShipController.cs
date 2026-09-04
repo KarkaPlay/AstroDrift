@@ -18,6 +18,9 @@ public class ShipController : MonoBehaviour
     private MeshRenderer _renderer;
     private float _angularSpeed;
     private float _speed;
+    private float _targetSpeed;   // целевая скорость (DifficultyManager пишет сюда; факт — после разгона)
+    private float _accelDur;      // длительность разгона 0 → target (0 = сразу полная скорость)
+    private float _accelT;        // прошло с начала разгона
     private bool _invulnerable;
     private float _invulnTimer;
     private bool _dead;
@@ -59,9 +62,14 @@ public class ShipController : MonoBehaviour
         _collider.radius = cfg.shipRadius;
     }
 
-    public void BeginRun(Vector3 startPos, float speed)
+    /// <param name="accelTime">Разгон 0 → speed за accelTime (ease-out). 0 = полная скорость сразу
+    /// (меню/рестарт/continue). Первый старт: GameConfig.startAccelerateTime.</param>
+    public void BeginRun(Vector3 startPos, float speed, float accelTime = 0f)
     {
-        _speed = speed;
+        _targetSpeed = speed;
+        _speed = accelTime > 0f ? 0f : speed;
+        _accelDur = Mathf.Max(0f, accelTime);
+        _accelT = 0f;
         transform.position = startPos;
         transform.rotation = Quaternion.identity; // нос вверх
         _dead = false;
@@ -85,10 +93,14 @@ public class ShipController : MonoBehaviour
         _collider.enabled = true;
         _renderer.enabled = true;
 
-        SetInvulnerable(config != null ? config.shipInvulnerableTime : 0.5f);
+        // Стартовая неуязвимость с миганием убрана (решение владельца: корабль не мигает
+        // при старте/рестарте). Мигает ТОЛЬКО неуязвимость после continue — её ставит
+        // GameManager.ContinueRun отдельным вызовом SetInvulnerable.
+        _invulnerable = false;
+        _invulnTimer = 0f;
     }
 
-    public void SetSpeed(float speed) => _speed = speed;
+    public void SetSpeed(float speed) => _targetSpeed = speed;
 
     public void SetInvulnerable(float duration)
     {
@@ -118,11 +130,24 @@ public class ShipController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // InputEnabled (ArtDirection §5/§6): управление разблокируется на t=1.6 s (старт)
-        // / t=0.5 s (рестарт) — до этого камера в хореографическом полёте, корабль стоит.
+        // InputEnabled: управление с t=0 при первом старте (корабль уже в разгоне),
+        // t=0.5 s при рестарте/continue — до этого камера в хореографическом полёте.
         if (_dead || GameManager.Instance == null || GameManager.Instance.State != GameState.Playing
             || !GameManager.Instance.InputEnabled)
             return;
+
+        // Разгон старта (§5): 0 → targetSpeed за _accelDur по ease-out quad — быстрый
+        // отклик с первого кадра (движение видно сразу), к цели подъезжает плавно.
+        if (_accelT < _accelDur)
+        {
+            _accelT += Time.fixedDeltaTime;
+            float k = Mathf.Clamp01(_accelT / _accelDur);
+            _speed = _targetSpeed * (1f - (1f - k) * (1f - k));
+        }
+        else
+        {
+            _speed = _targetSpeed;
+        }
 
         // Ввод: 0 = прямо, +1 = влево (против ЧС), -1 = вправо (по ЧС). Обе стороны = прямо.
         // EnhancedTouch — API нового Input System, работает на мобильных при activeInputHandler = Input System.
