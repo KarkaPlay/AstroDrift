@@ -19,6 +19,15 @@ public class DifficultyConfig : ScriptableObject
     public float MissileTurnRateAt(float t) => Eval(t, p => p.missileTurnRate);
     public int MaxMissilesAt(float t) => Mathf.RoundToInt(Eval(t, p => p.maxMissiles));
 
+    /// <summary>Максимум maxMissiles по всем фазам (UX5.8: прогрев пула индикаторов).</summary>
+    public int MaxMissilesOverall()
+    {
+        int max = 0;
+        for (int i = 0; i < phases.Length; i++)
+            max = Mathf.Max(max, Mathf.RoundToInt(phases[i].maxMissiles));
+        return max;
+    }
+
     /// <summary>Интервал спавна ракет: фаза 1 — нет, далее Lerp по фазам 2–5.</summary>
     public float MissileIntervalAt(float t)
     {

@@ -37,6 +37,9 @@ public class GameConfig : ScriptableObject
     [Header("Ракеты (GDD §4.4)")]
     public float missileLife = 12f;             // тайм-аут самоуничтожения
     public float missileWarnTime = 1.5f;        // предупреждение до входа в кадр
+    [Tooltip("UX5.7: радиус орбиты предупреждения о ракете вокруг корабля, ю. " +
+             "Должен быть заметен, но не мешать (при игровом орто ~12 — 3–4.5 ю). Не клампится в кадр.")]
+    public float warningOrbitRadius = 3.5f;
     public int missileHp = 1;
     public int missileScore = 100;
     public float missileWarnBlinkOn = 0.3f;     // мигание предупреждения

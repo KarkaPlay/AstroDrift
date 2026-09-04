@@ -53,6 +53,7 @@ MonoBehaviour:
   hitShakeDuration: 0.04
   missileLife: 12
   missileWarnTime: 1.5
+  warningOrbitRadius: 3.5
   missileHp: 1
   missileScore: 100
   missileWarnBlinkOn: 0.3
@@ -67,8 +68,8 @@ MonoBehaviour:
   menuZoomDivisor: 2.25
   menuShipScreenY: 0.11
   startFlyDuration: 2
-  startUnlockTime: 1.6
-  startSafeZone: 1.6
+  startSystemsTime: 2
+  startAccelerateTime: 2
   restartFlyDuration: 0.6
   restartZoomOutDuration: 1.4
   restartUnlockTime: 0.5
@@ -84,7 +85,7 @@ MonoBehaviour:
   continueSafeZone: 1.5
   continueUnlockTime: 0.5
   continueZoomOutDuration: 1.2
-  rewardedQuietSeconds: 60
+  adsQuietSeconds: 60
   shakeHit:
     amplitude: 0.03
     duration: 0.05

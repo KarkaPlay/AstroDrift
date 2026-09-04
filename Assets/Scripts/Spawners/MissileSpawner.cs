@@ -2,17 +2,19 @@ using UnityEngine;
 
 /// <summary>
 /// Спавнер ракет (GDD §4.4): интервал по фазам, лимит, спавн в задней полусфере,
-/// предупреждение за 1.5 с до входа в кадр (красный мигающий треугольник на краю).
+/// предупреждение за 1.5 с до входа в кадр (красный мигающий треугольник на орбите).
+/// UX5.8: пул индикаторов MissileWarning — по одному на каждую внеэкранную ракету,
+/// прогрев по max-лимиту ракет (без аллокаций в рантайме).
 /// </summary>
 public class MissileSpawner : MonoBehaviour
 {
     [SerializeField] private GameConfig config;
     [SerializeField] private DifficultyConfig difficulty;
     [SerializeField] private Camera cam;
-    [SerializeField] private MissileWarning warningPrefab; // префаб предупреждения (создаётся кодом)
     [SerializeField] private GameObject missilePrefab;     // Assets/Resources/Prefabs/Missile.prefab
 
     private ObjectPool _pool;
+    private ObjectPool _warningPool; // UX5.8: пул индикаторов (MissileWarning : Poolable)
     private float _timer;
     private float _elapsed;
     private int _activeCount;
@@ -32,6 +34,9 @@ public class MissileSpawner : MonoBehaviour
             missilePrefab = Resources.Load<GameObject>("Prefabs/Missile");
 
         _pool = new ObjectPool(Create, poolParent, 4);
+        // UX5.8: пул предупреждений, прогрев = максимум maxMissiles по всем фазам —
+        // лимит ракет покрыт, Get() в рантайме не аллоцирует.
+        _warningPool = new ObjectPool(CreateWarning, poolParent, difficulty.MaxMissilesOverall());
         GameEvents.MissileDestroyed += OnMissileGone;
         GameEvents.MissileTimeout += OnMissileGone;
         GameEvents.Combo += OnMissileGone;
@@ -46,6 +51,8 @@ public class MissileSpawner : MonoBehaviour
         return missile;
     }
 
+    private Poolable CreateWarning() => MissileWarning.Create(cam, config, transform);
+
     private void OnMissileGone(Vector3 pos) => _activeCount--;
 
     /// <summary>Перезапуск забега: гасим все активные ракеты и предупреждения, сброс таймеров и счётчика.
@@ -53,7 +60,7 @@ public class MissileSpawner : MonoBehaviour
     public void ResetSpawner()
     {
         _pool.ReleaseAll();
-        MissileWarning.HideAll();
+        MissileWarning.HideAll(); // UX5.8: все индикаторы обратно в пул (рестарт/continue/Home)
         _activeCount = 0;
         _elapsed = 0f;
         _timer = 0f;
@@ -99,15 +106,10 @@ public class MissileSpawner : MonoBehaviour
         missile.Spawn(spawnPos, difficulty.MissileSpeedAt(_elapsed), difficulty.MissileTurnRateAt(_elapsed), config.missileLife);
         _activeCount++;
 
-        // Предупреждение: за 1.5 с до входа в кадр
-        if (warningPrefab != null)
-        {
-            var warn = warningPrefab;
-            warn.ShowFor(spawnPos, missile);
-        }
-        else
-        {
-            MissileWarning.Create(cam, config, spawnPos, missile);
-        }
+        // Предупреждение за 1.5 с до входа в кадр (UX5.8: СВОЙ индикатор на каждую ракету).
+        // HideFor — страховка от переиспользования ракеты пулом при живом старом индикаторе.
+        MissileWarning.HideFor(missile);
+        var warn = _warningPool.Get() as MissileWarning;
+        warn.ShowFor(spawnPos, missile);
     }
 }
