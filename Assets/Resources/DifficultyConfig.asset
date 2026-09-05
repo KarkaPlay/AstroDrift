@@ -15,34 +15,34 @@ MonoBehaviour:
   phases:
   - time: 0
     shipSpeed: 5
-    asteroidSpawnRate: 0.55
-    bigAsteroidChance: 0
+    asteroidSpawnRate: 1.5
+    bigAsteroidChance: 0.15
     asteroidSpeedMin: 0.5
     asteroidSpeedMax: 1.5
-    missileInterval: 0
+    missileInterval: 5
     missileSpeed: 7.5
     missileTurnRate: 35
-    maxMissiles: 0
+    maxMissiles: 2
   - time: 30
     shipSpeed: 5.5
-    asteroidSpawnRate: 0.75
-    bigAsteroidChance: 0.15
+    asteroidSpawnRate: 2
+    bigAsteroidChance: 0.3
     asteroidSpeedMin: 0.8
     asteroidSpeedMax: 2
-    missileInterval: 15
+    missileInterval: 3
     missileSpeed: 7.7
     missileTurnRate: 40
-    maxMissiles: 1
+    maxMissiles: 3
   - time: 60
     shipSpeed: 6
-    asteroidSpawnRate: 0.95
-    bigAsteroidChance: 0.25
+    asteroidSpawnRate: 3
+    bigAsteroidChance: 0.4
     asteroidSpeedMin: 1
     asteroidSpeedMax: 2.5
-    missileInterval: 10
+    missileInterval: 3
     missileSpeed: 7.9
     missileTurnRate: 45
-    maxMissiles: 2
+    maxMissiles: 5
   - time: 120
     shipSpeed: 6.5
     asteroidSpawnRate: 1.15

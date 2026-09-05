@@ -26,11 +26,12 @@ public class GameUI : MonoBehaviour
     [SerializeField] private GameObject pauseBtn;
 
     [Header("Стартовый экран (§2)")]
-    [SerializeField] private TextMeshProUGUI title1;
-    [SerializeField] private TextMeshProUGUI title2;
+    [SerializeField] private TextMeshProUGUI title1;   // устарело: заменён логотипом (может быть null)
+    [SerializeField] private TextMeshProUGUI title2;   // устарело: заменён логотипом (может быть null)
     [SerializeField] private TextMeshProUGUI startBest;
     [SerializeField] private TextMeshProUGUI ctaText;
     [SerializeField] private Button tapToPlayBtn;     // полноэкранная невидимая зона тапа (ux4-5)
+    [SerializeField] private Image logoImage;         // «Astro Drift» — картинка вместо текста (любая локаль)
 
     [Header("Тексты")]
     [SerializeField] private TextMeshProUGUI scoreText;
@@ -54,6 +55,8 @@ public class GameUI : MonoBehaviour
     private ScoreManager _score;
     private int _lastMultiplier = 1;
     private Screen _screen;
+    private RectTransform _canvasRt;   // для адаптивного лэйаута (высота кадра в юнитах)
+    private float _lastLayoutH = -1f;  // кэш высоты: ре-лейаут только при смене разрешения
     private readonly List<Coroutine> _transitions = new List<Coroutine>();
     private Coroutine _ctaPulse;
     private Coroutine _offerTimer;         // таймер предложения (§10.2.3)
@@ -78,14 +81,16 @@ public class GameUI : MonoBehaviour
     public void Init(ScoreManager score)
     {
         _score = score;
+        if (startPanel != null) _canvasRt = startPanel.transform.parent as RectTransform;
+        ApplyAdaptiveStartLayout();
 
         // Поведение кнопок (структура — в сцене, обработчики — здесь)
         if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
 
         // Локализация статичных текстов (перечитываются при смене локали;
-        // динамические — в PlayDeathIn/RefreshHud)
-        L10n.Bind(title1, "title_main");
-        L10n.Bind(title2, "title_sub");
+        // динамические — в PlayDeathIn/RefreshHud). Заголовок — картинка, локали не требует.
+        if (title1 != null) L10n.Bind(title1, "title_main");
+        if (title2 != null) L10n.Bind(title2, "title_sub");
         L10n.Bind(ctaText, "tap_to_play");
         L10n.Bind(continueText, "continue_cta");
         L10n.Bind(continueCaption, "continue_caption");
@@ -366,6 +371,7 @@ public class GameUI : MonoBehaviour
     {
         _screen = Screen.Start;
         StopTransitions();
+        ApplyAdaptiveStartLayout();
         SetVisible(startPanel, true);
         SetVisible(deathPanel, false);
         SetVisible(pausePanel, false);
@@ -373,6 +379,7 @@ public class GameUI : MonoBehaviour
         if (pauseBtn != null) pauseBtn.SetActive(false);
         // Элементы — в позиции покоя
         ResetRest(title1); ResetRest(title2); ResetRest(startBest);
+        ResetRest(logoImage);
         ResetRest(deathScore); ResetRest(deathBest);
         StartCtaPulse();
     }
@@ -390,6 +397,44 @@ public class GameUI : MonoBehaviour
         // элемент уже на rest — просто не трогаем, если корутины не в полёте.
         return rt.anchoredPosition;
     }
+
+    // ——— Адаптивный лэйаут стартового экрана (любое соотношение сторон) ———
+
+    /// <summary>
+    /// Референс 1080×1920 портретный: с CanvasScaler.Expand на квадратных/альбомных
+    /// экранах высота канваса падает до ~1080 юнитов, и верхние элементы (логотип
+    /// y=590, BEST y=380) оказываются за кадром. Для узких по высоте кадров
+    /// применяется компактный пресет: логотип меньше и ниже, CTA выше от края.
+    /// Вызывается при Init, перед каждым каскадом и при смене разрешения (Update).
+    /// </summary>
+    private void ApplyAdaptiveStartLayout()
+    {
+        if (_canvasRt == null) return;
+        float h = _canvasRt.rect.height;
+        if (h <= 0f || Mathf.Approximately(h, _lastLayoutH)) return;
+        _lastLayoutH = h;
+
+        bool compact = h < 1500f;
+        float logoW = compact ? 560f : 700f;
+        float logoAspect = 237f / 587f; // Assets/Logo.png (587×237)
+        if (logoImage != null)
+        {
+            var rt = logoImage.rectTransform;
+            rt.sizeDelta = new Vector2(logoW, logoW * logoAspect);
+            rt.anchoredPosition = new Vector2(0f, compact ? 270f : 590f);
+        }
+        SetRestY(startBest, compact ? 160f : 380f);
+        SetRestY(ctaText, compact ? -350f : -480f);
+    }
+
+    /// <summary>Сдвиг элемента по вертикали с сохранением X (позиция покоя).</summary>
+    private static void SetRestY(TextMeshProUGUI t, float y)
+    {
+        if (t == null) return;
+        var p = t.rectTransform.anchoredPosition;
+        t.rectTransform.anchoredPosition = new Vector2(p.x, y);
+    }
+
 
     private void StopTransitions()
     {
@@ -427,8 +472,11 @@ public class GameUI : MonoBehaviour
         // CTA: чистый fade-out 0.25 s EaseInQuick, 0 мс (без слайда — решение владельца)
         _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
         // Заголовок ASTRO DRIFT: улетает вверх за экран, 0.30 s EaseInQuick, каскад 70 мс
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1.rectTransform, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2.rectTransform, ExitUpTitle, false, 0.30f, 0.07f, UiAnim.EaseInQuick)));
+        // (текстовые заголовки заменены картинкой-логотипом — летит первым в каскаде)
+        if (logoImage != null)
+            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(logoImage), logoImage.rectTransform, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1 != null ? title1.rectTransform : null, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2 != null ? title2.rectTransform : null, ExitUpTitle, false, 0.30f, 0.07f, UiAnim.EaseInQuick)));
         // BEST: вверх следом, 0.30 s, 140 мс
         _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(startBest), startBest.rectTransform, ExitUpBest, false, 0.30f, 0.14f, UiAnim.EaseInQuick)));
         // Страховка: после завершения ухода панель скрыта целиком (alpha=0)
@@ -637,6 +685,15 @@ public class GameUI : MonoBehaviour
             _transitions.Add(StartCoroutine(FadeOut(deathPanel, 0.25f, 0f)));
         if (Cg(pausePanel).alpha > 0.5f)
             _transitions.Add(StartCoroutine(FadeOut(pausePanel, 0.25f, 0f)));
+        // Фикс адаптива (адаптация экранов): HUD (счёт/чип/пауза) при выходе в меню
+        // оставался видимым — «25» висело над логотипом. Из Playing напрямую GoHome
+        // возможен (клавиатура/пульт), из паузы score оставался притушенным (0.25).
+        var hudCg = Cg(hudRoot);
+        if (hudCg != null && hudCg.alpha > 0.05f)
+        {
+            if (pauseBtn != null) pauseBtn.SetActive(false);
+            _transitions.Add(StartCoroutine(UiAnim.Fade(hudCg, hudCg.alpha, 0f, 0.20f, UiAnim.EaseInQuick)));
+        }
     }
 
     /// <summary>Каскад стартового UI: заголовок 150 мс → Best 220 мс → CTA 300 мс, по 0.35 s EaseOutSoft.</summary>
@@ -644,6 +701,7 @@ public class GameUI : MonoBehaviour
     {
         _screen = Screen.Start;
         StopTransitions();
+        ApplyAdaptiveStartLayout(); // rest-позиции под текущий кадр ДО старта каскада
         SetVisible(startPanel, true);
         var startCg = Cg(startPanel);
         startCg.alpha = 1f;
@@ -651,8 +709,13 @@ public class GameUI : MonoBehaviour
         if (pauseBtn != null) pauseBtn.SetActive(false);
         foreach (var t in new[] { title1, title2, startBest, ctaText }) SetVisible(t, false);
 
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1.rectTransform, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2.rectTransform, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
+        if (logoImage != null)
+        {
+            SetVisible(logoImage, false);
+            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(logoImage), logoImage.rectTransform, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
+        }
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1 != null ? title1.rectTransform : null, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2 != null ? title2.rectTransform : null, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
         _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(startBest), startBest.rectTransform, SlideBest, true, 0.35f, 0.22f, UiAnim.EaseOutSoft)));
         _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(ctaText), ctaText.rectTransform, SlideCta, true, 0.35f, 0.30f, UiAnim.EaseOutSoft)));
         StartCtaPulse();
@@ -802,6 +865,7 @@ public class GameUI : MonoBehaviour
         {
             Time.timeScale = 0f;
             PauseIn();
+            PlatformServices.Lifecycle.GameplayStop();
             // ТЗ §2.4: один агрегат на оба ветвления — «какой % забегов прерывается паузой?»
             Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "open" } });
         }
@@ -809,6 +873,7 @@ public class GameUI : MonoBehaviour
         {
             Time.timeScale = 1f;
             PauseOut();
+            PlatformServices.Lifecycle.GameplayStart();
             Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "close" } });
         }
     }

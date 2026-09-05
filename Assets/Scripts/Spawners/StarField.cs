@@ -32,8 +32,7 @@ public class StarField : MonoBehaviour
     {
         _camComponent = Camera.main != null ? Camera.main : GetComponentInParent<Camera>();
         _cam = _camComponent != null ? _camComponent.transform : transform;
-        _ortho = _camComponent != null ? _camComponent.orthographicSize : 12f;
-        _halfW = _ortho * (_camComponent != null ? _camComponent.aspect : 0.56f);
+        RefreshBounds();
         _prevCamPos = _cam.position;
 
         if (config == null)
@@ -89,8 +88,20 @@ public class StarField : MonoBehaviour
         mr.sortingOrder = layer.orderInLayer;
     }
 
+    /// <summary>
+    /// Границы кадра пересчитываются при каждом использовании: aspect зависит от
+    /// разрешения/ориентации окна и может меняться в рантайме (десктоп-окно,
+    /// поворот телефона, ТВ) — кэш из Start() рассыпался после смены аспекта.
+    /// </summary>
+    private void RefreshBounds()
+    {
+        _ortho = _camComponent != null ? _camComponent.orthographicSize : 12f;
+        _halfW = ScreenBounds.HalfWidth(_camComponent);
+    }
+
     private Vector3 RandomScreenOffset()
     {
+        RefreshBounds();
         // ТЗ v3 (Доработка 1): переспавн ТОЛЬКО в кольце ЗА экраном —
         // звезда, переспавненная на глазах у игрока, выглядела как вспышка в кадре.
         // X: от края за боковую границу, Y: за верх/низ; по одной оси — всегда вне кадра.
@@ -114,6 +125,7 @@ public class StarField : MonoBehaviour
         Vector3 camPos = _cam.position;
         Vector3 delta = camPos - _prevCamPos; // движение камеры за кадр
         _prevCamPos = camPos;
+        RefreshBounds(); // аспект/орто актуальны на каждый кадр (смена разрешения/ориентации)
 
         foreach (var s in _stars)
         {

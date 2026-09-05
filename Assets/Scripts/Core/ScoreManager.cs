@@ -139,4 +139,10 @@ public class ScoreManager : MonoBehaviour
     {
         if (paused) PlatformServices.Save.Flush();
     }
+
+    // WebGL: OnApplicationPause ненадёжен — дублируем фокусом. На Android оба вызова безвредны.
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus) PlatformServices.Save.Flush();
+    }
 }

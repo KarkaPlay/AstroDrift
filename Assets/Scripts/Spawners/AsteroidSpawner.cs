@@ -129,12 +129,11 @@ public class AsteroidSpawner : MonoBehaviour
     {
         if (_activeCount >= config.maxAsteroids) return;
         Vector2 forward = ShipController.Instance != null ? (Vector2)ShipController.Instance.transform.up : Vector2.up;
-        // ТЗ v3 (Доработка 1): дистанция от КАМЕРЫ = ortho + margin (GDD §4.3) —
-        // от корабля дистанция до верхнего края кадра больше ortho (камера выше
-        // корабля на 0.4·ortho), спавн от корабля попадал в кадр по курсу.
+        // ТЗ v3 (Доработка 1) + адаптив (любой аспект): точка считается от КАМЕРЫ и
+        // гарантированно за видимой рамкой — полуширина кадра = ortho·aspect, поэтому
+        // фиксированная дистанция ortho + margin на широких экранах попадала В кадр.
         Vector2 camPos = cam.transform.position;
-        float dist = cam.orthographicSize + config.asteroidSpawnMargin;
-        Vector2 spawnPos = camPos + forward * dist;
+        Vector2 spawnPos = ScreenBounds.PointOutside(cam, camPos, forward, config.asteroidSpawnMargin);
         if (Physics2D.OverlapCircle(spawnPos, config.minSpawnDistance) != null) return;
         SpawnAt(AsteroidSize.Medium, spawnPos, forward);
     }
@@ -163,10 +162,10 @@ public class AsteroidSpawner : MonoBehaviour
 
     private Vector2 PickSpawnPosition()
     {
-        // ТЗ v3 (Доработка 1): радиус спавна от КАМЕРЫ, не от корабля.
-        // По диагонали до угла экрана дальше ortho — спавн за углом тоже вне кадра.
+        // ТЗ v3 (Доработка 1): точка отсчёта — КАМЕРА, не корабль.
+        // Адаптив (любой аспект): PointOutside гарантирует «за рамкой» и по узкой,
+        // и по широкой оси (полуширина = ortho·aspect), включая диагонали.
         Vector2 camPos = cam.transform.position;
-        float dist = cam.orthographicSize + config.asteroidSpawnMargin;
         Vector2 ship = shipPos;
         for (int attempt = 0; attempt < 12; attempt++)
         {
@@ -183,7 +182,7 @@ public class AsteroidSpawner : MonoBehaviour
             {
                 dir = Random.insideUnitCircle.normalized;
             }
-            Vector2 candidate = camPos + dir * dist;
+            Vector2 candidate = ScreenBounds.PointOutside(cam, camPos, dir, config.asteroidSpawnMargin);
             if (Physics2D.OverlapCircle(candidate, config.minSpawnDistance) == null)
                 return candidate;
         }

@@ -16,6 +16,14 @@ public class Bootstrap : MonoBehaviour
 
     private void Awake()
     {
+        // Яндекс Игры: SDK/сейвы/язык грузятся асинхронно — сцену собираем по готовности.
+        // RuStore / редактор: IsReady = true, Build() выполняется прямо здесь, как раньше.
+        if (PlatformBoot.IsReady) Build();
+        else PlatformBoot.Ready += Build;
+    }
+
+    private void Build()
+    {
         // --- app_first_launch (ТЗ PlatformServices §9.1): строго ЗДЕСЬ, в начале Awake,
         // а НЕ в RuntimeInitializeOnLoadMethod(BeforeSceneLoad). Порядок вызова разных
         // BeforeSceneLoad-методов Unity не гарантирует: событие в BeforeSceneLoad
@@ -108,6 +116,10 @@ public class Bootstrap : MonoBehaviour
         // GameManager получает ссылки
         gm.Init(config, difficulty, ship, Camera.main.GetComponent<CameraFollow>(),
                 weapon, astSpawner, missileSpawner, score, diff);
+
+        // Площадка: игра загружена и интерактивна — стартовый экран собран (Яндекс: лоадер скрывается,
+        // без этого вызова модерация не пройдёт). RuStore — no-op.
+        PlatformServices.Lifecycle.GameReady();
     }
 
     private void BuildCameraAndBloom()

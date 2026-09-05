@@ -186,6 +186,16 @@ public class ShipController : MonoBehaviour
             else if (kb.leftArrowKey.isPressed) dir = 1;
             else if (kb.rightArrowKey.isPressed) dir = -1;
         }
+        // Пульт ТВ / геймпад (Android TV и консоли): dpad и левый стик —
+        // как стрелки: влево = против ЧС, вправо = по ЧС.
+        if (dir == 0 && Gamepad.current != null)
+        {
+            var gp = Gamepad.current;
+            float axis = gp.dpad.x.ReadValue();
+            if (Mathf.Abs(axis) < 0.5f) axis = gp.leftStick.x.ReadValue();
+            if (axis < -0.3f) dir = 1;
+            else if (axis > 0.3f) dir = -1;
+        }
 
         _rb.rotation += dir * _angularSpeed * Time.fixedDeltaTime;
         Vector2 forward = transform.up;

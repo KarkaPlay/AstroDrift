@@ -74,7 +74,11 @@ public class AdsFlow : MonoBehaviour
         if (_ads != null) _ads.InterstitialClosed -= OnServiceInterstitialClosed;
     }
 
-    private void OnServiceInterstitialClosed() => InterstitialClosed?.Invoke();
+    private void OnServiceInterstitialClosed()
+    {
+        AudioManager.Instance?.SetMuted(false);
+        InterstitialClosed?.Invoke();
+    }
 
     // ——— Публичное API: rewarded (GDD_DeathScreen_Continue §7/§10.1) ———
 
@@ -184,6 +188,10 @@ public class AdsFlow : MonoBehaviour
         {
             return false; // НЕ блокируем: не загружен / уже показывается
         }
+
+        // Тишина во время ЛЮБОЙ рекламы (модерация ЯИ проверяет на interstitial тоже).
+        // Unmute — в OnServiceInterstitialClosed (событие гарантировано: close/ошибка/watchdog).
+        AudioManager.Instance?.SetMuted(true);
 
         MarkInterstitialShown();
         // ТЗ §2.6: фактическая частота interstitial против формулы (долг GDD §8)

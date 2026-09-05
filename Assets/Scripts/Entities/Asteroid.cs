@@ -123,10 +123,13 @@ public class Asteroid : Poolable
     {
         if (!_active) return;
 
-        // Деспавн: дистанция до камеры > orthoSize + 8 (GDD §4.3)
-        Vector3 camPos = CameraFollow.Instance != null ? CameraFollow.Instance.transform.position : Vector3.zero;
-        float camOrtho = CameraFollow.Instance != null ? CameraFollow.Instance.OrthoSize : 12f;
-        if (Vector2.Distance(transform.position, camPos) > camOrtho + config.asteroidDespawnMargin)
+        // Деспавн (GDD §4.3, адаптив на любой аспект): астероид ушел за видимой
+        // рамкой с запасом margin (по любой из осей), а не дальше радиуса ortho + 8:
+        // круговой деспавн по радиусу на широких экранах откладывал исчезновение
+        // «летящих мимо» астероидов, пока они не улетят на 20+ юнитов вбок.
+        var cam = CameraFollow.Instance;
+        if (cam != null && ScreenBounds.IsOutsideFrame(
+                cam.GetComponent<Camera>(), transform.position, config.asteroidDespawnMargin))
         {
             GameEvents.RaiseAsteroidDespawned(transform.position);
             Release();

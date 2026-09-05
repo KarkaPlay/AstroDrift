@@ -1,0 +1,3 @@
+﻿Build path: /Users/sergeikarpuskin/Documents/My Small Games/AstroDrift/Builds/YandexGames
+Build number: 6
+PluginYG version: 2.0092

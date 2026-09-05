@@ -90,17 +90,18 @@ public class MissileSpawner : MonoBehaviour
         int max = difficulty.MaxMissilesAt(_elapsed);
         if (_activeCount >= max) return;
 
+        // Спавн в задней полусфере: за спиной корабля. Адаптив (любой аспект):
+        // точка обязана быть за видимой рамкой — её считает ScreenBounds.PointOutside
+        // от КАМЕРЫ (полуширина кадра = ortho·aspect, фиксированный радиус ortho + margin
+        // на альбомных экранах выводил ракету прямо в кадр).
         Vector2 ship = ShipController.Instance != null ? (Vector2)ShipController.Instance.transform.position : Vector2.zero;
-
-        // Спавн в задней полусфере: за спиной корабля, на дистанции ortho + 3
-        float dist = cam.orthographicSize + config.asteroidSpawnMargin;
         Vector2 forward = ShipController.Instance != null ? (Vector2)ShipController.Instance.transform.up : Vector2.up;
         Vector2 spawnDir = -forward;
         // Случайный разброс ±40° от «за спиной»
         float baseAngle = Mathf.Atan2(spawnDir.y, spawnDir.x) * Mathf.Rad2Deg;
         float angle = baseAngle + Random.Range(-40f, 40f);
         Vector2 finalDir = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
-        Vector2 spawnPos = ship + finalDir * dist;
+        Vector2 spawnPos = ScreenBounds.PointOutside(cam, cam.transform.position, finalDir, config.asteroidSpawnMargin);
 
         var missile = _pool.Get() as Missile;
         missile.Spawn(spawnPos, difficulty.MissileSpeedAt(_elapsed), difficulty.MissileTurnRateAt(_elapsed), config.missileLife);

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public enum GameState { Ready, Playing, Dead }
 
@@ -61,7 +62,8 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        Application.targetFrameRate = 60;
+        // WebGL: любое значение ≠ -1 переводит цикл с requestAnimationFrame на setTimeout → дёрганый кадр.
+        Application.targetFrameRate = Application.platform == RuntimePlatform.WebGLPlayer ? -1 : 60;
         State = GameState.Ready;
     }
 
@@ -178,6 +180,7 @@ public class GameManager : MonoBehaviour
         _difficultyManager.ResetRun();
         Time.timeScale = 1f;
         State = GameState.Playing;
+        PlatformServices.Lifecycle.GameplayStart();
         InputEnabled = true;  // решение владельца: управление с t = 0 — корабль уже в разгоне
         WeaponEnabled = false; // стрельба — только на t = startSystemsTime (§5)
 
@@ -220,6 +223,7 @@ public class GameManager : MonoBehaviour
     {
         if (State != GameState.Playing) return;
         State = GameState.Dead;
+        PlatformServices.Lifecycle.GameplayStop();
         InputEnabled = false;
 
         // ТЗ §2.3: забег как единица (death_screen_shown — про экран, они в паре 1:1).
@@ -251,6 +255,9 @@ public class GameManager : MonoBehaviour
         _particles.Burst(deathPos, Palette.Ship, 8, 2f, 4f, 0.6f, 0.15f, 0.3f);
         _particles.Burst(deathPos, Palette.Bullet, 4, 2f, 4f, 0.6f, 0.1f, 0.2f);
         _shake?.Shake(_config.shakeDeath.amplitude, _config.shakeDeath.duration);
+        // Звук смерти — в момент взрыва (фикс: раньше играл в DeathSequence, после
+        // deathSlowmoDuration + 0.15 с, т.е. ~1 с после взрыва — рассинхрон с картинкой).
+        AudioManager.Instance?.PlayDeath();
 
         // §4.2: камера zoom-in +15 % к месту смерти (0.4 s, задержка 0.25 s после вспышки),
         // HUD score fade-out 0.20 s сразу.
@@ -274,7 +281,7 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.15f);
         // §4.2: панель появляется каскадом (Score 0 мс → Best 70 мс → предложение/Домой 140/210 мс)
         _ui.PlayDeathIn(_score.Score, _score.Best, _score.NewBest);
-        AudioManager.Instance?.PlayDeath();
+        // (PlayDeath перенесён в OnShipHit: звук смерти должен звучать с взрывом, не с панелью)
     }
 
     /// <summary>
@@ -289,6 +296,7 @@ public class GameManager : MonoBehaviour
 
         StopChoreo();
         State = GameState.Playing;
+        PlatformServices.Lifecycle.GameplayStart();
         Time.timeScale = 1f;
         InputEnabled = false; // §5.2: разблокировка на t = 0.5 s
 
@@ -354,6 +362,7 @@ public class GameManager : MonoBehaviour
         _difficultyManager.ResetRun();
         Time.timeScale = 1f;
         State = GameState.Playing;
+        PlatformServices.Lifecycle.GameplayStart();
         InputEnabled = false;  // §6.1: разблокировка на t = 0.5 s
         WeaponEnabled = false; // §6.1: стрельба вместе с управлением, как было
 
@@ -394,6 +403,7 @@ public class GameManager : MonoBehaviour
 
     public void GoHome()
     {
+        PlatformServices.Lifecycle.GameplayStop();
         // ТЗ §2.5: exit_to_home — только если continue_declined в этой смерти НЕ отправлялся
         // (иначе двойной счёт одного тапа «Домой» с живым предложением continue)
         bool declinedLogged = State == GameState.Dead && _ui != null && _ui.ContinueDeclinedLogged;
@@ -437,6 +447,14 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        if (State == GameState.Ready)
+        {
+            // Старт с клавиатуры/пульта ТВ (десктоп/консоль/ТВ): та же точка входа
+            // BeginRun, что и тап по CTA — гейт State == Ready внутри защищает от дублей.
+            if (StartKeyPressed()) BeginRun();
+            return;
+        }
+
         if (State == GameState.Playing)
         {
             _elapsed += Time.deltaTime;
@@ -451,6 +469,37 @@ public class GameManager : MonoBehaviour
                 Analytics.Log("continue_survived_10s", new Dictionary<string, object> { { "survived", 1 } });
             }
         }
+    }
+
+    /// <summary>
+    /// «Начать игру» без тапа: клавиши управления (A/D, Space, стрелки, Enter) или кнопки
+    /// геймпада/пульта ТВ (dpad включая центр, A/B, Start, плечи). Input System — один
+    /// API для клавиатуры и Android-TV-пульта (пульт приходит как dpad геймпада).
+    /// </summary>
+    private static bool StartKeyPressed()
+    {
+        var kb = Keyboard.current;
+        if (kb != null)
+        {
+            if (kb.aKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame ||
+                kb.spaceKey.wasPressedThisFrame ||
+                kb.leftArrowKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame ||
+                kb.upArrowKey.wasPressedThisFrame || kb.downArrowKey.wasPressedThisFrame ||
+                kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
+                return true;
+        }
+
+        var gp = Gamepad.current;
+        if (gp != null)
+        {
+            if (gp.dpad.up.wasPressedThisFrame || gp.dpad.down.wasPressedThisFrame ||
+                gp.dpad.left.wasPressedThisFrame || gp.dpad.right.wasPressedThisFrame ||
+                gp.buttonSouth.wasPressedThisFrame || gp.buttonNorth.wasPressedThisFrame ||
+                gp.startButton.wasPressedThisFrame ||
+                gp.leftShoulder.wasPressedThisFrame || gp.rightShoulder.wasPressedThisFrame)
+                return true;
+        }
+        return false;
     }
 
     // ——— События juice ———

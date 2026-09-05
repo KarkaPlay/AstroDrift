@@ -106,8 +106,9 @@ public class MissileWarning : Poolable
 
     /// <summary>
     /// Орбита вокруг корабля (UX5.7): центр = позиция корабля,
-    /// радиус = GameConfig.warningOrbitRadius (настраиваемый, клампа в кадр нет —
-    /// радиус по умолчанию 3.5 ю < узкой полуоси при игровом орто ~12).
+    /// радиус = GameConfig.warningOrbitRadius. Адаптив (любой аспект): точка орбиты
+    /// клампится в видимый кадр (pad 0.5 ю) — на квадратных/альбомных экранах и
+    /// при малых значениях радиуса индикатор гарантированно остаётся в кадре.
     /// Направление и поворот — на угрозу (спавн-точка, затем летящая ракета).
     /// </summary>
     private void UpdateOrbit(Vector3 missilePos)
@@ -119,6 +120,7 @@ public class MissileWarning : Poolable
         if (dir == Vector2.zero) dir = Vector2.up;
 
         Vector2 p = shipPos + dir * _config.warningOrbitRadius;
+        p = ScreenBounds.ClampToFrame(_cam, p, 0.5f);
 
         transform.position = new Vector3(p.x, p.y, 0f);
         // Вершина в сторону угрозы (угол от корабля к ракете) — семантика сохранена

@@ -10,12 +10,15 @@ public static class PlatformServices
     private static IAdsService _ads;
     private static IAnalyticsService _analytics;
     private static ISaveService _save;
+    private static IPlatformLifecycle _lifecycle;
 
     public static IAdsService Ads => _ads ??= NullAdsService.Create();
     public static IAnalyticsService Analytics => _analytics ??= new NullAnalyticsService();
     public static ISaveService Save => _save ??= new PlayerPrefsSaveService();
+    public static IPlatformLifecycle Lifecycle => _lifecycle ??= new NullPlatformLifecycle();
 
     public static void Register(IAdsService service) => _ads = service;
     public static void Register(IAnalyticsService service) => _analytics = service;
     public static void Register(ISaveService service) => _save = service;
+    public static void Register(IPlatformLifecycle service) => _lifecycle = service;
 }

@@ -1,0 +1,25 @@
+{
+    "intExample": 5,
+    "strExample": "Hello!",
+    "boolExample": [
+        false,
+        false,
+        false,
+        false
+    ],
+    "idSave": 17,
+    "astro": [
+        {
+            "key": "analytics_first_launch",
+            "intValue": 1,
+            "strValue": "",
+            "isString": false
+        },
+        {
+            "key": "AstroDrift.Best",
+            "intValue": 2635,
+            "strValue": "",
+            "isString": false
+        }
+    ]
+}
