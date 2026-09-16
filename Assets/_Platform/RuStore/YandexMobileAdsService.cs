@@ -2,331 +2,198 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using YandexMobileAds;
-using YandexMobileAds.Base;
+using YG;
 
 /// <summary>
-/// Платформенная обёртка рекламы RuStore: Yandex Mobile Ads (РСЯ).
-/// Платформенная ПОЛОВИНА бывшего YandexAdsManager: sticky-баннер с retry,
-/// interstitial/rewarded лоадеры и обработчики. Игровой логики (формула, сессии,
-/// mute, аналитика) здесь НЕТ — она в AdsFlow (Assets/Scripts/Ads/AdsFlow.cs).
+/// IAdsService поверх PluginYG2 (интеграция Yandex Mobile Ads, РСЯ) — платформенный слой RuStore.
+/// Собственного доступа к Yandex Mobile Ads SDK здесь НЕТ: только публичное API YG2 и его события.
+/// Контракт AdsFlow сохранён:
+/// • ShowInterstitial(): false = рекламу не показываем (AdsFlow идёт домой мгновенно, без ожидания);
+///   true = показ, InterstitialClosed придёт РОВНО один раз (закрытие / ошибка / watchdog).
+/// • ShowRewarded(cb): cb ровно один раз; true — только при реально выданной награде.
+///   Награда (onRewardAdv) приходит ДО закрытия — копим флаг, результат отдаём по закрытию/ошибке.
+/// • Баннер = модуль BannerAdv плагина (bottom, показывается при старте SDK).
+/// Мьют/пауза игры — НЕ здесь (AdsFlow), автопауза плагина в InfoYG выключена (autoPauseGame: 0).
 /// Живёт на DontDestroyOnLoad-объекте, регистрируется RuStoreInstaller (BeforeSceneLoad).
 /// </summary>
 public class YandexMobileAdsService : MonoBehaviour, IAdsService
 {
-    [Header("Ad Unit ID (партнёрский интерфейс РСЯ)")]
-    [SerializeField] private string bannerAdUnitId = "R-M-19858053-1";
-    [SerializeField] private string interstitialAdUnitId = "R-M-19858053-2";
-    [SerializeField] private string rewardedAdUnitId = "R-M-19858053-3";
-
-    [Header("Авто-перезагрузка при ошибке")]
-    [SerializeField] private int maxLoadRetries = 3;
-    [SerializeField] private float retryDelaySeconds = 10f;
+    private const string RewardId = "continue";
+    private const float InterstitialOpenWatchdog = 4f; // плагин молча не открыл рекламу → не вешаем «Домой»
+    private const float RewardedShowWatchdog = 3f;     // YMA молча не показал (ad == null) → не вешаем mute и «Продолжить»
 
     public event Action InterstitialClosed;
 
-    /// <summary>Баннер показан (после успешной загрузки; sticky показывается автоматически).</summary>
-    public bool IsBannerVisible { get; private set; }
+    // В Яндексе нет честного «загружен ли rewarded»: оцениваем готовность по SDK/занятости показа.
+    // Если реклама не загрузится — YG2 пришлёт onErrorRewardedAdv и onResult(false).
+    public bool IsRewardedReady => YG2.isSDKEnabled && !YG2.nowAdsShow && !_rewardedShowing;
 
-    public bool IsRewardedReady => _rewarded != null;
-
-    private Banner banner;
-    private Interstitial interstitial;
-    private RewardedAd _rewarded;
-    private bool interstitialLoadInProgress;
-    private bool rewardedLoadInProgress;
-    private bool interstitialShowing;
-    private bool rewardedShowing;
-    private int loadAttempts;      // подряд неуспешных попыток
-    private bool loadInProgress;
-    private bool destroyPending;
-
-    // Состояние ожидающего rewarded-колбэка (колбэк — строго один раз, §10.1.3)
-    private Action<bool> _rewardedResult;
-    private bool _rewardedRewarded;
-    private bool _rewardedCallbackFired;
+    private bool _interShowing, _interOpened;
+    private bool _rewardedShowing, _rewarded, _rewardedOpened;
+    private Action<bool> _onRewardedResult;
+    private Coroutine _watchdog, _rewardWatchdog;
 
     private void Awake()
     {
-        // Примечание: в com.yandex.mobileads 8.3.0 нет C# API MobileAds.Initialize —
-        // SDK инициализируется лениво при первом использовании (как и в прежнем менеджере).
-        RequestBanner();
-        RequestInterstitial();
-        RequestRewarded();
-    }
+        YG2.onOpenInterAdv += OnInterOpened;
+        YG2.onCloseInterAdv += OnInterClosed;
+        YG2.onErrorInterAdv += OnInterClosed;
 
-    // ——— IAdsService: interstitial (raw-показ; формула — в AdsFlow) ———
+        YG2.onOpenRewardedAdv += OnRewardedOpened;
+        YG2.onRewardAdv += OnReward;
+        YG2.onCloseRewardedAdv += OnRewardedClosed;
+        YG2.onErrorRewardedAdv += OnRewardedClosed;
 
-    public bool ShowInterstitial()
-    {
-        if (interstitialShowing)
-        {
-            Debug.Log("[YandexAds] Interstitial уже показывается — рестарт без рекламы.");
-            return false;
-        }
-        if (interstitial == null)
-        {
-            Debug.Log("[YandexAds] Interstitial не загружен — рестарт мгновенный, без ожидания.");
-            return false; // НЕ блокируем: перезагрузка уже в процессе
-        }
-
-        interstitialShowing = true;
-        Debug.Log("[YandexAds] Показ interstitial…");
-        interstitial.Show();
-        return true;
-    }
-
-    private void HandleInterstitialDismissed(object sender, EventArgs args)
-    {
-        interstitialShowing = false;
-        Debug.Log("[YandexAds] Interstitial закрыт → перезагрузка + сигнал рестарта.");
-        DestroyInterstitialObject();
-        RequestInterstitial();
-        InterstitialClosed?.Invoke();
-    }
-
-    private void HandleInterstitialFailedToShow(object sender, EventArgs args)
-    {
-        interstitialShowing = false;
-        Debug.LogWarning("[YandexAds] Ошибка показа interstitial → перезагрузка + сигнал рестарта (игра не подвисает).");
-        DestroyInterstitialObject();
-        RequestInterstitial();
-        InterstitialClosed?.Invoke();
-    }
-
-    // ——— IAdsService: rewarded ———
-
-    public void ShowRewarded(Action<bool> onResult)
-    {
-        if (onResult == null) return;
-
-        if (rewardedShowing)
-        {
-            Debug.Log("[YandexAds] Rewarded уже показывается — отказ без показа.");
-            onResult(false);
-            return;
-        }
-        if (_rewarded == null)
-        {
-            Debug.Log("[YandexAds] Rewarded не загружен — onResult(false) мгновенно (перезагрузка уже в процессе).");
-            onResult(false);
-            return;
-        }
-
-        rewardedShowing = true;
-        _rewardedResult = onResult;
-        _rewardedRewarded = false;
-        _rewardedCallbackFired = false;
-        Debug.Log("[YandexAds] Показ rewarded…");
-        _rewarded.Show();
-    }
-
-    private void FireRewardedResult(bool result)
-    {
-        if (_rewardedCallbackFired) return; // колбэк — строго один раз (§10.1.3)
-        _rewardedCallbackFired = true;
-        rewardedShowing = false;
-        var cb = _rewardedResult;
-        _rewardedResult = null;
-        Debug.Log($"[YandexAds] Rewarded результат: {(result ? "НАГРАДА выдана" : "без награды/ошибка")}.");
-        cb?.Invoke(result);
-    }
-
-    private void HandleRewardedRewarded(object sender, YandexMobileAds.Base.Reward args)
-    {
-        _rewardedRewarded = true;
-        Debug.Log("[YandexAds] Rewarded: награда получена.");
-    }
-
-    private void HandleRewardedDismissed(object sender, EventArgs args)
-    {
-        Debug.Log("[YandexAds] Rewarded закрыт → перезагрузка.");
-        bool result = _rewardedRewarded;
-        DestroyRewardedObject();
-        RequestRewarded();
-        FireRewardedResult(result);
-    }
-
-    private void HandleRewardedFailedToShow(object sender, EventArgs args)
-    {
-        Debug.LogWarning("[YandexAds] Ошибка показа rewarded → перезагрузка.");
-        DestroyRewardedObject();
-        RequestRewarded();
-        FireRewardedResult(false);
-    }
-
-    // ——— IAdsService: баннер ———
-
-    public void ShowBanner()
-    {
-        if (banner != null && !IsBannerVisible)
-        {
-            banner.Show();
-            IsBannerVisible = true;
-        }
-    }
-
-    public void HideBanner()
-    {
-        if (banner != null && IsBannerVisible)
-        {
-            banner.Hide();
-            IsBannerVisible = false;
-        }
-    }
-
-    // ——— Загрузка баннера ———
-
-    private void RequestBanner()
-    {
-        if (loadInProgress || destroyPending) return;
-        loadInProgress = true;
-
-        // Пересоздание: старый баннер (даже после ошибки) уничтожаем
-        DestroyBannerObject();
-
-        // Sticky: ширина во dp под текущий экран (безопасная зона снизу, HUD — вверху).
-        // density = dpi / 160 (Android-эквивалент); Screen.dpi может быть 0 при старте — берём минимум 160.
-        float dpi = Mathf.Max(Screen.dpi, 160f);
-        int widthDp = Mathf.Max(320, Mathf.RoundToInt(Screen.width / (dpi / 160f)));
-
-        banner = new Banner(
-            BannerAdSize.Sticky(widthDp),
-            AdPosition.BottomCenter);
-
-        banner.OnAdLoaded += HandleAdLoaded;
-        banner.OnAdFailedToLoad += HandleAdFailedToLoad;
-
-        banner.LoadAd(new AdRequest(bannerAdUnitId));
-        Debug.Log($"[YandexAds] Запрос баннера (sticky, {widthDp}dp, '{bannerAdUnitId}')…");
-    }
-
-    private void HandleAdLoaded(object sender, EventArgs args)
-    {
-        loadInProgress = false;
-        loadAttempts = 0;
-        IsBannerVisible = true; // Banner.Show() при загрузке sticky показывается автоматически
-        Debug.Log("[YandexAds] Баннер загружен и показан (низ экрана).");
-    }
-
-    private void HandleAdFailedToLoad(object sender, AdFailureEventArgs args)
-    {
-        loadInProgress = false;
-        Debug.LogWarning("[YandexAds] Ошибка загрузки баннера: " +
-                         (args != null ? args.Message : "(нет деталей)"));
-
-        if (loadAttempts < maxLoadRetries)
-        {
-            loadAttempts++;
-            StartCoroutine(RetryLoad(retryDelaySeconds * loadAttempts));
-        }
-        else
-        {
-            Debug.LogWarning($"[YandexAds] Превышен лимит попыток ({maxLoadRetries}). " +
-                             "Баннер не будет перезагружаться до конца сессии.");
-        }
-    }
-
-    private IEnumerator RetryLoad(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        if (!destroyPending) RequestBanner();
-    }
-
-    private void DestroyBannerObject()
-    {
-        if (banner == null) return;
-        banner.OnAdLoaded -= HandleAdLoaded;
-        banner.OnAdFailedToLoad -= HandleAdFailedToLoad;
-        banner.Destroy();
-        banner = null;
-        IsBannerVisible = false;
-    }
-
-    // ——— Загрузка interstitial ———
-
-    private void RequestInterstitial()
-    {
-        if (interstitialLoadInProgress || destroyPending) return;
-        interstitialLoadInProgress = true;
-
-        var loader = new InterstitialAdLoader();
-        loader.LoadAd(
-            new AdRequest(interstitialAdUnitId),
-            onLoaded: ad =>
-            {
-                interstitialLoadInProgress = false;
-                DestroyInterstitialObject();
-                interstitial = ad;
-                interstitial.OnAdDismissed += HandleInterstitialDismissed;
-                interstitial.OnAdFailedToShow += HandleInterstitialFailedToShow;
-                Debug.Log($"[YandexAds] Interstitial загружен ('{interstitialAdUnitId}') — готов к показу.");
-            },
-            onFailed: err =>
-            {
-                interstitialLoadInProgress = false;
-                Debug.LogWarning("[YandexAds] Ошибка загрузки interstitial: " +
-                                 (err != null ? err.Message : "(нет деталей)"));
-            });
-        Debug.Log($"[YandexAds] Запрос interstitial ('{interstitialAdUnitId}')…");
-    }
-
-    private void DestroyInterstitialObject()
-    {
-        if (interstitial == null) return;
-        interstitial.OnAdDismissed -= HandleInterstitialDismissed;
-        interstitial.OnAdFailedToShow -= HandleInterstitialFailedToShow;
-        interstitial.Destroy();
-        interstitial = null;
-    }
-
-    // ——— Загрузка rewarded (GDD_DeathScreen_Continue §10.1.2) ———
-
-    private void RequestRewarded()
-    {
-        if (rewardedLoadInProgress || destroyPending) return;
-        rewardedLoadInProgress = true;
-
-        var loader = new RewardedAdLoader();
-        loader.LoadAd(
-            new AdRequest(rewardedAdUnitId),
-            onLoaded: ad =>
-            {
-                rewardedLoadInProgress = false;
-                DestroyRewardedObject();
-                _rewarded = ad;
-                _rewarded.OnRewarded += HandleRewardedRewarded;
-                _rewarded.OnAdDismissed += HandleRewardedDismissed;
-                _rewarded.OnAdFailedToShow += HandleRewardedFailedToShow;
-                Debug.Log($"[YandexAds] Rewarded загружен ('{rewardedAdUnitId}') — готов к показу.");
-            },
-            onFailed: err =>
-            {
-                rewardedLoadInProgress = false;
-                Debug.LogWarning("[YandexAds] Ошибка загрузки rewarded: " +
-                                 (err != null ? err.Message : "(нет деталей)"));
-            });
-        Debug.Log($"[YandexAds] Запрос rewarded ('{rewardedAdUnitId}')…");
-    }
-
-    private void DestroyRewardedObject()
-    {
-        if (_rewarded == null) return;
-        // Снятие подписок до Destroy — колбэки не стреляют в мёртвые объекты (§10.1)
-        _rewarded.OnRewarded -= HandleRewardedRewarded;
-        _rewarded.OnAdDismissed -= HandleRewardedDismissed;
-        _rewarded.OnAdFailedToShow -= HandleRewardedFailedToShow;
-        _rewarded.Destroy();
-        _rewarded = null;
+        if (YG2.isSDKEnabled) ShowBanner();
+        else YG2.onGetSDKData += OnSdkReady;
     }
 
     private void OnDestroy()
     {
-        destroyPending = true;
-        StopAllCoroutines();
-        DestroyBannerObject();
-        DestroyInterstitialObject();
-        DestroyRewardedObject();
+        YG2.onOpenInterAdv -= OnInterOpened;
+        YG2.onCloseInterAdv -= OnInterClosed;
+        YG2.onErrorInterAdv -= OnInterClosed;
+
+        YG2.onOpenRewardedAdv -= OnRewardedOpened;
+        YG2.onRewardAdv -= OnReward;
+        YG2.onCloseRewardedAdv -= OnRewardedClosed;
+        YG2.onErrorRewardedAdv -= OnRewardedClosed;
+
+        YG2.onGetSDKData -= OnSdkReady;
+    }
+
+    private void OnSdkReady()
+    {
+        YG2.onGetSDKData -= OnSdkReady;
+        ShowBanner();
+    }
+
+    // ——— Interstitial (raw-показ; частотная формула — в AdsFlow) ———
+
+    public bool ShowInterstitial()
+    {
+        if (!YG2.isSDKEnabled || YG2.nowAdsShow || _interShowing) return false;
+        if (!YG2.isTimerAdvCompleted)
+        {
+            // InterstitialAdvShow() при не вышедшем таймере плагина молча ничего не покажет
+            // и события не пришлёт → без этой проверки GameUI ждал бы InterstitialClosed вечно.
+            Debug.Log("[YandexAds] Interstitial: таймер плагина не вышел — домой без рекламы.");
+            return false;
+        }
+
+        _interShowing = true;
+        _interOpened = false;
+        Debug.Log("[YandexAds] Показ interstitial…");
+        YG2.InterstitialAdvShow();
+
+        // Реклама могла не открыться и промолчать (нет загрузки / ошибка без колбэка).
+        _watchdog = StartCoroutine(WatchdogRoutine());
+        return true;
+    }
+
+    private IEnumerator WatchdogRoutine()
+    {
+        yield return new WaitForSecondsRealtime(InterstitialOpenWatchdog);
+        if (_interShowing && !_interOpened)
+        {
+            Debug.LogWarning("[YandexAds] Interstitial не открылся за 4 с — считаем закрытым (игра не подвиснет).");
+            OnInterClosed();
+        }
+    }
+
+    private void OnInterOpened() => _interOpened = true;
+
+    private void OnInterClosed()
+    {
+        if (!_interShowing) return; // дедуп: закрытие / ошибка / watchdog дают событие строго один раз
+        _interShowing = false;
+        if (_watchdog != null) StopCoroutine(_watchdog);
+        _watchdog = null;
+        InterstitialClosed?.Invoke();
+    }
+
+    // ——— Rewarded ———
+
+    public void ShowRewarded(Action<bool> onResult)
+    {
+        if (onResult == null) return;
+        if (!YG2.isSDKEnabled || YG2.nowAdsShow || _rewardedShowing)
+        {
+            Debug.Log("[YandexAds] Rewarded: SDK не готов / реклама уже идёт — onResult(false).");
+            onResult(false);
+            return;
+        }
+
+        _rewardedShowing = true;
+        _rewarded = false;
+        _rewardedOpened = false;
+        _onRewardedResult = onResult;
+        Debug.Log("[YandexAds] Показ rewarded…");
+        YG2.RewardedAdvShow(RewardId);
+
+        // YMA-реализация при недогруженной рекламе выходит молча, без колбэков
+        // (ShowRewardedAd: rewardedAd == null && !autoLoad → return). Без watchdog
+        // AdsFlow никогда не снимет mute и кнопка «Продолжить» повиснет навсегда.
+        _rewardWatchdog = StartCoroutine(RewardedWatchdogRoutine());
+    }
+
+    private IEnumerator RewardedWatchdogRoutine()
+    {
+        yield return new WaitForSecondsRealtime(RewardedShowWatchdog);
+        if (_rewardedShowing && !_rewardedOpened)
+        {
+            Debug.LogWarning("[YandexAds] Rewarded не открылся за 3 с — считаем неудачей (без награды).");
+            OnRewardedClosed();
+        }
+    }
+
+    private void OnRewardedOpened() => _rewardedOpened = true;
+
+    private void OnReward(string id)
+    {
+        // Награда приходит ДО закрытия — только копим флаг.
+        if (_rewardedShowing && id == RewardId)
+        {
+            _rewarded = true;
+            Debug.Log("[YandexAds] Rewarded: награда получена.");
+        }
+    }
+
+    private void OnRewardedClosed()
+    {
+        if (!_rewardedShowing) return; // колбэк строго один раз
+        _rewardedShowing = false;
+        if (_rewardWatchdog != null) StopCoroutine(_rewardWatchdog);
+        _rewardWatchdog = null;
+        var cb = _onRewardedResult;
+        _onRewardedResult = null;
+        Debug.Log($"[YandexAds] Rewarded результат: {(_rewarded ? "НАГРАДА выдана" : "без награды/ошибка")}.");
+        cb?.Invoke(_rewarded);
+    }
+
+    // ——— Баннер (модуль BannerAdv плагина; на мобильной интеграции YMA — sticky) ———
+
+    public void ShowBanner()
+    {
+#if BannerAdv_yg
+        if (!YG2.isSDKEnabled) return;
+        YG2.SetBannerPosition(YG2.BannerPosition.Bottom);
+        YG2.ShowBanner();
+        Debug.Log("[YandexAds] Баннер: показ (bottom).");
+#else
+        Debug.Log("[YandexAds] Баннер: модуль BannerAdv не установлен — ShowBanner() no-op.");
+#endif
+    }
+
+    public void HideBanner()
+    {
+#if BannerAdv_yg
+        if (!YG2.isSDKEnabled) return;
+        YG2.HideBanner();
+        Debug.Log("[YandexAds] Баннер: скрыт.");
+#else
+        Debug.Log("[YandexAds] Баннер: модуль BannerAdv не установлен — HideBanner() no-op.");
+#endif
     }
 }
 #endif

@@ -15,6 +15,11 @@ public class AppMetricaAnalyticsService : IAnalyticsService
 {
     private const string ApiKey = "83958072-9e35-4a72-a83f-fadbb6402037";
 
+    // Платформа в каждом событии: владелец сегментирует отчёты по площадке
+    // (запрос: «видеть, на какой платформе играет игрок»). Общий AppMetrica-ключ
+    // на все магазины — разрез только по этому параметру.
+    private static readonly string PlatformJson = "{\"platform\":\"rustore\"}";
+
     public AppMetricaAnalyticsService()
     {
         AppMetrica.Activate(new AppMetricaConfig(ApiKey)
@@ -43,17 +48,17 @@ public class AppMetricaAnalyticsService : IAnalyticsService
     public void LogEvent(string eventName)
     {
         // AppMetrica сам буферизует и флешит — своего слоя буферизации нет (ТЗ §4.5)
-        AppMetrica.ReportEvent(eventName);
+        AppMetrica.ReportEvent(eventName, PlatformJson);
     }
 
     public void LogEvent(string eventName, Dictionary<string, object> parameters)
     {
         if (parameters == null || parameters.Count == 0)
         {
-            AppMetrica.ReportEvent(eventName);
+            AppMetrica.ReportEvent(eventName, PlatformJson);
             return;
         }
-        AppMetrica.ReportEvent(eventName, ToFlatJson(parameters));
+        AppMetrica.ReportEvent(eventName, ToFlatJson(parameters, "rustore"));
     }
 
     // ——— Профиль игрока (ТЗ §3) ———
@@ -76,12 +81,13 @@ public class AppMetricaAnalyticsService : IAnalyticsService
 
     // ——— Формат событий ———
 
-    /// <summary>Плоский JSON: bool → 1/0, float → округление до 0.1 (ТЗ §4.1). Порт 1:1 из Analytics.cs.</summary>
-    private static string ToFlatJson(Dictionary<string, object> props)
+    /// <summary>Плоский JSON: bool → 1/0, float → округление до 0.1 (ТЗ §4.1). Порт 1:1 из Analytics.cs.
+    /// Первым параметром пишется platform=<store> — единый разрез по площадкам в отчётах.</summary>
+    private static string ToFlatJson(Dictionary<string, object> props, string platform)
     {
         var sb = new StringBuilder(128);
-        sb.Append('{');
-        bool first = true;
+        sb.Append("{\"platform\":\"").Append(platform).Append('"');
+        bool first = false;
         foreach (var kv in props)
         {
             if (!first) sb.Append(',');

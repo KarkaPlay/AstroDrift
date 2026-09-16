@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEngine.InputSystem;
+#endif
 
 /// <summary>
 /// Очки, комбо, множитель, рекорд (GDD §5 / DevTask шаг 7).
@@ -55,6 +58,10 @@ public class ScoreManager : MonoBehaviour
 
     private void Update()
     {
+#if UNITY_EDITOR
+        // дебаг: +100 очков (Input System API — GetKeyDown недоступен при active input handling = Input System Package)
+        if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame) AddKill(100);
+#endif
         if (_combo > 0)
         {
             _comboTimer -= Time.deltaTime;
@@ -97,9 +104,11 @@ public class ScoreManager : MonoBehaviour
             >= 3 => 2,
             _ => 1,
         };
-        Score += basePoints * Multiplier;
-        _comboTimer = config.comboWindow;
+        float perkMul = PerkManager.Instance != null ? PerkManager.Instance.ScoreMultiplier : 1f;
+        Score += Mathf.RoundToInt(basePoints * perkMul) * Multiplier;
+        _comboTimer = PerkManager.Instance != null ? PerkManager.Instance.ComboWindow : config.comboWindow;
         OnScoreChanged?.Invoke(Score, Multiplier);
+        PerkManager.Instance?.CheckThreshold(Score);
 
         // Проверка рекорда
         if (Score > Best)
@@ -122,6 +131,15 @@ public class ScoreManager : MonoBehaviour
         _comboTimer = config != null ? config.comboWindow : 3f;
     }
 
+    /// <summary>Заглушка «+500 очков» при пустом пуле перков (GDD §15.3): без оверлея и фриза.</summary>
+    public void AddStubScore(int bonus)
+    {
+        _combo++;
+        Score += bonus;
+        _comboTimer = PerkManager.Instance != null ? PerkManager.Instance.ComboWindow : config.comboWindow;
+        OnScoreChanged?.Invoke(Score, Multiplier);
+    }
+
     public void ResetRun()
     {
         Score = 0;
@@ -129,6 +147,7 @@ public class ScoreManager : MonoBehaviour
         Multiplier = 1;
         NewBest = false;
         _comboTimer = 0f;
+        PerkManager.Instance?.ResetRun(); // перки забега сбрасываются (GDD §15.3: счётчик рероллов — за забег)
     }
 
     /// <summary>

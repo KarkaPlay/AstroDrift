@@ -8,9 +8,11 @@ public class Bullet : Poolable
     private float _life;
     private Vector2 _dir;
     private float _speed;
+    private int _pierce; // перк Piercing Shots (§15.2): сколько врагов пробивает после первого
 
-    public void Spawn(Vector3 pos, Vector2 dir, float speed, float life)
+    public void Spawn(Vector3 pos, Vector2 dir, float speed, float life, int pierce = 0)
     {
+        _pierce = pierce;
         transform.position = pos;
         // Пуля берётся из пула: без Clear() в трейле остаётся последняя точка
         // прошлой жизни, и при выстреле от позиции спавна тянется лишняя линия.
@@ -37,20 +39,20 @@ public class Bullet : Poolable
     private void OnTriggerEnter2D(Collider2D other)
     {
         // Компонентная проверка вместо тега (надёжнее: тег может потеряться).
-        // «1 снаряд = 1 попадание»: пуля исчезает при ЛЮБОМ касании астероида или ракеты,
-        // даже если цель не уничтожена (баг 5: пуля пролетала сквозь крупный астероид).
+        // Перк Piercing Shots (§15.2): снаряд пробивает +N врагов, затем исчезает.
+        // Без перка — прежнее поведение «1 снаряд = 1 попадание».
         var ast = other.GetComponentInParent<Asteroid>();
         if (ast != null)
         {
             ast.Hit(1, transform.position);
-            Release();
+            if (_pierce-- <= 0) Release();
             return;
         }
         var m = other.GetComponentInParent<Missile>();
         if (m != null)
         {
             m.Hit(1, transform.position);
-            Release();
+            if (_pierce-- <= 0) Release();
         }
     }
 }

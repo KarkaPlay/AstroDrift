@@ -12,15 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa747916aa66674d96ea40ca8a480b2, type: 3}
   m_Name: SettingsYG2
   m_EditorClassIdentifier: Assembly-CSharp::YG.InfoYG
+  Authorization:
+    playerPhotoSize: 1
+    authorized: 1
+    playerName: Player current
+    uniqueID: 000
+    playerPhoto: demo image
+    payingStatus: 0
+  BannerAdv:
+    simulationInEditor: 1
+    size: 100
+    color: {r: 0, g: 1, b: 0, a: 0.5}
   InterstitialAdv:
     showFirstAdv: 0
-    interAdvInterval: 60
+    interAdvInterval: 0
     postponeCallByFail: 0
     postponeCallTimer: 10
     labelAdvSimLabel: 0
   Metrica:
-    enable: 0
-    metricaCounterID: 0
+    enable: 1
+    metricaCounterID: 83958072
     log: 1
     useYandexMetrica: 1
   RewardedAdv:
@@ -30,9 +41,8 @@ MonoBehaviour:
     saveLocal: 1
     saveCloud: 1
     flush: 0
-    labelAdvSimLabel: 0
   Basic:
-    platform: {fileID: 11400000, guid: fabe82a4ab034324eb452cc7109f6d19, type: 2}
+    platform: {fileID: 11400000, guid: 99e0ce8425e07fc49a5bc1fb394998a3, type: 2}
     autoApplySettings: 1
     autoPauseGame: 0
     editTimeScale: 1
@@ -45,12 +55,12 @@ MonoBehaviour:
     loadSceneIfSDKLate: 0
     loadSceneIndex: 0
     initDelaySimulation: 0
-    buildNumber: 1
+    buildNumber: 21
   Simulation:
     device: 1
     language: ru
     enableInterAdv: 1
-    advIntervalSimulation: 60
+    advIntervalSimulation: 0
     durationAdv: 0.5
     loadAdv: 0
     testFailAds: 0
@@ -85,17 +95,26 @@ MonoBehaviour:
     pixelRatioEnable: 0
     pixelRatioValue: 1.3
     developerBuild: 0
+  common:
+    yandexMobAdsTestingMode: 0
+    yandexMobAutoLoadAds: 1
+    yandexMobInterAdID: R-M-19858053-2
+    yandexMobRewardAdID: R-M-19858053-3
+    yandexMobBannerAdID: R-M-19858053-1
+    yandexMobAppOpenAdEnable: 0
+    yandexMobAppOpenAdID: 
   platformInfo:
+    giveReward: 0
     ownHost: 0
   platformToggles:
     showFirstAdv: 0
     interAdvInterval: 0
     postponeCallByFail: 0
-    useYandexMetrica: 0
-    metricaCounterID: 0
+    useYandexMetrica: 1
+    metricaCounterID: 1
     skipInterAdvAfterReward: 0
     saveLocal: 0
-    saveCloud: 0
+    saveCloud: 1
     autoPauseGame: 0
     selectWebGLTemplate: 1
     runInBackground: 1
@@ -106,5 +125,5 @@ MonoBehaviour:
     managedStrippingLevel: 1
     dataCaching: 0
     colorSpace: 0
-    archivingBuild: 0
+    archivingBuild: 1
     syncInitSDK: 0

@@ -31,10 +31,13 @@ public class AudioManager : MonoBehaviour
     private AudioClip _bigExplosion;
     private AudioClip _death;
     private AudioClip _record;
+    private AudioClip _pickup;      // GDD §8 звук 7: подбор пикапа («блип»)
+    private AudioClip _perkLevelUp; // GDD §8 звук 8: перк-левелап («дзынь»)
 
     // Громкости событий (из конфига или дефолты как раньше)
     private float _volShot = 0.5f, _volHit = 0.6f, _volSmall = 0.7f,
-                  _volBig = 0.9f, _volDeath = 1f, _volRecord = 0.8f;
+                  _volBig = 0.9f, _volDeath = 1f, _volRecord = 0.8f,
+                  _volPickup = 0.7f, _volPerk = 0.9f;
 
     private AudioSource[] _sources;
     private int _cursor;
@@ -63,6 +66,8 @@ public class AudioManager : MonoBehaviour
         _bigExplosion = ResolveClip(config?.bigExplosion, SynthesizeBigExplosion(), ref _volBig);
         _death = ResolveClip(config?.death, SynthesizeDeath(), ref _volDeath);
         _record = ResolveClip(config?.record, SynthesizeRecord(), ref _volRecord);
+        _pickup = ResolveClip(config?.pickup, SynthesizePickup(), ref _volPickup);
+        _perkLevelUp = ResolveClip(config?.perkLevelUp, SynthesizePerkLevelUp(), ref _volPerk);
     }
 
     /// <summary>
@@ -108,6 +113,8 @@ public class AudioManager : MonoBehaviour
     public void PlayBigExplosion() => Play(_bigExplosion, _volBig);
     public void PlayDeath() => Play(_death, _volDeath);
     public void PlayRecord() => Play(_record, _volRecord);
+    public void PlayPickup() => Play(_pickup, _volPickup);
+    public void PlayPerkLevelUp() => Play(_perkLevelUp, _volPerk);
 
     // ——— Синтез (BFXR-стиль), fallback при пустом конфиге ———
 
@@ -219,6 +226,38 @@ public class AudioManager : MonoBehaviour
             if (i > 44100 / 5) s[i] += s[i - 44100 / 5] * 0.2f;
         }
         return MakeClip(ApplyEnvelope(s, 0.01f, 0.8f), "Death");
+    }
+
+    /// <summary>Пикап — bright «блип»: восходящий чистый синус (GDD §8 звук 7).</summary>
+    private AudioClip SynthesizePickup()
+    {
+        int n = 44100 / 6;
+        var s = new float[n];
+        float phase = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float t = i / 44100f;
+            float freq = Mathf.Lerp(880f, 1760f, t * 6f); // A5 → A6
+            phase += 2f * Mathf.PI * freq / 44100f;
+            s[i] = Mathf.Sin(phase) * 0.5f + Mathf.Sin(phase * 2f) * 0.15f;
+        }
+        return MakeClip(ApplyEnvelope(s, 0.002f, 0.14f), "Pickup");
+    }
+
+    /// <summary>Перк-левелап — двухнотный «дзынь» + подтверждение (GDD §8 звук 8).</summary>
+    private AudioClip SynthesizePerkLevelUp()
+    {
+        int n = 44100 / 2;
+        var s = new float[n];
+        float phase = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float t = i / 44100f;
+            float freq = t < 0.18f ? 784f : 1175f; // G5 → D6 (кварта вверх, «дзынь»)
+            phase += 2f * Mathf.PI * freq / 44100f;
+            s[i] = Mathf.Sin(phase) * 0.5f + Mathf.Sin(phase * 3f) * 0.1f;
+        }
+        return MakeClip(ApplyEnvelope(s, 0.004f, 0.22f), "PerkLevelUp");
     }
 
     /// <summary>Рекорд — короткий фанфар (две ноты вверх).</summary>

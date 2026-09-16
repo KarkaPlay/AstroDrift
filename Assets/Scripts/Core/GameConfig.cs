@@ -52,6 +52,16 @@ public class GameConfig : ScriptableObject
     public int mediumAsteroidScore = 25;
     public int largeAsteroidScore = 50;
 
+    [Header("Перки и левелапы (GDD §15, Волна 1)")]
+    [Tooltip("Пороги перк-левелапов по очкам забега. Если кончились: следующий = последний + (последняя разница + 1000)")]
+    public int[] levelUpScoreThresholds = { 1000, 2500, 5000, 8000, 12000, 17000, 23000, 30000 };
+
+    [Header("Rewarded: стартовый щит (GDD §10.1/§4.6)")]
+    [Tooltip("false = точка выключена целиком (кнопки нет)")]
+    public bool startShieldDailyRewarded = true;
+    [Tooltip("Гейт пилота: кнопка не показывается при уровне ниже")]
+    public int startShieldUnlockPilotLevel = 8;
+
     [Header("Смерть (GDD §7)")]
     public float deathSlowmoScale = 0.3f;       // Time.timeScale
     public float deathSlowmoDuration = 0.9f;    // реальных секунд в slow-mo

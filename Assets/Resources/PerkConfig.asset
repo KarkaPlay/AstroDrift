@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d86c03fd74c1243239ed5e7cd38ee217, type: 3}
+  m_Name: PerkConfig
+  m_EditorClassIdentifier: Assembly-CSharp::PerkConfig
+  offerCount: 3
+  stubScoreBonus: 500
+  rerollPerRun: 1
+  perks:
+  - id: 0
+    titleKey: perk_bullet_speed_title
+    descKey: perk_bullet_speed_desc
+    rarity: 0
+    maxStacks: 3
+    unlockedByDefault: 1
+    unlockPilotLevel: 0
+    valuePerStack: 0.2
+  - id: 1
+    titleKey: perk_fire_rate_title
+    descKey: perk_fire_rate_desc
+    rarity: 0
+    maxStacks: 3
+    unlockedByDefault: 1
+    unlockPilotLevel: 0
+    valuePerStack: -0.15
+  - id: 2
+    titleKey: perk_turn_speed_title
+    descKey: perk_turn_speed_desc
+    rarity: 0
+    maxStacks: 2
+    unlockedByDefault: 0
+    unlockPilotLevel: 1
+    valuePerStack: 0.25
+  - id: 4
+    titleKey: perk_combo_ext_title
+    descKey: perk_combo_ext_desc
+    rarity: 0
+    maxStacks: 2
+    unlockedByDefault: 0
+    unlockPilotLevel: 2
+    valuePerStack: 2
+  - id: 3
+    titleKey: perk_bigger_bullets_title
+    descKey: perk_bigger_bullets_desc
+    rarity: 0
+    maxStacks: 2
+    unlockedByDefault: 0
+    unlockPilotLevel: 5
+    valuePerStack: 0.5
+  - id: 5
+    titleKey: perk_score_mult_title
+    descKey: perk_score_mult_desc
+    rarity: 0
+    maxStacks: 3
+    unlockedByDefault: 0
+    unlockPilotLevel: 6
+    valuePerStack: 0.25
+  - id: 6
+    titleKey: perk_missile_jammer_title
+    descKey: perk_missile_jammer_desc
+    rarity: 0
+    maxStacks: 2
+    unlockedByDefault: 0
+    unlockPilotLevel: 9
+    valuePerStack: -0.4
+  - id: 7
+    titleKey: perk_piercing_title
+    descKey: perk_piercing_desc
+    rarity: 1
+    maxStacks: 2
+    unlockedByDefault: 0
+    unlockPilotLevel: 11
+    valuePerStack: 1

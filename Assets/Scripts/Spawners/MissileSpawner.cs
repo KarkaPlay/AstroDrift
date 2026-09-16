@@ -104,7 +104,10 @@ public class MissileSpawner : MonoBehaviour
         Vector2 spawnPos = ScreenBounds.PointOutside(cam, cam.transform.position, finalDir, config.asteroidSpawnMargin);
 
         var missile = _pool.Get() as Missile;
-        missile.Spawn(spawnPos, difficulty.MissileSpeedAt(_elapsed), difficulty.MissileTurnRateAt(_elapsed), config.missileLife);
+        // Перк Missile Jammer (§15.2): угловая скорость наведения −40%/стак
+        float turn = difficulty.MissileTurnRateAt(_elapsed)
+            * (PerkManager.Instance != null ? PerkManager.Instance.MissileTurnMultiplier : 1f);
+        missile.Spawn(spawnPos, difficulty.MissileSpeedAt(_elapsed), turn, config.missileLife);
         _activeCount++;
 
         // Предупреждение за 1.5 с до входа в кадр (UX5.8: СВОЙ индикатор на каждую ракету).

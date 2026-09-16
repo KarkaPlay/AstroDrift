@@ -1,0 +1,7 @@
+This folder is part of the PluginYG – Yandex Mobile Ads Integration (unofficial).
+
+All files and code in this package are created and owned by the author of PluginYG.
+This integration is an unofficial tool to simplify connecting games with the Yandex Mobile Ads SDK.
+
+Yandex is a registered trademark of its respective owner.
+This project is not affiliated with or endorsed by Yandex.

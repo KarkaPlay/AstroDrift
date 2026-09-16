@@ -8,11 +8,14 @@ using UnityEngine;
 /// </summary>
 public class FloatingTextPool : MonoBehaviour
 {
+    public static FloatingTextPool Instance { get; private set; }
+
     [SerializeField] private TMP_FontAsset font;
     [SerializeField] private int prewarm = 8;
 
     private void Awake()
     {
+        Instance = this;
         // Прогрев пула
         for (int i = 0; i < prewarm; i++)
         {

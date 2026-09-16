@@ -1,0 +1,4 @@
+# === Unity cache/temp — регенерируемый мусор ===
+Library/
+Temp/
+obj/

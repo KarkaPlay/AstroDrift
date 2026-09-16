@@ -12,12 +12,20 @@ using YG;
 /// </summary>
 public sealed class YandexGamesAnalyticsService : IAnalyticsService
 {
-    public void LogEvent(string eventName) => YG2.MetricaSend(eventName);
+    // Платформа в каждом событии: владелец сегментирует отчёты по площадке
+    // (счётчик Метрики общий с itch.io — разрез по этому параметру).
+    private const string PlatformTag = "yandex";
+
+    public void LogEvent(string eventName)
+        => YG2.MetricaSend(eventName, new Dictionary<string, string> { { "platform", PlatformTag } });
 
     public void LogEvent(string eventName, Dictionary<string, object> parameters)
     {
-        if (parameters == null || parameters.Count == 0) { YG2.MetricaSend(eventName); return; }
-        var p = new Dictionary<string, string>(parameters.Count);
+        var p = new Dictionary<string, string>((parameters?.Count ?? 0) + 1)
+        {
+            ["platform"] = PlatformTag
+        };
+        if (parameters == null || parameters.Count == 0) { YG2.MetricaSend(eventName, p); return; }
         foreach (var kv in parameters)
             p[kv.Key] = kv.Value switch
             {

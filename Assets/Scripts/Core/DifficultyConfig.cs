@@ -18,6 +18,7 @@ public class DifficultyConfig : ScriptableObject
     public float MissileSpeedAt(float t) => Eval(t, p => p.missileSpeed);
     public float MissileTurnRateAt(float t) => Eval(t, p => p.missileTurnRate);
     public int MaxMissilesAt(float t) => Mathf.RoundToInt(Eval(t, p => p.maxMissiles));
+    public float PickupDropMultiplierAt(float t) => Eval(t, p => p.pickupDropMultiplier);
 
     /// <summary>Максимум maxMissiles по всем фазам (UX5.8: прогрев пула индикаторов).</summary>
     public int MaxMissilesOverall()
@@ -66,6 +67,14 @@ public class DifficultyConfig : ScriptableObject
     [Serializable]
     public struct PhaseParams
     {
+        public PhaseParams(float dropMult)
+        {
+            time = 0f; shipSpeed = 0f; asteroidSpawnRate = 0f; bigAsteroidChance = 0f;
+            asteroidSpeedMin = 0f; asteroidSpeedMax = 0f;
+            missileInterval = 0f; missileSpeed = 0f; missileTurnRate = 0f; maxMissiles = 0;
+            perkThresholdScore = 0; pickupDropMultiplier = dropMult;
+            droneWaveInterval = 0f; dronesPerWave = 0; turretCount = 0;
+        }
         [Header("Начало фазы (сек)")] public float time;
 
         [Header("Корабль")] public float shipSpeed;
@@ -79,18 +88,27 @@ public class DifficultyConfig : ScriptableObject
         public float missileSpeed;
         public float missileTurnRate; // °/с
         public float maxMissiles;
+
+        [Header("Перки и пикапы (v3, GDD §6/§15)")]
+        [Tooltip("Порог перк-левелапа — интро-справка; активные пороги в GameConfig.levelUpScoreThresholds")]
+        public int perkThresholdScore;
+        public float pickupDropMultiplier; // множитель шанса дропа пикапов
+        [Tooltip("Будущая волна (§4.7): 0 = нет")] public float droneWaveInterval;
+        [Tooltip("Будущая волна (§4.7)")] public int dronesPerWave;
+        [Tooltip("Будущая волна (§4.8)")] public int turretCount;
     }
 
-    /// <summary>Фазы по умолчанию — таблица GDD §6 (заполняется в ассете).</summary>
+    /// <summary>Фазы по умолчанию — таблица GDD §6 v3 (заполняется в ассете; v2-тюнинг 1.0–1.8 и первая ракета ~15 с сохранён).</summary>
     public void ResetToGddDefaults()
     {
         phases = new[]
         {
-            new PhaseParams { time = 0f,    shipSpeed = 5.0f, asteroidSpawnRate = 0.55f, bigAsteroidChance = 0f,  asteroidSpeedMin = 0.5f, asteroidSpeedMax = 1.5f, missileInterval = 0f,  missileSpeed = 7.5f, missileTurnRate = 35f,  maxMissiles = 0 },
-            new PhaseParams { time = 30f,   shipSpeed = 5.5f, asteroidSpawnRate = 0.75f, bigAsteroidChance = 0.15f, asteroidSpeedMin = 0.8f, asteroidSpeedMax = 2.0f, missileInterval = 15f, missileSpeed = 7.7f, missileTurnRate = 40f,  maxMissiles = 1 },
-            new PhaseParams { time = 60f,   shipSpeed = 6.0f, asteroidSpawnRate = 0.95f, bigAsteroidChance = 0.25f, asteroidSpeedMin = 1.0f, asteroidSpeedMax = 2.5f, missileInterval = 10f, missileSpeed = 7.9f, missileTurnRate = 45f,  maxMissiles = 2 },
-            new PhaseParams { time = 120f,  shipSpeed = 6.5f, asteroidSpawnRate = 1.15f, bigAsteroidChance = 0.35f, asteroidSpeedMin = 1.2f, asteroidSpeedMax = 3.0f, missileInterval = 8f,  missileSpeed = 8.2f, missileTurnRate = 52f,  maxMissiles = 3 },
-            new PhaseParams { time = 180f,  shipSpeed = 7.0f, asteroidSpawnRate = 1.3f, bigAsteroidChance = 0.40f, asteroidSpeedMin = 1.5f, asteroidSpeedMax = 3.5f, missileInterval = 6f,  missileSpeed = 8.5f, missileTurnRate = 60f,  maxMissiles = 5 },
+            new PhaseParams { time = 0f,   shipSpeed = 5.0f, asteroidSpawnRate = 1.0f, bigAsteroidChance = 0f,    asteroidSpeedMin = 0.8f, asteroidSpeedMax = 1.8f, missileInterval = 15f, missileSpeed = 7.5f, missileTurnRate = 35f, maxMissiles = 1, perkThresholdScore = 1000,  pickupDropMultiplier = 1.0f,  droneWaveInterval = 0f,  dronesPerWave = 0, turretCount = 0 },
+            new PhaseParams { time = 30f,  shipSpeed = 5.5f, asteroidSpawnRate = 1.2f, bigAsteroidChance = 0.15f, asteroidSpeedMin = 1.0f, asteroidSpeedMax = 2.2f, missileInterval = 11f, missileSpeed = 7.7f, missileTurnRate = 40f, maxMissiles = 2, perkThresholdScore = 2500,  pickupDropMultiplier = 1.0f,  droneWaveInterval = 0f,  dronesPerWave = 0, turretCount = 0 },
+            new PhaseParams { time = 60f,  shipSpeed = 6.0f, asteroidSpawnRate = 1.4f, bigAsteroidChance = 0.25f, asteroidSpeedMin = 1.2f, asteroidSpeedMax = 2.7f, missileInterval = 9f,  missileSpeed = 7.9f, missileTurnRate = 45f, maxMissiles = 3, perkThresholdScore = 5000,  pickupDropMultiplier = 1.25f, droneWaveInterval = 25f, dronesPerWave = 3, turretCount = 0 },
+            new PhaseParams { time = 120f, shipSpeed = 6.5f, asteroidSpawnRate = 1.6f, bigAsteroidChance = 0.35f, asteroidSpeedMin = 1.4f, asteroidSpeedMax = 3.2f, missileInterval = 7f,  missileSpeed = 8.2f, missileTurnRate = 52f, maxMissiles = 4, perkThresholdScore = 8000,  pickupDropMultiplier = 1.5f,  droneWaveInterval = 20f, dronesPerWave = 4, turretCount = 1 },
+            new PhaseParams { time = 180f, shipSpeed = 7.0f, asteroidSpawnRate = 1.8f, bigAsteroidChance = 0.40f, asteroidSpeedMin = 1.6f, asteroidSpeedMax = 3.7f, missileInterval = 5f,  missileSpeed = 8.5f, missileTurnRate = 60f, maxMissiles = 5, perkThresholdScore = 12000, pickupDropMultiplier = 1.75f, droneWaveInterval = 15f, dronesPerWave = 5, turretCount = 2 },
+            new PhaseParams { time = 300f, shipSpeed = 7.5f, asteroidSpawnRate = 1.8f, bigAsteroidChance = 0.45f, asteroidSpeedMin = 1.8f, asteroidSpeedMax = 4.2f, missileInterval = 5f,  missileSpeed = 8.8f, missileTurnRate = 65f, maxMissiles = 5, perkThresholdScore = 17000, pickupDropMultiplier = 2.0f,  droneWaveInterval = 12f, dronesPerWave = 5, turretCount = 2 },
         };
     }
 }

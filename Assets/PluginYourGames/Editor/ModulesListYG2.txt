@@ -1,4 +1,5 @@
 Authorization v1.023
+BannerAdv v1.0
 EnvirData v1.0031
 InterstitialAdv v1.02
 Metrica v1.02

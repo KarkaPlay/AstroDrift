@@ -39,10 +39,11 @@ public class Bootstrap : MonoBehaviour
             Analytics.Log("app_first_launch");
         }
 
-#if !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR
         // --- Guard профиля (ТЗ PlatformServices §9.2): забыли Switch Build Profile →
         // APK компилируется и запускается с заглушками, молча, с нулевым доходом.
         // В редакторе заглушки штатны — проверяем только девайс-билды.
+        // WebGL (itch.io) исключён: там Null-реклама ШТАТНА (ТЗ ItchTZ §0 — без рекламы).
         if (PlatformServices.Ads is NullAdsService)
             Debug.LogError("[Platform] Ads service is a STUB in a device build! Wrong Build Profile?");
 #endif
@@ -85,6 +86,19 @@ public class Bootstrap : MonoBehaviour
         var adsGo = new GameObject("AdsFlow");
         adsGo.AddComponent<AdsFlow>();
 
+        // Мета-прогрессия (Волна 1, GDD §5bis): XP/уровень пилота. До AdsFlow не критично,
+        // но должен существовать до GameManager.Init (первый забег уже читает PilotLevel).
+        var pilotCfg = Resources.Load<PilotProgressConfig>("PilotProgressConfig");
+        if (pilotCfg != null)
+        {
+            var pilot = new GameObject("PilotProgress").AddComponent<PilotProgressManager>();
+            pilot.InitFrom(pilotCfg);
+        }
+        else
+        {
+            Debug.LogError("Bootstrap: PilotProgressConfig не найден. Запустите AstroDrift → Setup Assets.");
+        }
+
         var poolParent = transform;
         var spawnerGo = new GameObject("Spawners");
         spawnerGo.transform.SetParent(poolParent);
@@ -92,6 +106,19 @@ public class Bootstrap : MonoBehaviour
         astSpawner.Init(config, difficulty, Camera.main, poolParent);
         var missileSpawner = spawnerGo.AddComponent<MissileSpawner>();
         missileSpawner.Init(config, difficulty, Camera.main, poolParent);
+
+        // Пикапы (Волна 1, GDD §4.6): дроп/эффекты/щит
+        var pickupCfg = Resources.Load<PickupConfig>("PickupConfig");
+        if (pickupCfg != null)
+        {
+            var pickupGo = new GameObject("PickupManager");
+            pickupGo.transform.SetParent(poolParent);
+            pickupGo.AddComponent<PickupManager>().Init(pickupCfg, difficulty, poolParent);
+        }
+        else
+        {
+            Debug.LogError("Bootstrap: PickupConfig не найден. Запустите AstroDrift → Setup Assets.");
+        }
 
         // UI — сценовый объект (Canvas/панели сохранены в Game.unity);
         // Bootstrap только подключает поведение к ScoreManager.
@@ -112,6 +139,29 @@ public class Bootstrap : MonoBehaviour
         // Оружие корабля
         var weapon = ship.gameObject.AddComponent<ShipWeapon>();
         weapon.Init(config, ship, poolParent);
+
+        // Перки (Волна 1, GDD §15): модификаторы поверх GameConfig. До GameManager.Init.
+        var perkCfg = Resources.Load<PerkConfig>("PerkConfig");
+        if (perkCfg != null)
+        {
+            var perkGo = new GameObject("PerkManager");
+            var perks = perkGo.AddComponent<PerkManager>();
+            perks.InitFrom(perkCfg, config);
+
+            // Оверлей выбора перка строится в сцене (AstroDrift → Setup Scene UI);
+            // PerkManager сам включает фриз, PerkChoiceUI показывает карты и вызывает Choose.
+            var perkUi = FindFirstObjectByType<PerkChoiceUI>();
+            if (perkUi != null)
+                perks.OnLevelUpOffer += offers =>
+                {
+                    perkUi.Show(offers);
+                    ui.RefreshHud(); // порог уже сдвинут → HUD-бар перка начинается с 0 (GDD §15.3)
+                };
+        }
+        else
+        {
+            Debug.LogError("Bootstrap: PerkConfig не найден. Запустите AstroDrift → Setup Assets.");
+        }
 
         // GameManager получает ссылки
         gm.Init(config, difficulty, ship, Camera.main.GetComponent<CameraFollow>(),

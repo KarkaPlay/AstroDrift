@@ -33,6 +33,12 @@ public class AudioConfig : ScriptableObject
     [Tooltip("Новый рекорд — короткая фанфара (Assets/Audio)")]
     public SoundEntry record = new SoundEntry("Рекорд", 0.8f);
 
+    [Tooltip("Подбор пикапа — bright «блип» (GDD §8 звук 7, Assets/Audio)")]
+    public SoundEntry pickup = new SoundEntry("Пикап", 0.7f);
+
+    [Tooltip("Перк-левелап — двухнотный «дзынь» (GDD §8 звук 8, Assets/Audio)")]
+    public SoundEntry perkLevelUp = new SoundEntry("Левелап", 0.9f);
+
     /// <summary>Один звук: имя (справочно), клип из Assets/Audio и его громкость.</summary>
     [Serializable]
     public class SoundEntry

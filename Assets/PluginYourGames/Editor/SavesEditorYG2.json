@@ -7,7 +7,7 @@
         false,
         false
     ],
-    "idSave": 17,
+    "idSave": 124,
     "astro": [
         {
             "key": "analytics_first_launch",
@@ -17,7 +17,13 @@
         },
         {
             "key": "AstroDrift.Best",
-            "intValue": 2635,
+            "intValue": 10575,
+            "strValue": "",
+            "isString": false
+        },
+        {
+            "key": "AstroDrift.PilotXp",
+            "intValue": 2454,
             "strValue": "",
             "isString": false
         }

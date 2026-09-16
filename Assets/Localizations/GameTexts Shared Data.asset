@@ -63,6 +63,230 @@ MonoBehaviour:
     m_Key: combo
     m_Metadata:
       m_Items: []
+  - m_Id: 1543249113112576
+    m_Key: levelup_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548032
+    m_Key: reroll_cta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548033
+    m_Key: reroll_caption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548034
+    m_Key: pilot_level
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548035
+    m_Key: shield_cta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548036
+    m_Key: shield_caption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548037
+    m_Key: shield_used_today
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548038
+    m_Key: xp_gain
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548039
+    m_Key: level_up_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130944
+    m_Key: level_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130945
+    m_Key: unlocked_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130946
+    m_Key: perk_bullet_speed_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130947
+    m_Key: perk_bullet_speed_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130948
+    m_Key: perk_fire_rate_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130949
+    m_Key: perk_fire_rate_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130950
+    m_Key: perk_turn_speed_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130951
+    m_Key: perk_turn_speed_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713856
+    m_Key: perk_combo_ext_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713857
+    m_Key: perk_combo_ext_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713858
+    m_Key: perk_bigger_bullets_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713859
+    m_Key: perk_bigger_bullets_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713860
+    m_Key: perk_score_mult_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713861
+    m_Key: perk_score_mult_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713862
+    m_Key: perk_missile_jammer_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713863
+    m_Key: perk_missile_jammer_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713864
+    m_Key: perk_piercing_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713865
+    m_Key: perk_piercing_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713866
+    m_Key: pickup_rapid_fire
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713867
+    m_Key: pickup_spread_shot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713868
+    m_Key: pickup_shield
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713869
+    m_Key: unlock_BulletSpeed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713870
+    m_Key: unlock_FireRate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713871
+    m_Key: unlock_TurnSpeed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713872
+    m_Key: unlock_ComboExtension
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713873
+    m_Key: unlock_SpreadShot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713874
+    m_Key: unlock_BiggerBullets
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713875
+    m_Key: unlock_ScoreMultiplier
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713876
+    m_Key: unlock_MissileJammer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713877
+    m_Key: unlock_Shield
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713878
+    m_Key: unlock_Piercing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713879
+    m_Key: unlock_RapidFire
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046248
+    m_Key: unlock_tree_open
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046249
+    m_Key: unlock_tree_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046250
+    m_Key: unlock_soon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046251
+    m_Key: unlock_Skin_Ship_Diamond
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046252
+    m_Key: unlock_Skin_Trail_Blue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046253
+    m_Key: unlock_Drones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046254
+    m_Key: unlock_Skin_Ship_Arrow
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046255
+    m_Key: unlock_Magnet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046256
+    m_Key: unlock_SlowField
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046257
+    m_Key: unlock_Turrets
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046258
+    m_Key: unlock_Skin_Trail_Red
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046259
+    m_Key: unlock_ExplosionOnKill
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046260
+    m_Key: unlock_SideGuns
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046261
+    m_Key: unlock_Skin_Ship_Cross
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046262
+    m_Key: unlock_Loadout
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

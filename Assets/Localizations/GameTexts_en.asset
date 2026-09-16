@@ -66,6 +66,230 @@ MonoBehaviour:
     m_Localized: COMBO! +{0}
     m_Metadata:
       m_Items: []
+  - m_Id: 1543249113112576
+    m_Localized: LEVEL UP!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548032
+    m_Localized: REROLL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548033
+    m_Localized: "WATCH AD \xB7 1/RUN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548034
+    m_Localized: PILOT LEVEL {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548035
+    m_Localized: START SHIELD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548036
+    m_Localized: "WATCH AD \xB7 1/DAY"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548037
+    m_Localized: ALREADY USED TODAY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548038
+    m_Localized: +{0} XP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249381548039
+    m_Localized: "LEVEL {0} \u2192 {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130944
+    m_Localized: LEVEL {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130945
+    m_Localized: 'UNLOCKED:'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130946
+    m_Localized: BULLET SPEED+
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130947
+    m_Localized: Bullet speed +20%
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130948
+    m_Localized: FIRE RATE+
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130949
+    m_Localized: "Fire interval \u221215%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130950
+    m_Localized: TURN SPEED+
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249394130951
+    m_Localized: Turn speed +25%
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713856
+    m_Localized: COMBO EXTENSION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713857
+    m_Localized: Combo window +2 sec
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713858
+    m_Localized: BIGGER BULLETS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713859
+    m_Localized: Bullet radius +50%
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713860
+    m_Localized: SCORE MULTIPLIER+
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713861
+    m_Localized: Kill score +25%
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713862
+    m_Localized: MISSILE JAMMER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713863
+    m_Localized: "Missile turn rate \u221240%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713864
+    m_Localized: PIERCING SHOTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713865
+    m_Localized: Bullet pierces +1 enemy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713866
+    m_Localized: RAPID FIRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713867
+    m_Localized: SPREAD SHOT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713868
+    m_Localized: SHIELD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713869
+    m_Localized: 'Perk: Bullet Speed+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713870
+    m_Localized: 'Perk: Fire Rate+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713871
+    m_Localized: 'Perk: Turn Speed+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713872
+    m_Localized: 'Perk: Combo Extension'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713873
+    m_Localized: 'Pickup: Spread Shot'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713874
+    m_Localized: 'Perk: Bigger Bullets'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713875
+    m_Localized: 'Perk: Score Multiplier+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713876
+    m_Localized: 'Perk: Missile Jammer'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713877
+    m_Localized: 'Pickup: Shield'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713878
+    m_Localized: 'Perk: Piercing Shots'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1543249406713879
+    m_Localized: 'Pickup: Rapid Fire'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046248
+    m_Localized: TREE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046249
+    m_Localized: PILOT UNLOCKS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046250
+    m_Localized: soon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046251
+    m_Localized: 'Ship skin: Diamond'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046252
+    m_Localized: Blue trail
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046253
+    m_Localized: Drones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046254
+    m_Localized: 'Ship skin: Arrow'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046255
+    m_Localized: Magnet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046256
+    m_Localized: Slow field
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046257
+    m_Localized: Turrets
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046258
+    m_Localized: Red trail
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046259
+    m_Localized: Explosion on kill
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046260
+    m_Localized: Side guns
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046261
+    m_Localized: 'Ship skin: Cross'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1584525502046262
+    m_Localized: Loadout select
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

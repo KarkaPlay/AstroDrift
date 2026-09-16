@@ -22,7 +22,7 @@ MonoBehaviour:
   m_Scenes:
   - m_enabled: 1
     m_path: Assets/Scenes/Game.unity
-  m_HasScriptingDefines: 0
+  m_HasScriptingDefines: 1
   m_ScriptingDefines:
   - STORE_YANDEX
   m_PlayerSettingsYaml:

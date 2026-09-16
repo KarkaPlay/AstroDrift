@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IL2CPP-стриппер вырезает private static методы YG2 с атрибутами [InitYG]/[InitYG_0..2]:
+  они вызываются только через CallAction.CallIByAttribute(рефлексия), а прямой ссылки нет.
+
+  Практическое следствие без этого файла (проверено на WebGL-билде при Managed Stripping
+  Level = Medium): в global-metadata нет InitMetrica/InitStorage/InitEnvirData/...,
+  а в framework.js нет _InitYandexMetrica и строки mc.yandex.ru/metrika/tag.js.
+  То есть Метрика молча не инициализируется, и YG2.MetricaSend() уходит в ветку
+  "Yandex Metrica is not ready yet.".
+
+  YG2 лежит в Assembly-CSharp (asmdef у плагина нет), поэтому сохраняем точечно:
+  YG2 — чтобы выжили все рефлексивные [InitYG]-методы, PlatformYG2 — чтобы выжили
+  реализации iPlatform, в т.ч. [DllImport]-объявления jslib.
+-->
+<linker>
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="YG.YG2" preserve="all" />
+    <type fullname="YG.PlatformYG2" preserve="all" />
+  </assembly>
+</linker>

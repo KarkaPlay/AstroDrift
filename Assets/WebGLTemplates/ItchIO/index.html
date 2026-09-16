@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AstroDrift</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #unity-canvas {
+            /* Fill the itch.io iframe at any size (desktop or mobile).
+               The width/height ATTRIBUTES on the canvas tag (960x600) exist only
+               so itch.io Auto-Detect finds dimensions; CSS overrides the display size,
+               and Unity matches the drawing buffer to the CSS size automatically. */
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+            touch-action: none;
+        }
+
+        #loading-cover {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        #unity-loading-bar {
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #unity-progress-bar-empty {
+            width: 200px;
+            height: 4px;
+            background: #333;
+            margin-top: 10px;
+        }
+
+        #unity-progress-bar-full {
+            width: 0%;
+            height: 100%;
+            background: #fff;
+        }
+    </style>
+
+    <!-- Yandex.Metrika здесь НЕ инициализируется: счётчик и ym() приходят
+         из модуля Metrica плагина YG2 (YandexMetrica.jslib инжектит tag.js на рантайме). -->
+
+    <!-- Additional head modules -->
+
+</head>
+
+<body>
+    <div id="unity-container">
+        <!-- Explicit pixel dimensions are required for itch.io Auto-Detect size to work;
+             CSS below stretches the canvas to fill the viewport anyway. -->
+        <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+        <div id="loading-cover">
+            <div id="unity-loading-bar">
+                <div>Loading...</div>
+                <div id="unity-progress-bar-empty">
+                    <div id="unity-progress-bar-full"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Маркеры совместимости с модификаторами шаблона EmptyWebGL:
+             без них SetLogoImageFormat() пишет LogError, SetBackgroundFormat() — LogWarning.
+             При logoImageFormat = No (текущая настройка) этот блок удаляется из билда. -->
+        <div id="unity-logo"><img src="Images/logo.png"></div>
+    </div>
+
+    <!-- Additional body modules -->
+
+    <script>
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+        var config = {
+            dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+            frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+            codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+            #if MEMORY_FILENAME
+            memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+            #endif
+#if SYMBOLS_FILENAME
+            symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+            #endif
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "{{{ COMPANY_NAME }}}",
+            productName: "{{{ PRODUCT_NAME }}}",
+            productVersion: "{{{ PRODUCT_VERSION }}}"
+        };
+
+        var container = document.querySelector("#unity-container");
+        var canvas = document.querySelector("#unity-canvas");
+        var loadingCover = document.querySelector("#loading-cover");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            container.className = "unity-mobile";
+            //config.devicePixelRatio = 1;
+        }
+
+        // The background image when loading the game. When building a build, the code changes depending on the project settings.
+        loadingCover.style.background = "url('Images/background.png') center / cover";
+
+        var StartUnityInstance;
+        var ygGameInstance = null;
+        var initGame = false;
+        var isVisibility = true;
+
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('visibilitychange', () => SetVisibility(!document.hidden));
+        window.addEventListener('blur', () => SetVisibility(false));
+        window.addEventListener('focus', () => SetVisibility(true));
+        window.addEventListener('pointerdown', () => {
+            canvas.focus();
+            SetVisibility(true);
+        });
+
+        // Мост JS → C#: Unity-объект "YG2Instance" (компонент YG.Insides.YGSendMessage).
+        // Во время загрузки вызовы откладываются до появления unityInstance.
+        function YG2Instance(method) {
+            if (ygGameInstance == null) {
+                setTimeout(function () { if (ygGameInstance) ygGameInstance.SendMessage('YG2Instance', method); }, 100);
+                return;
+            }
+            ygGameInstance.SendMessage('YG2Instance', method);
+        }
+
+        function YG2Instance(method, arg) {
+            if (ygGameInstance == null) {
+                setTimeout(function () { if (ygGameInstance) ygGameInstance.SendMessage('YG2Instance', method, arg); }, 100);
+                return;
+            }
+            ygGameInstance.SendMessage('YG2Instance', method, arg);
+        }
+
+        function SetVisibility(visibility) {
+            if (initGame === true && isVisibility !== visibility) {
+                isVisibility = visibility;
+                YG2Instance('SetFocusWindowGame', visibility ? 'true' : 'false');
+            }
+        }
+
+        function InitGame() {
+            initGame = true;
+
+            // Additional start modules
+        }
+
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = function () {
+            StartUnityInstance = function () {
+                createUnityInstance(canvas, config, function (progress) {
+                    progressBarFull.style.width = (100 * progress) + "%";
+                }).then(function (unityInstance) {
+                    ygGameInstance = unityInstance;
+                    loadingCover.style.display = "none";
+                    InitGame();
+                    // Fill Background [Build Modify]
+                }).catch(function (message) {
+                    alert(message);
+                });
+            };
+
+            InitSDK();
+        };
+
+        function StartUnityInstance_IfUnloaded() {
+            if (loadingCover.style.display !== "none")
+                StartUnityInstance();
+        }
+
+        function InitSDK() {
+            try {
+
+                // Additional init0 modules
+
+                // Additional init1 modules
+
+                // Additional init2 modules
+
+                // Additional init modules
+
+                // InitSDKComplete сюда НЕ отправляем: получатель есть только на платформе
+                // YandexGames. На EmptyWebGL SDK не требует подтверждения (syncInitSDK: 0).
+
+            } catch (e) {
+                console.error('CRASH Initialization SDK: ', e);
+            }
+
+            StartUnityInstance_IfUnloaded();
+        }
+
+        // Additional script modules
+
+        document.body.appendChild(script);
+    </script>
+</body>
+
+</html>

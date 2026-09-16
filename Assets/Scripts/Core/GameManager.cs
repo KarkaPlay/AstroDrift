@@ -119,7 +119,7 @@ public class GameManager : MonoBehaviour
     private void EnterMenu(bool immediate)
     {
         StopChoreo();
-        Time.timeScale = 1f;
+        TimeFreeze.Unfreeze(); // §0.5: снятие фриза (в т.ч. из паузы) — только через TimeFreeze
         State = GameState.Ready;
         InputEnabled = false;
         WeaponEnabled = false;
@@ -178,7 +178,8 @@ public class GameManager : MonoBehaviour
         _elapsed = 0f;
         _score.ResetRun();
         _difficultyManager.ResetRun();
-        Time.timeScale = 1f;
+        PilotProgressManager.Instance?.ResetRunGrant(); // новый забег — новый XP (§7 ТЗ: перки/XP сбрасываются)
+        TimeFreeze.Unfreeze(); // §0.5: страховка от забега с активным фризом
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
         InputEnabled = true;  // решение владельца: управление с t = 0 — корабль уже в разгоне
@@ -189,6 +190,11 @@ public class GameManager : MonoBehaviour
         // мгновенный, без мигания — стартовая неуязвимость убрана).
         _ship.BeginRun(_ship.transform.position, _difficultyManager.ShipSpeed,
             _config.startAccelerateTime);
+
+        // Rewarded-стартовый щит (§10.1): забег начинается с 1 щита (тот же механический,
+        // что пикап Shield). Флаг ставит GameUI после успешного rewarded.
+        if (_ui != null && _ui.ConsumeStartShield())
+            PickupManager.Instance?.GrantStartShield();
         // Сброс таймеров/пулов — мгновенно, до полёта камеры (видимого «мигания» нет:
         // в кадре только корабль и звёзды).
         ResetWorld();
@@ -218,10 +224,16 @@ public class GameManager : MonoBehaviour
         yield return fly;
     }
 
-    /// <summary>Попадание по кораблю = смерть (1 HP).</summary>
+    /// <summary>Попадание по кораблю = смерть (1 HP); щит поглощает 1 удар (GDD §4.6/§10.1).</summary>
     public void OnShipHit(ShipController ship, Collider2D other)
     {
         if (State != GameState.Playing) return;
+        // Механический щит (пикап Shield / rewarded-стартовый): поглощает 1 удар, стак 1
+        if (PickupManager.Instance != null && PickupManager.Instance.TryAbsorbHitWithShield())
+        {
+            ship.SetInvulnerable(1.0f); // короткая неуязвимость, чтобы не съело два объекта разом
+            return;
+        }
         State = GameState.Dead;
         PlatformServices.Lifecycle.GameplayStop();
         InputEnabled = false;
@@ -252,6 +264,11 @@ public class GameManager : MonoBehaviour
         Vector3 deathPos = ship.transform.position;
         _lastDeathPos = deathPos;
         ship.Kill();
+
+        // Фикс плейтеста: Death-экран обязан показывать «+Y XP» сразу — начисляем на каждой
+        // смерти дельтой (PilotProgressManager.GrantRunXp выдаёт только разницу от уже
+        // выданного за забег). Continue продолжает счёт — дельта досчитается на следующей смерти.
+        FinalizeRunXp();
         _particles.Burst(deathPos, Palette.Ship, 8, 2f, 4f, 0.6f, 0.15f, 0.3f);
         _particles.Burst(deathPos, Palette.Bullet, 4, 2f, 4f, 0.6f, 0.1f, 0.2f);
         _shake?.Shake(_config.shakeDeath.amplitude, _config.shakeDeath.duration);
@@ -274,7 +291,8 @@ public class GameManager : MonoBehaviour
         // Continue v2 (GDD_DeathScreen_Continue §10.3.1): мир НЕ размораживается —
         // остаётся заморожен (timeScale = 0), пока State == Dead: «картина смерти»
         // живёт для continue, игрок сидит на экране сколько угодно.
-        Time.timeScale = 0f;
+        // §0.5: фриз смерти через TimeFreeze → Frozen консистентен со State == Dead.
+        TimeFreeze.Freeze();
         // Страховка от спавнеров на unscaled-времени: спавн угроз на Death-экране погашен
         _asteroidSpawner.SetSafeZone(float.MaxValue);
         _missileSpawner.SetSafeZone(float.MaxValue);
@@ -297,7 +315,7 @@ public class GameManager : MonoBehaviour
         StopChoreo();
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
-        Time.timeScale = 1f;
+        TimeFreeze.Unfreeze(); // §0.5: снимает фриз смерти (Death → Continue)
         InputEnabled = false; // §5.2: разблокировка на t = 0.5 s
 
         // НЕ вызываем _score.ResetRun() / _difficultyManager.ResetRun() / _elapsed = 0:
@@ -354,13 +372,18 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void Retry() => RestartRun();
 
+    /// <summary>Конверсия очков в XP — дельтой (идемпотентно: повторный вызов даёт 0). GDD §5bis.1.</summary>
+    private void FinalizeRunXp()
+        => PilotProgressManager.Instance?.GrantRunXp(_score != null ? _score.Score : 0);
+
     private void RestartRun()
     {
+        FinalizeRunXp(); // уход с Death-экрана без continue = финальная смерть
         StopChoreo();
         _elapsed = 0f;
         _score.ResetRun();
         _difficultyManager.ResetRun();
-        Time.timeScale = 1f;
+        TimeFreeze.Unfreeze(); // §0.5: снимает фриз смерти (Death → Retry)
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
         InputEnabled = false;  // §6.1: разблокировка на t = 0.5 s
@@ -403,6 +426,7 @@ public class GameManager : MonoBehaviour
 
     public void GoHome()
     {
+        if (State == GameState.Dead) FinalizeRunXp(); // уход с Death-экрана без continue = финальная смерть
         PlatformServices.Lifecycle.GameplayStop();
         // ТЗ §2.5: exit_to_home — только если continue_declined в этой смерти НЕ отправлялся
         // (иначе двойной счёт одного тапа «Домой» с живым предложением continue)
@@ -425,12 +449,13 @@ public class GameManager : MonoBehaviour
         EnterMenu(immediate: false);
     }
 
-    /// <summary>Сброс мира: пулы астероидов/ракет/пуль (§6.1 — во время полёта камеры).</summary>
+    /// <summary>Сброс мира: пулы астероидов/ракет/пуль/пикапов (§6.1 — во время полёта камеры).</summary>
     private void ResetWorld()
     {
         _asteroidSpawner.ResetSpawner();
         _missileSpawner.ResetSpawner();
         _weapon.ResetWeapon();
+        if (PickupManager.Instance != null) PickupManager.Instance.ResetRun();
     }
 
     /// <summary>Гейт спавна угроз: выставляется в BeginRun (§5) / RestartRun (§6.1).</summary>

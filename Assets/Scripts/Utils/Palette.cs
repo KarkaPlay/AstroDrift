@@ -26,10 +26,18 @@ public static class Palette
     // UI
     public static readonly Color ScoreText = Hex("#FFFFFF");
     public static readonly Color SecondaryText = Hex("#8A8A8A");
+    public static readonly Color CardDescText = Hex("#CFCFCF"); // описание на карте перка — только оно (§15.3 читаемость)
     public static readonly Color Gold = Hex("#FFD700");
     public static readonly Color UiPanel = new Color(0.078f, 0.078f, 0.078f, 0.92f); // #141414 a0.92
     public static readonly Color UiPanelFrame = Hex("#2A2A2A");
     public static readonly Color UiOverlay = new Color(0f, 0f, 0f, 0.6f); // затемнение паузы
+
+    // Мета-прогрессия (GDD §9, Волна 1): пикапы, XP bar, рамки карт перков
+    public static readonly Color PickupRapidFire = Hex("#FFD700");
+    public static readonly Color PickupShield = Hex("#66CCFF");
+    public static readonly Color XpBar = Hex("#66FF66");
+    public static readonly Color PerkCommon = Hex("#AAAAAA");
+    public static readonly Color PerkRare = Hex("#66CCFF");
 
     // UI-акцент v2 (Menu & Transitions, ArtDirection §7) — использовать точечно:
     // не более одного золотого элемента в кадре (NEW BEST / сегмент CTA-линии).

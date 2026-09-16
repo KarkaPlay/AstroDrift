@@ -5,6 +5,8 @@ using UnityEngine;
 /// </summary>
 public class ParticlePool : MonoBehaviour
 {
+    public static ParticlePool Instance { get; private set; }
+
     [SerializeField] private int prewarm = 24;
     [SerializeField] private Mesh quadMesh; // назначится в Awake из GeometryFactory
 
@@ -12,6 +14,7 @@ public class ParticlePool : MonoBehaviour
 
     private void Awake()
     {
+        Instance = this;
         quadMesh = GeometryFactory.Quad(1f);
         _pool = new ObjectPool(Create, transform, prewarm);
     }

@@ -62,6 +62,10 @@ public class ShipController : MonoBehaviour
         _collider.radius = cfg.shipRadius;
     }
 
+    /// <summary>Angular speed с учётом перка Turn Speed+ (§15.2) — читается каждый FixedUpdate.</summary>
+    private float EffectiveAngularSpeed
+        => PerkManager.Instance != null ? PerkManager.Instance.ShipAngularSpeed : _angularSpeed;
+
     /// <param name="accelTime">Разгон 0 → speed за accelTime (ease-out). 0 = полная скорость сразу
     /// (меню/рестарт/continue). Первый старт: GameConfig.startAccelerateTime.</param>
     public void BeginRun(Vector3 startPos, float speed, float accelTime = 0f)
@@ -197,7 +201,7 @@ public class ShipController : MonoBehaviour
             else if (axis > 0.3f) dir = -1;
         }
 
-        _rb.rotation += dir * _angularSpeed * Time.fixedDeltaTime;
+        _rb.rotation += dir * EffectiveAngularSpeed * Time.fixedDeltaTime;
         Vector2 forward = transform.up;
         _rb.linearVelocity = forward * _speed;
     }

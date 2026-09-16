@@ -33,6 +33,20 @@ public class GameUI : MonoBehaviour
     [SerializeField] private Button tapToPlayBtn;     // полноэкранная невидимая зона тапа (ux4-5)
     [SerializeField] private Image logoImage;         // «Astro Drift» — картинка вместо текста (любая локаль)
 
+    [Header("UI v3: мета-прогрессия (GDD §11, Волна 1)")]
+    [SerializeField] private TextMeshProUGUI pilotLevelText; // «Pilot Level N» — зелёный #66FF66
+    [SerializeField] private Image xpBarFill;                // XP bar — зелёный, заливка анкорами (UiProgressBar)
+    [SerializeField] private Image perkProgressBarFill;      // HUD: прогресс до следующего перка (GDD §15.3)
+    [SerializeField] private Button startShieldBtn;          // «Стартовый щит за рекламу»
+    [SerializeField] private TextMeshProUGUI startShieldText;
+    [SerializeField] private TextMeshProUGUI startShieldCaption;
+
+    [Header("UI v3: Death-экран (GDD §7)")]
+    [SerializeField] private TextMeshProUGUI deathXp;        // «+Y XP»
+    [SerializeField] private TextMeshProUGUI deathLevel;     // «Level N → N+1» / «Level N»
+    [SerializeField] private Image deathXpBarFill;           // прогресс нового уровня
+    [SerializeField] private TextMeshProUGUI deathUnlocked;  // «Разблокировано: …» (только lvl-up, Wave1)
+
     [Header("Тексты")]
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI comboChip;
@@ -106,6 +120,8 @@ public class GameUI : MonoBehaviour
             if (t != null) t.raycastTarget = false;
         if (continueBtn != null) continueBtn.onClick.AddListener(OnContinueTapped);
         if (homeBtn != null) homeBtn.onClick.AddListener(HomeWithInterstitial);
+        if (startShieldBtn != null) startShieldBtn.onClick.AddListener(OnStartShieldTapped);
+        RefreshPilotBlock();
         if (pauseToggleBtn != null) pauseToggleBtn.onClick.AddListener(TogglePause);
         if (resumeBtn != null) resumeBtn.onClick.AddListener(TogglePause);
         if (quitBtn != null) quitBtn.onClick.AddListener(GoHomeFromPause);
@@ -120,9 +136,137 @@ public class GameUI : MonoBehaviour
             _offerLineRestWidth = continueTimerLine.sizeDelta.x;
 
         ApplyTypography();
+        RefreshPilotBlock();
         ShowStartImmediate();
         RefreshHud();
         StartCtaPulse();
+        BuildUnlockTreeStub();
+    }
+
+    // ——— Заглушка дерева разблокировок (плейтест Волны 1): кнопка + сворачиваемая панель ———
+
+    private GameObject _treePanel;
+    private TMPro.TextMeshProUGUI _treeText;
+    private Button _treeBtn;
+
+    /// <summary>
+    /// Заглушка (НЕ фича): маленькая кнопка «ДЕРЕВО» на стартовом экране + сворачиваемая
+    /// панель со списком уровней 0–20 из PilotProgressConfig.unlocks. Чистый текст,
+    /// разблокированные — зелёные, нереализованные (implementedInWave1=false) — с «скоро».
+    /// Строится программно поверх текущего UI (тот же Canvas), без сцены и скинов.
+    /// </summary>
+    private void BuildUnlockTreeStub()
+    {
+        if (_treePanel != null) return; // повторный Init
+        var canvas = startPanel != null ? startPanel.transform.parent : null;
+        if (canvas == null || PilotProgressManager.Instance == null) return;
+
+        // Кнопка-заглушка: низко-левый угол, мелкая, не мешает CTA
+        var btnGo = new GameObject("Btn_UnlockTree", typeof(RectTransform), typeof(CanvasGroup));
+        btnGo.transform.SetParent(canvas, false);
+        var btnRt = (RectTransform)btnGo.transform;
+        btnRt.anchorMin = new Vector2(0f, 0f); btnRt.anchorMax = new Vector2(0f, 0f);
+        btnRt.pivot = new Vector2(0f, 0f);
+        btnRt.anchoredPosition = new Vector2(20f, 20f);
+        btnRt.sizeDelta = new Vector2(180f, 60f);
+        var btnImg = btnGo.AddComponent<UnityEngine.UI.Image>();
+        btnImg.color = new Color(1f, 1f, 1f, 0.08f);
+        _treeBtn = btnGo.AddComponent<UnityEngine.UI.Button>();
+        _treeBtn.targetGraphic = btnImg;
+        var btnCg = btnGo.GetComponent<CanvasGroup>();
+        btnCg.blocksRaycasts = true;
+
+        var btnTextGo = new GameObject("Text", typeof(RectTransform));
+        btnTextGo.transform.SetParent(btnGo.transform, false);
+        var btnTextRt = (RectTransform)btnTextGo.transform;
+        btnTextRt.anchorMin = Vector2.zero; btnTextRt.anchorMax = Vector2.one;
+        btnTextRt.offsetMin = Vector2.zero; btnTextRt.offsetMax = Vector2.zero;
+        var btnTmp = btnTextGo.AddComponent<TMPro.TextMeshProUGUI>();
+        btnTmp.fontSize = 24; btnTmp.alignment = TMPro.TextAlignmentOptions.Center;
+        btnTmp.color = Palette.SecondaryText;
+        btnTmp.raycastTarget = false;
+        L10n.Bind(btnTmp, "unlock_tree_open");
+
+        // Панель: по центру, скрыта (CanvasGroup alpha=0), поверх стартового экрана
+        _treePanel = new GameObject("UnlockTreePanel", typeof(RectTransform), typeof(CanvasGroup));
+        _treePanel.transform.SetParent(canvas, false);
+        var panelRt = (RectTransform)_treePanel.transform;
+        panelRt.anchorMin = Vector2.zero; panelRt.anchorMax = Vector2.one;
+        panelRt.offsetMin = new Vector2(60f, 120f); panelRt.offsetMax = new Vector2(-60f, -120f);
+        var panelImg = _treePanel.AddComponent<UnityEngine.UI.Image>();
+        panelImg.color = Palette.UiPanel;
+        var panelCg = _treePanel.GetComponent<CanvasGroup>();
+        panelCg.alpha = 0f; panelCg.blocksRaycasts = false; panelCg.interactable = false;
+
+        var titleGo = new GameObject("Title", typeof(RectTransform));
+        titleGo.transform.SetParent(_treePanel.transform, false);
+        var titleRt = (RectTransform)titleGo.transform;
+        titleRt.anchorMin = new Vector2(0f, 1f); titleRt.anchorMax = new Vector2(1f, 1f);
+        titleRt.pivot = new Vector2(0.5f, 1f);
+        titleRt.anchoredPosition = new Vector2(0f, -16f);
+        titleRt.sizeDelta = new Vector2(0f, 50f);
+        var titleTmp = titleGo.AddComponent<TMPro.TextMeshProUGUI>();
+        titleTmp.fontSize = 32; titleTmp.alignment = TMPro.TextAlignmentOptions.Center;
+        titleTmp.color = Palette.XpBar; titleTmp.raycastTarget = false;
+        L10n.Bind(titleTmp, "unlock_tree_title");
+
+        var listGo = new GameObject("List", typeof(RectTransform));
+        listGo.transform.SetParent(_treePanel.transform, false);
+        var listRt = (RectTransform)listGo.transform;
+        listRt.anchorMin = Vector2.zero; listRt.anchorMax = Vector2.one;
+        listRt.offsetMin = new Vector2(24f, 12f); listRt.offsetMax = new Vector2(-24f, -80f);
+        _treeText = listGo.AddComponent<TMPro.TextMeshProUGUI>();
+        _treeText.fontSize = 24; _treeText.alignment = TMPro.TextAlignmentOptions.TopLeft;
+        _treeText.raycastTarget = false;
+        _treeText.enableWordWrapping = true;
+
+        _treeBtn.onClick.AddListener(ToggleTree);
+    }
+
+    private void ToggleTree()
+    {
+        if (_treePanel == null) return;
+        var cg = _treePanel.GetComponent<CanvasGroup>();
+        bool show = cg.alpha < 0.5f;
+        if (show) FillUnlockTree();
+        cg.alpha = show ? 1f : 0f;
+        cg.blocksRaycasts = show;
+        cg.interactable = show;
+    }
+
+    /// <summary>Список «N — награда»: разблокированные зелёные, «скоро» — для нереализованных.</summary>
+    private void FillUnlockTree()
+    {
+        if (_treeText == null) return;
+        var pilot = PilotProgressManager.Instance;
+        if (pilot == null) return;
+
+        string soon = L10n.Get("unlock_soon");
+        if (string.IsNullOrEmpty(soon)) soon = "скоро";
+        var sb = new System.Text.StringBuilder();
+        var entries = pilot.AllUnlocks;
+        var byLevel = new System.Collections.Generic.SortedDictionary<int, System.Collections.Generic.List<UnlockEntry>>();
+        foreach (var u in entries)
+        {
+            if (!byLevel.TryGetValue(u.pilotLevel, out var list))
+                byLevel[u.pilotLevel] = list = new System.Collections.Generic.List<UnlockEntry>();
+            list.Add(u);
+        }
+        foreach (var kv in byLevel)
+        {
+            bool unlocked = pilot.PilotLevel >= kv.Key;
+            string color = unlocked ? "#66FF66" : "#8A8A8A";
+            foreach (var u in kv.Value)
+            {
+                string name = L10n.Get("unlock_" + u.id);
+                if (string.IsNullOrEmpty(name)) name = u.id;
+                sb.Append("<color=").Append(color).Append('>')
+                  .Append(kv.Key).Append(" — ").Append(name);
+                if (!u.implementedInWave1) sb.Append(" (").Append(soon).Append(')');
+                sb.Append("</color>\n");
+            }
+        }
+        _treeText.text = sb.ToString();
     }
 
     /// <summary>Пауза-тексты живут на панели сцены (не сериализованы) — биндинг по Find.</summary>
@@ -366,6 +510,134 @@ public class GameUI : MonoBehaviour
         };
     }
 
+    // ——— UI v3: мета-прогрессия (GDD §11/§7, Волна 1) ———
+
+    /// <summary>Обновление блока пилота (стартовый экран) + кнопки стартового щита.
+    /// pilotLevel < 8 ИЛИ точка выключена → кнопки нет; использована сегодня → disabled; иначе активна.</summary>
+    public void RefreshPilotBlock()
+    {
+        var pilot = PilotProgressManager.Instance;
+        if (pilot == null) return;
+
+        if (pilotLevelText != null)
+        {
+            // Фолбэк — сразу на русском (поздняя загрузка локали не мигает английским),
+            // и через Bind: RefreshPilotBlock вызывается из Init ДО готовности таблицы,
+            // одноразовый Get успевал вернуть null и текст оставался фолбэком до Home.
+            pilotLevelText.text = $"УРОВЕНЬ ПИЛОТА {pilot.PilotLevel}";
+            L10n.Bind(pilotLevelText, "pilot_level", pilot.PilotLevel);
+            pilotLevelText.color = Palette.XpBar;
+        }
+        UiProgressBar.Set(Rt(xpBarFill), pilot.ProgressToNextLevel());
+
+        // Кнопка стартового щита (§10.1)
+        var gmCfg = GameManager.Instance != null ? GameManager.Instance.Config : null;
+        bool pointEnabled = gmCfg != null && gmCfg.startShieldDailyRewarded;
+        bool levelOk = gmCfg != null && pilot.PilotLevel >= gmCfg.startShieldUnlockPilotLevel;
+        bool adReady = AdsFlow.Instance != null && AdsFlow.Instance.IsRewardedReady;
+        bool show = pointEnabled && levelOk;
+        bool usedToday = pilot.StartShieldUsedToday;
+
+        SetVisible(startShieldBtn, show);
+        SetVisible(startShieldText, show);
+        SetVisible(startShieldCaption, show);
+        if (show)
+        {
+            startShieldBtn.interactable = !usedToday && adReady;
+            if (usedToday)
+            {
+                string cap = L10n.Get("shield_used_today");
+                if (startShieldCaption != null)
+                    startShieldCaption.text = string.IsNullOrEmpty(cap) ? "УЖЕ ИСПОЛЬЗОВАНА СЕГОДНЯ" : cap;
+                if (startShieldText != null) startShieldText.color = Palette.SecondaryText;
+            }
+            else
+            {
+                L10n.Bind(startShieldText, "shield_cta");
+                L10n.Bind(startShieldCaption, "shield_caption");
+                if (startShieldText != null) startShieldText.color = Palette.PickupShield;
+            }
+        }
+    }
+
+    /// <summary>Клик «Стартовый щит за рекламу» (§10.1): ShowRewarded → MarkRewardedShown → следующий забег с 1 щитом.</summary>
+    private void OnStartShieldTapped()
+    {
+        var pilot = PilotProgressManager.Instance;
+        var ads = AdsFlow.Instance;
+        if (pilot == null || ads == null || pilot.StartShieldUsedToday) return;
+
+        Analytics.Log("start_shield_ad_started");
+        ads.ShowRewarded(ok =>
+        {
+            if (!ok) { Analytics.Log("start_shield_ad_aborted"); return; }
+            pilot.MarkStartShieldUsed();
+            _startShieldPending = true; // BeginRun прочитает и выдаст щит
+            Analytics.Log("start_shield_ad_completed");
+            RefreshPilotBlock();
+        });
+    }
+
+    /// <summary>Флаг «щит выдан на следующий забег» (читает/сбрасывает GameManager через UI).</summary>
+    private bool _startShieldPending;
+    public bool ConsumeStartShield()
+    {
+        bool v = _startShieldPending;
+        _startShieldPending = false;
+        return v;
+    }
+
+    /// <summary>
+    /// Death-экран: блок мета-прогрессии («+Y XP», «Level N → N+1», прогресс-бар,
+    /// «Разблокировано: …» — только при lvl-up и только Wave1-строки, GDD §7).
+    /// </summary>
+    private void FillDeathMeta()
+    {
+        var pilot = PilotProgressManager.Instance;
+        if (pilot == null || deathXp == null) return;
+
+        // Фикс плейтеста: в сцене DeathXp/DeathLevel создаются SetActive(false) и
+        // нигде не включались — «+Y XP» и уровень не были видны на Death-экране.
+        deathXp.gameObject.SetActive(true);
+        if (deathLevel != null) deathLevel.gameObject.SetActive(true);
+
+        L10n.Bind(deathXp, "xp_gain", Format(pilot.LastRunXp));
+        if (pilot.PilotLevel > pilot.LevelBeforeLastRun)
+        {
+            string s = L10n.GetFormatted("level_up_line", pilot.LevelBeforeLastRun, pilot.PilotLevel);
+            deathLevel.text = string.IsNullOrEmpty(s)
+                ? $"УРОВЕНЬ {pilot.LevelBeforeLastRun} → {pilot.PilotLevel}" : s;
+        }
+        else
+        {
+            string s = L10n.GetFormatted("level_line", pilot.PilotLevel);
+            deathLevel.text = string.IsNullOrEmpty(s) ? $"УРОВЕНЬ {pilot.PilotLevel}" : s;
+        }
+        UiProgressBar.Set(Rt(deathXpBarFill), pilot.ProgressToNextLevel());
+
+        // «Разблокировано» — только при росте уровня и implementedInWave1 (GDD §7/§5bis.2)
+        bool leveled = pilot.PilotLevel > pilot.LevelBeforeLastRun;
+        if (leveled)
+        {
+            var unlocks = pilot.GetUnlocksForRange(pilot.LevelBeforeLastRun + 1, pilot.PilotLevel);
+            var names = new List<string>();
+            foreach (var u in unlocks)
+            {
+                if (!u.implementedInWave1) continue;
+                string n = L10n.Get("unlock_" + u.id);
+                names.Add(string.IsNullOrEmpty(n) ? u.id : n);
+            }
+            if (names.Count > 0)
+            {
+                string title = L10n.Get("unlocked_title");
+                deathUnlocked.text = (string.IsNullOrEmpty(title) ? "РАЗБЛОКИРОВАНО: " : title + " ") + string.Join(", ", names);
+                deathUnlocked.gameObject.SetActive(true);
+            }
+            else deathUnlocked.gameObject.SetActive(false);
+        }
+        else deathUnlocked.gameObject.SetActive(false);
+    }
+
     /// <summary>Мгновенный вход в стартовый экран (только при инициализации сцены).</summary>
     public void ShowStartImmediate()
     {
@@ -381,6 +653,9 @@ public class GameUI : MonoBehaviour
         ResetRest(title1); ResetRest(title2); ResetRest(startBest);
         ResetRest(logoImage);
         ResetRest(deathScore); ResetRest(deathBest);
+        // Фикс плейтеста: XP/уровень пилота перечитываются при каждом показе меню
+        // (после забега бар и текст показывали значения с момента Init).
+        RefreshPilotBlock();
         StartCtaPulse();
     }
 
@@ -401,10 +676,12 @@ public class GameUI : MonoBehaviour
     // ——— Адаптивный лэйаут стартового экрана (любое соотношение сторон) ———
 
     /// <summary>
-    /// Референс 1080×1920 портретный: с CanvasScaler.Expand на квадратных/альбомных
-    /// экранах высота канваса падает до ~1080 юнитов, и верхние элементы (логотип
-    /// y=590, BEST y=380) оказываются за кадром. Для узких по высоте кадров
-    /// применяется компактный пресет: логотип меньше и ниже, CTA выше от края.
+    /// Адаптивный лэйаут стартового экрана. Элементы программно привязываются к
+    /// сторонам экрана: лого и BEST — к верхней кромке, TAP TO PLAY — к нижней.
+    /// Якоря и pivot выставляются кодом, поэтому раскладка не зависит от якорей
+    /// сцены и не «уезжает» за кадр ни при одном соотношении сторон
+    /// (CanvasScaler.Expand меняет высоту канваса на узких/альбомных экранах).
+    /// Для низких кадров (h < 1500) применяется компактный пресет.
     /// Вызывается при Init, перед каждым каскадом и при смене разрешения (Update).
     /// </summary>
     private void ApplyAdaptiveStartLayout()
@@ -416,23 +693,49 @@ public class GameUI : MonoBehaviour
 
         bool compact = h < 1500f;
         float logoW = compact ? 560f : 700f;
-        float logoAspect = 237f / 587f; // Assets/Logo.png (587×237)
+        float cw = _canvasRt.rect.width;
+        if (cw > 0f) logoW = Mathf.Min(logoW, cw * 0.85f); // не шире 85% ширины кадра
+        float logoAspect = 237f / 587f;                    // Assets/Logo.png (587×237)
+        float logoH = logoW * logoAspect;
+        float gapTop = compact ? 150f : h * 0.11f;         // отступ лого от верхней кромки
+        float gapBottom = compact ? 150f : h * 0.22f;      // отступ CTA от нижней кромки
+
         if (logoImage != null)
         {
             var rt = logoImage.rectTransform;
-            rt.sizeDelta = new Vector2(logoW, logoW * logoAspect);
-            rt.anchoredPosition = new Vector2(0f, compact ? 270f : 590f);
+            AnchorTop(rt);
+            rt.sizeDelta = new Vector2(logoW, logoH);
+            rt.anchoredPosition = new Vector2(0f, -gapTop);
         }
-        SetRestY(startBest, compact ? 160f : 380f);
-        SetRestY(ctaText, compact ? -350f : -480f);
+        if (startBest != null)
+        {
+            var rt = startBest.rectTransform;
+            AnchorTop(rt);
+            // BEST — под логотипом (позиция покоя для слайда SlideBest)
+            rt.anchoredPosition = new Vector2(0f, -(gapTop + logoH + 50f));
+        }
+        if (ctaText != null)
+        {
+            var rt = ctaText.rectTransform;
+            AnchorBottom(rt);
+            rt.anchoredPosition = new Vector2(0f, gapBottom);
+        }
     }
 
-    /// <summary>Сдвиг элемента по вертикали с сохранением X (позиция покоя).</summary>
-    private static void SetRestY(TextMeshProUGUI t, float y)
+    /// <summary>Верхняя привязка: anchor (0.5,1), pivot (0.5,1); Y отсчитывается от верхней кромки вниз.</summary>
+    private static void AnchorTop(RectTransform rt)
     {
-        if (t == null) return;
-        var p = t.rectTransform.anchoredPosition;
-        t.rectTransform.anchoredPosition = new Vector2(p.x, y);
+        rt.anchorMin = new Vector2(0.5f, 1f);
+        rt.anchorMax = new Vector2(0.5f, 1f);
+        rt.pivot = new Vector2(0.5f, 1f);
+    }
+
+    /// <summary>Нижняя привязка: anchor (0.5,0), pivot (0.5,0); Y отсчитывается от нижней кромки вверх.</summary>
+    private static void AnchorBottom(RectTransform rt)
+    {
+        rt.anchorMin = new Vector2(0.5f, 0f);
+        rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
     }
 
 
@@ -503,6 +806,7 @@ public class GameUI : MonoBehaviour
         L10n.Bind(deathBest, "best", Format(best));
         L10n.Bind(deathNewBest, "new_best");
         deathNewBest.gameObject.SetActive(newBest);
+        FillDeathMeta(); // UI v3: «+Y XP», уровень, прогресс-бар, «Разблокировано»
         if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
 
         SetVisible(deathPanel, true);
@@ -708,6 +1012,8 @@ public class GameUI : MonoBehaviour
         startCg.blocksRaycasts = true;
         if (pauseBtn != null) pauseBtn.SetActive(false);
         foreach (var t in new[] { title1, title2, startBest, ctaText }) SetVisible(t, false);
+        // Фикс плейтеста: перечитываем XP/уровень пилота при возврате в меню (Home)
+        RefreshPilotBlock();
 
         if (logoImage != null)
         {
@@ -767,7 +1073,8 @@ public class GameUI : MonoBehaviour
     public void RefreshHud()
     {
         if (_score == null) return;
-        if (scoreText != null) scoreText.text = Format(_score.Score);
+        int score = _score.Score;
+        if (scoreText != null) scoreText.text = Format(score);
 
         int m = _score.Multiplier;
         if (comboChip != null)
@@ -782,6 +1089,17 @@ public class GameUI : MonoBehaviour
             }
         }
         _lastMultiplier = m;
+
+        // Прогресс до следующего перка (§15.3). Пороги не заданы (levelUpScoreThresholds пуст) → бар скрыт целиком
+        // (скрываем родителя: иначе пустая полупрозрачная дорожка 360×8 остаётся висеть под счётом).
+        var perks = PerkManager.Instance;
+        var perkBarRoot = perkProgressBarFill != null ? perkProgressBarFill.transform.parent as RectTransform : null;
+        bool perkBarShow = perks != null && perks.PerkProgressAvailable && perkBarRoot != null;
+        if (perkBarRoot != null)
+        {
+            perkBarRoot.gameObject.SetActive(perkBarShow);
+            if (perkBarShow) UiProgressBar.Set(Rt(perkProgressBarFill), perks.PerkProgress(score));
+        }
 
         if (startBest != null) L10n.Bind(startBest, "best", Format(_score.Best));
     }
@@ -861,9 +1179,10 @@ public class GameUI : MonoBehaviour
     private void TogglePause()
     {
         if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing) return;
-        if (Time.timeScale > 0f)
+        // §0.5: установка/снятие фриза только через TimeFreeze (один владелец timeScale)
+        if (!TimeFreeze.Frozen)
         {
-            Time.timeScale = 0f;
+            TimeFreeze.Freeze();
             PauseIn();
             PlatformServices.Lifecycle.GameplayStop();
             // ТЗ §2.4: один агрегат на оба ветвления — «какой % забегов прерывается паузой?»
@@ -871,7 +1190,7 @@ public class GameUI : MonoBehaviour
         }
         else
         {
-            Time.timeScale = 1f;
+            TimeFreeze.Unfreeze();
             PauseOut();
             PlatformServices.Lifecycle.GameplayStart();
             Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "close" } });
@@ -880,7 +1199,7 @@ public class GameUI : MonoBehaviour
 
     private void GoHomeFromPause()
     {
-        Time.timeScale = 1f;
+        TimeFreeze.Unfreeze(); // §0.5: EnterMenu() продублирует снятие фриза (идемпотентно)
         GameManager.Instance.GoHome();
     }
 

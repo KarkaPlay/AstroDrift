@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c401355bce8d5403b9f1359cbab14493, type: 3}
+  m_Name: PickupConfig
+  m_EditorClassIdentifier: Assembly-CSharp::PickupConfig
+  pickupLifetime: 6
+  pickupBlinkLastSeconds: 2
+  pickupRadius: 0.35
+  maxActiveEffects: 2
+  maxPickupsOnGround: 4
+  pickups:
+  - type: 0
+    duration: 5
+    dropChanceAsteroid: 0.08
+    dropChanceMissile: 0
+    color: {r: 1, g: 0.84313726, b: 0, a: 1}
+    unlockedByDefault: 1
+    unlockPilotLevel: 0
+  - type: 1
+    duration: 5
+    dropChanceAsteroid: 0.06
+    dropChanceMissile: 0
+    color: {r: 1, g: 0.84313726, b: 0, a: 1}
+    unlockedByDefault: 0
+    unlockPilotLevel: 4
+  - type: 2
+    duration: 0
+    dropChanceAsteroid: 0
+    dropChanceMissile: 0.03
+    color: {r: 0.4, g: 0.8, b: 1, a: 1}
+    unlockedByDefault: 0
+    unlockPilotLevel: 8
