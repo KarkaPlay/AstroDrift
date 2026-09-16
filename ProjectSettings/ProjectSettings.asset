@@ -143,7 +143,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 1.0.2
+  bundleVersion: 1.0.3a
   preloadedAssets:
   - {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   - {fileID: 11400000, guid: 8a28a2106c5c2457cabac2a3a40e1a9b, type: 2}
@@ -176,7 +176,7 @@ PlayerSettings:
     iPhone: 0
     tvOS: 0
   overrideDefaultApplicationIdentifier: 1
-  AndroidBundleVersionCode: 2
+  AndroidBundleVersionCode: 3
   AndroidMinSdkVersion: 25
   AndroidTargetSdkVersion: 35
   AndroidPreferredInstallLocation: 1
@@ -702,17 +702,17 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    LinuxHeadlessSimulation: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    Nintendo Switch: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    PS4: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    PS5: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    Standalone: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    WebGL: PLUGIN_YG_2;Authorization_yg;EnvirData_yg;InterstitialAdv_yg;Metrica_yg;RewardedAdv_yg;StickyAdv_yg;Storage_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    Windows Store Apps: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    XboxOne: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    iPhone: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
-    tvOS: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;EmptyWebGLPlatform_yg;TMP_YG2;NJSON_YG2
+    Android: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    LinuxHeadlessSimulation: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    Nintendo Switch: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    PS4: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    PS5: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    Standalone: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    WebGL: PLUGIN_YG_2;Authorization_yg;EnvirData_yg;InterstitialAdv_yg;Metrica_yg;RewardedAdv_yg;StickyAdv_yg;Storage_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    Windows Store Apps: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    XboxOne: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    iPhone: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
+    tvOS: PLUGIN_YG_2;InterstitialAdv_yg;RewardedAdv_yg;EnvirData_yg;Storage_yg;Metrica_yg;StickyAdv_yg;Authorization_yg;BannerAdv_yg;YandexMobileAdsPlatform_yg;TMP_YG2;NJSON_YG2
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

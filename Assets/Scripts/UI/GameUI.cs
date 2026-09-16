@@ -26,17 +26,19 @@ public class GameUI : MonoBehaviour
     [SerializeField] private GameObject pauseBtn;
 
     [Header("Стартовый экран (§2)")]
-    [SerializeField] private TextMeshProUGUI title1;   // устарело: заменён логотипом (может быть null)
-    [SerializeField] private TextMeshProUGUI title2;   // устарело: заменён логотипом (может быть null)
-    [SerializeField] private TextMeshProUGUI startBest;
+    [SerializeField] private TextMeshProUGUI startBest;       // подпись рекорда (ключ best_label)
+    [SerializeField] private TextMeshProUGUI startBestValue;  // число рекорда (ключ best_value)
     [SerializeField] private TextMeshProUGUI ctaText;
     [SerializeField] private Button tapToPlayBtn;     // полноэкранная невидимая зона тапа (ux4-5)
     [SerializeField] private Image logoImage;         // «Astro Drift» — картинка вместо текста (любая локаль)
 
     [Header("UI v3: мета-прогрессия (GDD §11, Волна 1)")]
-    [SerializeField] private TextMeshProUGUI pilotLevelText; // «Pilot Level N» — зелёный #66FF66
-    [SerializeField] private Image xpBarFill;                // XP bar — зелёный, заливка анкорами (UiProgressBar)
+    [SerializeField] private TextMeshProUGUI pilotLevelText; // подпись карточки «Уровень пилота» (LevelCard.prefab)
+    [SerializeField] private LevelCardUI levelCard;          // карточка уровня: число + бар 364×24 (UiProgressBar)
+    [SerializeField] private RectTransform xpBarFill;        // заливка бара карточки (Filled, UiProgressBar)
     [SerializeField] private Image perkProgressBarFill;      // HUD: прогресс до следующего перка (GDD §15.3)
+    [SerializeField] private RectTransform menuButtonsRow;   // ряд нижних кнопок меню (SlideFade выхода/входа)
+    [SerializeField] private Button menuUpgradeBtn;          // «ПРОКАЧКА» в ряду меню — открывает дерево разблокировок
     [SerializeField] private Button startShieldBtn;          // «Стартовый щит за рекламу»
     [SerializeField] private TextMeshProUGUI startShieldText;
     [SerializeField] private TextMeshProUGUI startShieldCaption;
@@ -71,6 +73,12 @@ public class GameUI : MonoBehaviour
     private Screen _screen;
     private RectTransform _canvasRt;   // для адаптивного лэйаута (высота кадра в юнитах)
     private float _lastLayoutH = -1f;  // кэш высоты: ре-лейаут только при смене разрешения
+    private const float RefHeight = 1920f; // референс CanvasScaler — база пропорции стартовой группы
+
+    // Авторская раскладка стартовой группы (источник истины): кэш позиций/размеров из сцены.
+    private struct RestEntry { public RectTransform rt; public Vector2 basePos; public Vector2 baseSize; public Vector2 restPos; }
+    private readonly List<RestEntry> _restEntries = new List<RestEntry>();
+    private bool _restCaptured;
     private readonly List<Coroutine> _transitions = new List<Coroutine>();
     private Coroutine _ctaPulse;
     private Coroutine _offerTimer;         // таймер предложения (§10.2.3)
@@ -103,20 +111,22 @@ public class GameUI : MonoBehaviour
 
         // Локализация статичных текстов (перечитываются при смене локали;
         // динамические — в PlayDeathIn/RefreshHud). Заголовок — картинка, локали не требует.
-        if (title1 != null) L10n.Bind(title1, "title_main");
-        if (title2 != null) L10n.Bind(title2, "title_sub");
         L10n.Bind(ctaText, "tap_to_play");
         L10n.Bind(continueText, "continue_cta");
         L10n.Bind(continueCaption, "continue_caption");
         L10n.Bind(deathNewBest, "new_best");
         L10n.Bind(homeBtn != null ? homeBtn.GetComponentInChildren<TMPro.TextMeshProUGUI>() : null, "home");
         BindPauseTexts();
+        // Рекорд меню разбит на две ноды: подпись (best_label) + число (best_value,
+        // обновляется в RefreshHud). Ключ best с форматом «РЕКОРД {0}» остаётся только
+        // за Death-экраном — на подписи меню он перезаписывал бы обе строки.
+        L10n.Bind(startBest, "best_label");
 
         // Фикс «тап по TAP TO PLAY не стартует игру»: TMP-тексты стартового экрана
         // (перекрывающие полноэкранную невидимую зону тапа) перехватывали raycast.
         // Тексты — не интерактивные элементы: выключаем их raycastTarget, тап всегда
         // доходит до tapToPlayBtn в любой точке экрана (включая сам текст).
-        foreach (var t in new[] { title1, title2, startBest, ctaText })
+        foreach (var t in new[] { startBest, startBestValue, ctaText })
             if (t != null) t.raycastTarget = false;
         if (continueBtn != null) continueBtn.onClick.AddListener(OnContinueTapped);
         if (homeBtn != null) homeBtn.onClick.AddListener(HomeWithInterstitial);
@@ -140,56 +150,47 @@ public class GameUI : MonoBehaviour
         ShowStartImmediate();
         RefreshHud();
         StartCtaPulse();
-        BuildUnlockTreeStub();
+        BuildTreePanel();
+        if (menuUpgradeBtn != null) menuUpgradeBtn.onClick.AddListener(ToggleTree);
+        ValidateMandatoryRefs();
     }
 
-    // ——— Заглушка дерева разблокировок (плейтест Волны 1): кнопка + сворачиваемая панель ———
+    /// <summary>Обязательные ссылки: молчаливый ранний выход («if (scoreText != null)») —
+    /// именно то, из-за чего «счёт всегда 0» дожил до ревью. Ошибка вместо тишины.</summary>
+    private void ValidateMandatoryRefs()
+    {
+        if (hudRoot == null) Debug.LogError("GameUI: hudRoot не назначен.", this);
+        if (scoreText == null) Debug.LogError("GameUI: scoreText не назначен — HUD-счёт не обновится (Hud/Score/ScoreText).", this);
+        if (perkProgressBarFill == null) Debug.LogError("GameUI: perkProgressBarFill не назначен — бар перка не обновится (Hud/Score/PerkProgressBarBg/PerkProgressBarFill).", this);
+        if (startBestValue == null) Debug.LogError("GameUI: startBestValue не назначен — число рекорда не обновится (StartPanel/StartBestValue).", this);
+        if (menuUpgradeBtn == null) Debug.LogError("GameUI: menuUpgradeBtn не назначен — кнопка «ПРОКАЧКА» не откроет дерево разблокировок (StartPanel/Menu Buttons/MenuButton_Upgrade).", this);
+        if (comboChip == null) Debug.LogWarning("GameUI: comboChip не назначен — чип комбо не покажется.", this);
+    }
+
+    // ——— Панель дерева разблокировок (плейтест Волны 1) ———
 
     private GameObject _treePanel;
     private TMPro.TextMeshProUGUI _treeText;
-    private Button _treeBtn;
 
     /// <summary>
-    /// Заглушка (НЕ фича): маленькая кнопка «ДЕРЕВО» на стартовом экране + сворачиваемая
-    /// панель со списком уровней 0–20 из PilotProgressConfig.unlocks. Чистый текст,
+    /// Панель со списком уровней 0–20 из PilotProgressConfig.unlocks. Чистый текст,
     /// разблокированные — зелёные, нереализованные (implementedInWave1=false) — с «скоро».
     /// Строится программно поверх текущего UI (тот же Canvas), без сцены и скинов.
+    /// Кнопки-заглушки «ДЕРЕВО» больше нет: панель открывает «ПРОКАЧКА» в ряду меню
+    /// (menuUpgradeBtn, ссылка из AstroDriftSceneSetup; аналитика — MenuButtonUI на кнопке).
     /// </summary>
-    private void BuildUnlockTreeStub()
+    private void BuildTreePanel()
     {
         if (_treePanel != null) return; // повторный Init
-        var canvas = startPanel != null ? startPanel.transform.parent : null;
-        if (canvas == null || PilotProgressManager.Instance == null) return;
+        if (startPanel == null || PilotProgressManager.Instance == null) return;
 
-        // Кнопка-заглушка: низко-левый угол, мелкая, не мешает CTA
-        var btnGo = new GameObject("Btn_UnlockTree", typeof(RectTransform), typeof(CanvasGroup));
-        btnGo.transform.SetParent(canvas, false);
-        var btnRt = (RectTransform)btnGo.transform;
-        btnRt.anchorMin = new Vector2(0f, 0f); btnRt.anchorMax = new Vector2(0f, 0f);
-        btnRt.pivot = new Vector2(0f, 0f);
-        btnRt.anchoredPosition = new Vector2(20f, 20f);
-        btnRt.sizeDelta = new Vector2(180f, 60f);
-        var btnImg = btnGo.AddComponent<UnityEngine.UI.Image>();
-        btnImg.color = new Color(1f, 1f, 1f, 0.08f);
-        _treeBtn = btnGo.AddComponent<UnityEngine.UI.Button>();
-        _treeBtn.targetGraphic = btnImg;
-        var btnCg = btnGo.GetComponent<CanvasGroup>();
-        btnCg.blocksRaycasts = true;
-
-        var btnTextGo = new GameObject("Text", typeof(RectTransform));
-        btnTextGo.transform.SetParent(btnGo.transform, false);
-        var btnTextRt = (RectTransform)btnTextGo.transform;
-        btnTextRt.anchorMin = Vector2.zero; btnTextRt.anchorMax = Vector2.one;
-        btnTextRt.offsetMin = Vector2.zero; btnTextRt.offsetMax = Vector2.zero;
-        var btnTmp = btnTextGo.AddComponent<TMPro.TextMeshProUGUI>();
-        btnTmp.fontSize = 24; btnTmp.alignment = TMPro.TextAlignmentOptions.Center;
-        btnTmp.color = Palette.SecondaryText;
-        btnTmp.raycastTarget = false;
-        L10n.Bind(btnTmp, "unlock_tree_open");
-
-        // Панель: по центру, скрыта (CanvasGroup alpha=0), поверх стартового экрана
+        // Панель: по центру, скрыта (CanvasGroup alpha=0).
+        // Родитель — StartPanel, сосед НИЖЕ ряда меню: панель перекрывает полноэкранную
+        // зону тапа (тап по панели не стартует забег), а «ПРОКАЧКА» остаётся выше панели —
+        // иначе открытую панель нечем было бы закрыть.
         _treePanel = new GameObject("UnlockTreePanel", typeof(RectTransform), typeof(CanvasGroup));
-        _treePanel.transform.SetParent(canvas, false);
+        _treePanel.transform.SetParent(startPanel.transform, false);
+        _treePanel.transform.SetSiblingIndex(menuButtonsRow != null ? menuButtonsRow.GetSiblingIndex() : _treePanel.transform.parent.childCount - 1);
         var panelRt = (RectTransform)_treePanel.transform;
         panelRt.anchorMin = Vector2.zero; panelRt.anchorMax = Vector2.one;
         panelRt.offsetMin = new Vector2(60f, 120f); panelRt.offsetMax = new Vector2(-60f, -120f);
@@ -218,16 +219,15 @@ public class GameUI : MonoBehaviour
         _treeText = listGo.AddComponent<TMPro.TextMeshProUGUI>();
         _treeText.fontSize = 24; _treeText.alignment = TMPro.TextAlignmentOptions.TopLeft;
         _treeText.raycastTarget = false;
-        _treeText.enableWordWrapping = true;
-
-        _treeBtn.onClick.AddListener(ToggleTree);
+        _treeText.textWrappingMode = TMPro.TextWrappingModes.Normal;
     }
 
-    private void ToggleTree()
+    private void ToggleTree() => SetTreeVisible(_treePanel != null && _treePanel.GetComponent<CanvasGroup>().alpha < 0.5f);
+
+    private void SetTreeVisible(bool show)
     {
         if (_treePanel == null) return;
         var cg = _treePanel.GetComponent<CanvasGroup>();
-        bool show = cg.alpha < 0.5f;
         if (show) FillUnlockTree();
         cg.alpha = show ? 1f : 0f;
         cg.blocksRaycasts = show;
@@ -465,8 +465,6 @@ public class GameUI : MonoBehaviour
 
     private void ApplyTypography()
     {
-        Typography.Apply(title1, TypeRole.Title);
-        Typography.Apply(title2, TypeRole.Title);
         Typography.Apply(startBest, TypeRole.Secondary);
         Typography.Apply(ctaText, TypeRole.Cta);
         Typography.Apply(deathScore, TypeRole.DeathScore);
@@ -519,16 +517,11 @@ public class GameUI : MonoBehaviour
         var pilot = PilotProgressManager.Instance;
         if (pilot == null) return;
 
-        if (pilotLevelText != null)
-        {
-            // Фолбэк — сразу на русском (поздняя загрузка локали не мигает английским),
-            // и через Bind: RefreshPilotBlock вызывается из Init ДО готовности таблицы,
-            // одноразовый Get успевал вернуть null и текст оставался фолбэком до Home.
-            pilotLevelText.text = $"УРОВЕНЬ ПИЛОТА {pilot.PilotLevel}";
-            L10n.Bind(pilotLevelText, "pilot_level", pilot.PilotLevel);
-            pilotLevelText.color = Palette.XpBar;
-        }
-        UiProgressBar.Set(Rt(xpBarFill), pilot.ProgressToNextLevel());
+        // ТЗ v1.10: карточка уровня — префаб LevelCard.prefab. Подпись «УРОВЕНЬ ПИЛОТА»
+        // переводимая и статична (LocalizedTextUI, ключ pilot_level_label), число уровня
+        // и бар живут в LevelCardUI (тот же UiProgressBar, но с анкорной заливкой бара).
+        if (levelCard != null) levelCard.Refresh();
+        else UiProgressBar.Set(Rt(xpBarFill), pilot.ProgressToNextLevel());
 
         // Кнопка стартового щита (§10.1)
         var gmCfg = GameManager.Instance != null ? GameManager.Instance.Config : null;
@@ -650,7 +643,7 @@ public class GameUI : MonoBehaviour
         SetVisible(hudRoot, false);
         if (pauseBtn != null) pauseBtn.SetActive(false);
         // Элементы — в позиции покоя
-        ResetRest(title1); ResetRest(title2); ResetRest(startBest);
+        ResetRest(startBest);
         ResetRest(logoImage);
         ResetRest(deathScore); ResetRest(deathBest);
         // Фикс плейтеста: XP/уровень пилота перечитываются при каждом показе меню
@@ -659,83 +652,97 @@ public class GameUI : MonoBehaviour
         StartCtaPulse();
     }
 
-    private static void ResetRest(Object c)
+    private void ResetRest(Object c)
     {
         var rt = Rt(c);
-        if (rt != null) rt.anchoredPosition = RestPos(rt);
-    }
-
-    // Позиция покоя: SlideFade всегда возвращает элемент на место, здесь страховка.
-    private static Vector2 RestPos(RectTransform rt)
-    {
-        // Позиции заданы сценой; SlideFade хранит rest на входе. После выхода
-        // элемент уже на rest — просто не трогаем, если корутины не в полёте.
-        return rt.anchoredPosition;
+        if (rt == null) return;
+        // Элементы стартовой группы — на rest текущего кадра (после ApplyAdaptiveStartLayout).
+        for (int i = 0; i < _restEntries.Count; i++)
+            if (_restEntries[i].rt == rt) { rt.anchoredPosition = _restEntries[i].restPos; return; }
+        // Остальные (Death-экран) позиционирует сцена — не трогаем.
     }
 
     // ——— Адаптивный лэйаут стартового экрана (любое соотношение сторон) ———
 
     /// <summary>
-    /// Адаптивный лэйаут стартового экрана. Элементы программно привязываются к
-    /// сторонам экрана: лого и BEST — к верхней кромке, TAP TO PLAY — к нижней.
-    /// Якоря и pivot выставляются кодом, поэтому раскладка не зависит от якорей
-    /// сцены и не «уезжает» за кадр ни при одном соотношении сторон
-    /// (CanvasScaler.Expand меняет высоту канваса на узких/альбомных экранах).
-    /// Для низких кадров (h < 1500) применяется компактный пресет.
-    /// Вызывается при Init, перед каждым каскадом и при смене разрешения (Update).
+    /// Авторская раскладка (сцена/префаб) — ИСТОЧНИК ИСТИНЫ: она кэшируется один раз и
+    /// затем масштабируется ЦЕЛИКОМ одним коэффициентом k = h/1920 (референс CanvasScaler).
+    /// На 1080×1920 k = 1 → кадр пиксель-в-пиксель авторский; на 1080×2340 / 2400×1080
+    /// группа пропорционально растёт/сжимается и остаётся в кадре.
+    /// Прежние по-элементные формулы (gapTop = h*0.11, «logoH + 50f», AnchorTop/Bottom)
+    /// переставляли только лого/BEST/CTA и ломали авторские позиции: лого −178.6 → −211,
+    /// BEST 438 → 421, а карточка, ряд кнопок и щит вообще не двигались.
+    /// Панель стартового экрана растянута на кадр (якоря 0..1) — отсчёт «от кромки» верен
+    /// на любом аспекте. Вызывается при Init, перед каждым каскадом и при смене разрешения.
     /// </summary>
-    private void ApplyAdaptiveStartLayout()
+    private void ApplyAdaptiveStartLayout(bool force = false)
     {
         if (_canvasRt == null) return;
         float h = _canvasRt.rect.height;
-        if (h <= 0f || Mathf.Approximately(h, _lastLayoutH)) return;
+        if (h <= 0f) return;
+        if (!force && Mathf.Approximately(h, _lastLayoutH)) return;
+        CaptureRestLayout();
         _lastLayoutH = h;
 
-        bool compact = h < 1500f;
-        float logoW = compact ? 560f : 700f;
-        float cw = _canvasRt.rect.width;
-        if (cw > 0f) logoW = Mathf.Min(logoW, cw * 0.85f); // не шире 85% ширины кадра
-        float logoAspect = 237f / 587f;                    // Assets/Logo.png (587×237)
-        float logoH = logoW * logoAspect;
-        float gapTop = compact ? 150f : h * 0.11f;         // отступ лого от верхней кромки
-        float gapBottom = compact ? 150f : h * 0.22f;      // отступ CTA от нижней кромки
-
-        if (logoImage != null)
+        float k = h / RefHeight;
+        for (int i = 0; i < _restEntries.Count; i++)
         {
-            var rt = logoImage.rectTransform;
-            AnchorTop(rt);
-            rt.sizeDelta = new Vector2(logoW, logoH);
-            rt.anchoredPosition = new Vector2(0f, -gapTop);
-        }
-        if (startBest != null)
-        {
-            var rt = startBest.rectTransform;
-            AnchorTop(rt);
-            // BEST — под логотипом (позиция покоя для слайда SlideBest)
-            rt.anchoredPosition = new Vector2(0f, -(gapTop + logoH + 50f));
-        }
-        if (ctaText != null)
-        {
-            var rt = ctaText.rectTransform;
-            AnchorBottom(rt);
-            rt.anchoredPosition = new Vector2(0f, gapBottom);
+            var e = _restEntries[i];
+            if (e.rt == null) continue;
+            e.restPos = new Vector2(e.basePos.x * k, e.basePos.y * k);
+            e.rt.anchoredPosition = e.restPos;
+            // Растянутая по оси нода (ряд кнопок: anchors 0..1) меряется от родителя,
+            // который уже масштабируется канвасом — её sizeDelta по этой оси не трогаем.
+            bool stretchX = !Mathf.Approximately(e.rt.anchorMin.x, e.rt.anchorMax.x);
+            bool stretchY = !Mathf.Approximately(e.rt.anchorMin.y, e.rt.anchorMax.y);
+            e.rt.sizeDelta = new Vector2(stretchX ? e.baseSize.x : e.baseSize.x * k,
+                                         stretchY ? e.baseSize.y : e.baseSize.y * k);
+            _restEntries[i] = e;
         }
     }
 
-    /// <summary>Верхняя привязка: anchor (0.5,1), pivot (0.5,1); Y отсчитывается от верхней кромки вниз.</summary>
-    private static void AnchorTop(RectTransform rt)
+    /// <summary>Кэш авторской раскладки стартовой группы (один раз, до первой правки позиций).</summary>
+    private void CaptureRestLayout()
     {
-        rt.anchorMin = new Vector2(0.5f, 1f);
-        rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
+        if (_restCaptured) return;
+        _restCaptured = true;
+        AddRest(Rt(logoImage));
+        AddRest(Rt(startBest));
+        AddRest(Rt(startBestValue));
+        AddRest(Rt(levelCard));
+        AddRest(menuButtonsRow);
+        AddRest(Rt(startShieldBtn));
+        AddRest(Rt(ctaText));
     }
 
-    /// <summary>Нижняя привязка: anchor (0.5,0), pivot (0.5,0); Y отсчитывается от нижней кромки вверх.</summary>
-    private static void AnchorBottom(RectTransform rt)
+    private void AddRest(RectTransform rt)
     {
-        rt.anchorMin = new Vector2(0.5f, 0f);
-        rt.anchorMax = new Vector2(0.5f, 0f);
-        rt.pivot = new Vector2(0.5f, 0f);
+        if (rt == null) return;
+        _restEntries.Add(new RestEntry { rt = rt, basePos = rt.anchoredPosition, baseSize = rt.sizeDelta });
+    }
+
+    /// <summary>Снимок авторской раскладки для тестов/отладки: «имя = pos|size».</summary>
+    public string DumpRestLayout()
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < _restEntries.Count; i++)
+        {
+            var e = _restEntries[i];
+            if (e.rt == null) continue;
+            sb.Append(e.rt.name).Append(" base=").Append(e.basePos).Append(" size=").Append(e.baseSize)
+              .Append(" rest=").Append(e.restPos).Append(" now=").Append(e.rt.anchoredPosition).Append(" | ");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Вернуть все элементы стартовой группы на rest-позицию текущего кадра.</summary>
+    private void ResetRestAll()
+    {
+        for (int i = 0; i < _restEntries.Count; i++)
+        {
+            var e = _restEntries[i];
+            if (e.rt != null) e.rt.anchoredPosition = e.restPos;
+        }
     }
 
 
@@ -747,22 +754,29 @@ public class GameUI : MonoBehaviour
 
     // ——— §4.1 Старт (тап по CTA): UI-часть (камера — в GameManager/CameraDirector) ———
 
-    /// <summary>Вектора ухода ВВЕРХ за экран (отрицательный Y-сдвиг = вверх в anchored-координатах).</summary>
+    /// <summary>Вектора ухода ВВЕРХ за экран. UiAnim.SlideFade считает цель ухода как
+    /// rest − offset, поэтому отрицательный Y-сдвиг = уход вверх в anchored-координатах.</summary>
     private static readonly Vector2 ExitUpTitle = new Vector2(0f, -480f);
     private static readonly Vector2 ExitUpBest = new Vector2(0f, -420f);
+    private static readonly Vector2 ExitUpCard = new Vector2(0f, -300f);
+    /// <summary>Нижний ряд кнопок уходит ВНИЗ за экран (положительный Y → rest + (0,−300)).
+    /// Раньше ряд уезжал вверх вместе с карточкой — будучи самым нижним элементом меню.</summary>
+    private static readonly Vector2 ExitDownRow = new Vector2(0f, 300f);
 
     /// <summary>
     /// Старт (решение владельца): UI уходит плавно и РАЗНОНАПРАВЛЕННО —
-    /// заголовок ASTRO DRIFT и BEST улетают ВВЕРХ за экран (slide-out, EaseInQuick),
-    /// «TAP TO PLAY» — чистый fade-out. Панель НЕ гасится мгновенно (резкий уход),
-    /// но сразу перестаёт ловить raycast (повторный BeginRun), а после завершения
-    /// анимаций полностью скрывается.
+    /// логотип и рекорд улетают ВВЕРХ за экран (slide-out, EaseInQuick), «TAP TO PLAY» —
+    /// чистый fade-out. Панель НЕ гасится мгновенно (резкий уход), но сразу перестаёт
+    /// ловить raycast (повторный BeginRun), а после завершения анимаций скрывается целиком.
+    /// Каскад 70 мс: лого → рекорд (подпись+число) → карточка уровня + ряд кнопок → щит.
+    /// Раньше уходили только лого и BEST — карточка, ряд кнопок и щит оставались висеть.
     /// </summary>
     public void PlayStartToGame()
     {
         _screen = Screen.Hud;
         StopCtaPulse();
         StopTransitions();
+        SetTreeVisible(false); // панель дерева не должна всплыть при возврате в меню
         // Фикс ux4-3 (сохранён): панель сразу НЕ интерактивна — её полноэкранное
         // невидимое Image больше не ловит тапы; альфа остаётся 1 — элементы уходят плавно.
         var startCg = Cg(startPanel);
@@ -773,17 +787,40 @@ public class GameUI : MonoBehaviour
         }
         SetVisible(hudRoot, false);
         // CTA: чистый fade-out 0.25 s EaseInQuick, 0 мс (без слайда — решение владельца)
-        _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
-        // Заголовок ASTRO DRIFT: улетает вверх за экран, 0.30 s EaseInQuick, каскад 70 мс
-        // (текстовые заголовки заменены картинкой-логотипом — летит первым в каскаде)
-        if (logoImage != null)
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(logoImage), logoImage.rectTransform, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1 != null ? title1.rectTransform : null, ExitUpTitle, false, 0.30f, 0f, UiAnim.EaseInQuick)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2 != null ? title2.rectTransform : null, ExitUpTitle, false, 0.30f, 0.07f, UiAnim.EaseInQuick)));
-        // BEST: вверх следом, 0.30 s, 140 мс
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(startBest), startBest.rectTransform, ExitUpBest, false, 0.30f, 0.14f, UiAnim.EaseInQuick)));
+        if (ctaText != null)
+            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+        // Логотип ASTRO DRIFT: улетает вверх за экран, 0.30 s, 0 мс
+        SlideOut(logoImage, ExitUpTitle, 0.30f, 0f);
+        // Рекорд: подпись и число — вместе, 0.30 s, 70 мс
+        SlideOut(startBest, ExitUpBest, 0.30f, 0.07f);
+        SlideOut(startBestValue, ExitUpBest, 0.30f, 0.07f);
+        // Карточка уровня + ряд кнопок + щит, 0.30 s, 140 мс.
+        // Ряд кнопок — единственный, кто уходит ВНИЗ (он и стоит внизу): карточка и щит — вверх.
+        SlideOut(levelCard, ExitUpCard, 0.30f, 0.14f);
+        SlideOut(menuButtonsRow, ExitDownRow, 0.30f, 0.14f);
+        // Щит анимируем только когда он реально показан (гейт уровня), иначе
+        // SlideFade вернул бы его видимым на выходе из меню.
+        if (IsShieldVisible) SlideOut(startShieldBtn, ExitUpCard, 0.30f, 0.14f);
         // Страховка: после завершения ухода панель скрыта целиком (alpha=0)
-        _transitions.Add(StartCoroutine(HideStartPanelAfter(0.45f)));
+        _transitions.Add(StartCoroutine(HideStartPanelAfter(0.55f)));
+    }
+
+    /// <summary>Уход элемента стартовой группы (SlideFade out) в общий список переходов.</summary>
+    private void SlideOut(Object c, Vector2 offset, float dur, float delay)
+    {
+        var rt = Rt(c);
+        if (rt == null) return;
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(c), rt, offset, false, dur, delay, UiAnim.EaseInQuick)));
+    }
+
+    /// <summary>Щит меню сейчас виден (гейт уровня 8 выполнен — решает RefreshPilotBlock).</summary>
+    private bool IsShieldVisible
+    {
+        get
+        {
+            var cg = startShieldBtn != null ? Cg(startShieldBtn) : null;
+            return cg != null && cg.alpha > 0.5f;
+        }
     }
 
     private IEnumerator HideStartPanelAfter(float seconds)
@@ -1000,30 +1037,39 @@ public class GameUI : MonoBehaviour
         }
     }
 
-    /// <summary>Каскад стартового UI: заголовок 150 мс → Best 220 мс → CTA 300 мс, по 0.35 s EaseOutSoft.</summary>
+    /// <summary>
+    /// Каскад стартового UI (возврат в меню): лого 150 мс → рекорд (подпись + число) 220 мс →
+    /// карточка уровня + ряд кнопок 290 мс → щит + CTA 360 мс, по 0.35 s EaseOutSoft —
+    /// ровно те же элементы и в том же порядке, что и уход в PlayStartToGame.
+    /// Раньше возвращались только лого/BEST/CTA: карточка, ряд кнопок и щит оставались
+    /// «уже пришедшими», и меню после старта выглядело иначе, чем до него.
+    /// </summary>
     public void ShowStartCascade()
     {
         _screen = Screen.Start;
         StopTransitions();
-        ApplyAdaptiveStartLayout(); // rest-позиции под текущий кадр ДО старта каскада
+        ApplyAdaptiveStartLayout(force: true); // rest-позиции под текущий кадр ДО старта каскада
         SetVisible(startPanel, true);
         var startCg = Cg(startPanel);
         startCg.alpha = 1f;
         startCg.blocksRaycasts = true;
+        SetTreeVisible(false); // панель «Дерево» всегда закрыта при входе в меню
         if (pauseBtn != null) pauseBtn.SetActive(false);
-        foreach (var t in new[] { title1, title2, startBest, ctaText }) SetVisible(t, false);
-        // Фикс плейтеста: перечитываем XP/уровень пилота при возврате в меню (Home)
+        // Фикс плейтеста: перечитываем XP/уровень пилота при возврате в меню (Home).
+        // ВАЖНО: до каскада — RefreshPilotBlock решает, виден ли щит; иначе SlideFade
+        // показал бы щит всегда, даже когда гейт уровня не выполнен.
         RefreshPilotBlock();
+        ResetRestAll(); // страховка от прерванных на середине уходов (StopTransitions)
 
-        if (logoImage != null)
-        {
-            SetVisible(logoImage, false);
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(logoImage), logoImage.rectTransform, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
-        }
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title1), title1 != null ? title1.rectTransform : null, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(title2), title2 != null ? title2.rectTransform : null, SlideTitle, true, 0.35f, 0.15f, UiAnim.EaseOutSoft)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(startBest), startBest.rectTransform, SlideBest, true, 0.35f, 0.22f, UiAnim.EaseOutSoft)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(ctaText), ctaText.rectTransform, SlideCta, true, 0.35f, 0.30f, UiAnim.EaseOutSoft)));
+        SlideInEl(Rt(logoImage), SlideTitle, 0.35f, 0.15f);
+        SlideInEl(Rt(startBest), SlideBest, 0.35f, 0.22f);
+        SlideInEl(Rt(startBestValue), SlideBest, 0.35f, 0.22f);
+        SlideInEl(Rt(levelCard), SlideButton, 0.35f, 0.29f);
+        // Ряд кнопок возвращается ОТРАЖЕНИЕМ ухода: снизу вверх (SlideFade: from = rest − offset).
+        // Так он приходит ровно с той стороны, куда ушёл, и садится точно на rest.
+        SlideInEl(menuButtonsRow, ExitDownRow, 0.35f, 0.29f);
+        if (IsShieldVisible) SlideInEl(Rt(startShieldBtn), SlideButton, 0.35f, 0.36f);
+        SlideInEl(Rt(ctaText), SlideCta, 0.35f, 0.36f);
         StartCtaPulse();
     }
 
@@ -1101,7 +1147,9 @@ public class GameUI : MonoBehaviour
             if (perkBarShow) UiProgressBar.Set(Rt(perkProgressBarFill), perks.PerkProgress(score));
         }
 
-        if (startBest != null) L10n.Bind(startBest, "best", Format(_score.Best));
+        // Число рекорда — отдельная нода от подписи. Ключ best («РЕКОРД {0}») остался
+        // за Death-экраном: на подписи меню он перезаписывал бы обе строки.
+        if (startBestValue != null) L10n.Bind(startBestValue, "best_value", Format(_score.Best));
     }
 
     private void PulseCombo()

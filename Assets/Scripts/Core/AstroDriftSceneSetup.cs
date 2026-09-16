@@ -21,6 +21,9 @@ using UnityEngine.UI;
 /// </summary>
 public static class AstroDriftSceneSetup
 {
+    /// <summary>ТЗ v1.10: папка префабов меню (MenuLogo (child StartPanel), LevelCard, MenuButton*, StartPanel).</summary>
+    private const string MenuPrefabFolder = "Assets/Prefabs/Menu";
+
     [MenuItem("AstroDrift/Setup Scene UI")]
     public static void SetupSceneUI()
     {
@@ -68,18 +71,36 @@ public static class AstroDriftSceneSetup
 
         // ——— HUD: прогресс до следующего перка (GDD §15.3) ———
         // HUD НЕ проходит ClearChildren (геймплейный) → только find-or-create, иначе дубли при повторном прогоне.
-        var perkBarBgTr = hudGo.transform.Find("PerkProgressBarBg");
-        if (perkBarBgTr == null)
+        // РЕГРЕССИЯ, которую чиним: раньше здесь создавался второй, legacy-бар
+        // Hud/PerkProgressBarBg на y = −172, а канонический бар живёт в группе Hud/Score.
+        // В сцене оказывались ДВА бара перка, и GameUI.perkProgressBarFill указывал на мёртвый.
+        // Нода удаляется из сцены и БОЛЬШЕ НЕ СОЗДАЁТСЯ здесь — иначе вернулась бы на следующем прогоне.
+        var legacyPerkBar = hudGo.transform.Find("PerkProgressBarBg");
+        if (legacyPerkBar != null)
+        {
+            Object.DestroyImmediate(legacyPerkBar.gameObject);
+            log.Append("legacy Hud/PerkProgressBarBg удалён; ");
+        }
+
+        var perkBarBgGo = FindInHierarchy(hudGo.transform, "PerkProgressBarBg");
+        if (perkBarBgGo == null)
         {
             var perkBarBg = NewPanel(hudGo.transform, "PerkProgressBarBg", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -172f), new Vector2(360f, 8f));
             perkBarBg.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
-            perkBarBgTr = perkBarBg.transform;
+            perkBarBgGo = perkBarBg;
         }
-        var perkFillImg = perkBarBgTr.Find("PerkProgressBarFill")?.GetComponent<Image>();
-        if (perkFillImg == null) perkFillImg = MakeFill(perkBarBgTr, "PerkProgressBarFill", Palette.XpBar);
+        // Фон бара перка — только визуал: тапы должен ловить Btn_TapToPlay под ним.
+        perkBarBgGo.GetComponent<Image>().raycastTarget = false;
+        var perkFillImg = FindInHierarchy(perkBarBgGo.transform, "PerkProgressBarFill")?.GetComponent<Image>();
+        if (perkFillImg == null) perkFillImg = MakeFill(perkBarBgGo.transform, "PerkProgressBarFill", Palette.XpBar);
+        perkFillImg.raycastTarget = false; // заливка тоже не ловит raycast
 
-        var scoreT = hudGo.transform.Find("ScoreText")?.GetComponent<TextMeshProUGUI>();
-        var comboChipT = hudGo.transform.Find("ComboChip")?.GetComponent<TextMeshProUGUI>();
+        // Счёт и чип комбо лежат под Hud/Score (VerticalLayoutGroup), а не в корне HUD:
+        // transform.Find("ScoreText") от корня их НЕ находит — счёт молча оставался нулём.
+        var scoreT = FindInHierarchy(hudGo.transform, "ScoreText")?.GetComponent<TextMeshProUGUI>();
+        var comboChipT = FindInHierarchy(hudGo.transform, "ComboChip")?.GetComponent<TextMeshProUGUI>();
+        if (scoreT == null) Debug.LogError("AstroDrift SceneSetup: не найден HUD-счёт (Hud/Score/ScoreText) — scoreText останется пустым.");
+        if (perkFillImg == null) Debug.LogError("AstroDrift SceneSetup: не найдена заливка бара перка (PerkProgressBarFill).");
 
         var pauseBtnGo = hudGo.transform.Find("Btn_Pause")?.gameObject;
         if (pauseBtnGo == null)
@@ -92,55 +113,191 @@ public static class AstroDriftSceneSetup
             ptxt.rectTransform.sizeDelta = new Vector2(60, 60);
         }
 
-        // ——— StartPanel (§2: макет стартового экрана) ———
+        // ——— StartPanel (ТЗ v1.10) ———
+        // Панель = связанный инстанс StartPanel.prefab: меню правится в префабе инспектором.
+        // Утилита НЕ пересобирает содержимое по кускам (иначе повторный прогон воскрешал
+        // текстовый логотип Title1/Title2 и сносил префаб-инстанс).
+        var startPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/StartPanel.prefab");
         var startGo = GameObject.Find("StartPanel");
-        if (startGo == null) startGo = NewPanel(canvas.transform, "StartPanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
-        ClearChildren(startGo.transform);
+        if (startPrefab == null)
+        {
+            Debug.LogError("AstroDrift SceneSetup: не найден " + MenuPrefabFolder + "/StartPanel.prefab — меню не собрано.");
+            log.Append("StartPanel.prefab MISSING; ");
+        }
+        else if (startGo == null || PrefabUtility.GetPrefabInstanceHandle(startGo) == null)
+        {
+            if (startGo != null) Object.DestroyImmediate(startGo); // распакованная/старая панель — заменяем инстансом
+            startGo = (GameObject)PrefabUtility.InstantiatePrefab(startPrefab, canvas.transform);
+            startGo.name = "StartPanel";
+            log.Append("StartPanel: инстанс префаба создан; ");
+        }
+        else
+        {
+            log.Append("StartPanel: инстанс уже есть; ");
+        }
+        if (startGo == null)
+        {
+            startGo = new GameObject("StartPanel");
+            startGo.transform.SetParent(canvas.transform, false);
+            var srtFallback = startGo.AddComponent<RectTransform>();
+            srtFallback.anchorMin = srtFallback.anchorMax = srtFallback.pivot = new Vector2(0.5f, 0.5f);
+            srtFallback.sizeDelta = new Vector2(1080, 1920);
+        }
 
-        // Заголовок: зона 0.14–0.26 → центры строк на 0.165/0.245 высоты (y = +640/+510 от центра, 1920)
-        var t1 = NewText(startGo.transform, "Title1", "ASTRO", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 640), 96, scoreTextCol, TextAlignmentOptions.Center);
-        var t2 = NewText(startGo.transform, "Title2", "DRIFT", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 510), 96, scoreTextCol, TextAlignmentOptions.Center);
-        // Best: под заголовком, центр ~0.30 высоты (зазор ≥ 80 px до носа корабля — §2)
-        var bestT = NewText(startGo.transform, "StartBest", "BEST 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 380), 34, secondaryCol, TextAlignmentOptions.Center);
+        // Логотип-картинка (ТЗ v1.10): спрайт New UI/Logo.png. Текстовых Title1/Title2 больше нет.
+        var logoGo = FindInHierarchy(startGo.transform, "MenuLogo");
+        var logoImg = logoGo != null ? logoGo.GetComponent<Image>() : null;
+        // Best: под заголовком, центр ~0.30 высоты (зазор ≥ 80 px до носа корабля — §2).
+        // Рекорд меню разбит на ДВЕ ноды: подпись (ключ best_label) + число (best_value).
+        // find-or-create: ноды уже есть в StartPanel.prefab — вторые создавать нельзя.
+        var bestT = FindInHierarchy(startGo.transform, "StartBest")?.GetComponent<TextMeshProUGUI>();
+        if (bestT == null)
+            bestT = NewText(startGo.transform, "StartBest", "РЕКОРД", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 438), 34, secondaryCol, TextAlignmentOptions.Center);
+
+        // Число рекорда: старое имя «StartBest (1)» — случайный дубль, суффикс «(1)»
+        // делал нод неразрешимым FindInHierarchy (число никто не обновлял). Переименовываем.
+        var bestValueGo = FindInHierarchy(startGo.transform, "StartBestValue")
+                          ?? FindInHierarchy(startGo.transform, "StartBest (1)");
+        if (bestValueGo != null) bestValueGo.name = "StartBestValue";
+        var bestValueT = bestValueGo != null ? bestValueGo.GetComponent<TextMeshProUGUI>() : null;
+        if (bestValueT == null)
+            bestValueT = NewText(startGo.transform, "StartBestValue", "0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 378f), 34, secondaryCol, TextAlignmentOptions.Center);
+        // Обе ноды — не интерактивные: тап обязан доходить до полноэкранной зоны Btn_TapToPlay.
+        bestT.raycastTarget = false;
+        bestValueT.raycastTarget = false;
 
         // CTA: зона 0.72–0.82 → центр 0.77 высоты (y = −520 от центра). Только текст (пульс §3).
         // ux4-5: кликабельная зона — весь экран: тап в любой точке стартует игру.
         // Невидимый Image под текстами (первый ребёнок → нижний порядок raycast).
         // Запас ±300/±300 px за края панели — покрытие при нестандартных аспектах
         // (CanvasScaler match 0.5 в dev-окнах растягивает Canvas выше панели).
-        var ctaGo = NewPanel(startGo.transform, "Btn_TapToPlay", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1680, 2520));
-        ctaGo.GetComponent<Image>().color = new Color(0, 0, 0, 0); // невидимая кликабельная зона
-        ctaGo.transform.SetSiblingIndex(0);
-        var tapBtn = ctaGo.AddComponent<Button>();
-        tapBtn.targetGraphic = ctaGo.GetComponent<Image>();
+        var ctaGo = FindInHierarchy(startGo.transform, "Btn_TapToPlay");
+        if (ctaGo == null)
+        {
+            ctaGo = NewPanel(startGo.transform, "Btn_TapToPlay", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1680, 2520));
+            ctaGo.GetComponent<Image>().color = new Color(0, 0, 0, 0); // невидимая кликабельная зона
+            var tapBtnNew = ctaGo.AddComponent<Button>();
+            tapBtnNew.targetGraphic = ctaGo.GetComponent<Image>();
+        }
+        ctaGo.transform.SetSiblingIndex(0); // нижний порядок raycast — кнопки меню перехватывают тап раньше
+        var tapBtn = ctaGo.GetComponent<Button>();
         // ux4-6: линия-индикатор с бегущим золотым сегментом удалена (второе золото в кадре);
         // остаётся текст CTA в исходной позиции с пульсом прозрачности.
-        var ctaT = NewText(startGo.transform, "CtaText", "TAP TO PLAY", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -480), 44, scoreTextCol, TextAlignmentOptions.Center);
-        ctaT.rectTransform.sizeDelta = new Vector2(600, 80);
-        ctaT.transform.SetAsLastSibling();
+        var ctaT = FindInHierarchy(startGo.transform, "CtaText")?.GetComponent<TextMeshProUGUI>();
+        if (ctaT == null)
+        {
+            ctaT = NewText(startGo.transform, "CtaText", "TAP TO PLAY", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -480), 44, scoreTextCol, TextAlignmentOptions.Center);
+            ctaT.rectTransform.sizeDelta = new Vector2(600, 80);
+        }
 
-        // ——— UI v3: мета-прогрессия (GDD §11): Pilot Level + XP bar + кнопка щита ———
-        // Разместим блок ПОД Best (Best на y=380): Pilot Level y=300, XP bar y=245.
-        var pilotT = NewText(startGo.transform, "PilotLevelText", "PILOT LEVEL 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 300), 34, Palette.XpBar, TextAlignmentOptions.Center);
-        // XP bar: фон тёмный + зелёная заливка анкорами (UiProgressBar), 360×10
-        var xpBgGo = NewPanel(startGo.transform, "XpBarBg", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 245), new Vector2(360, 10));
-        xpBgGo.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
-        var xpFillImg = MakeFill(xpBgGo.transform, "XpBarFill", Palette.XpBar);
-        // Кнопка стартового щита: под CTA, discreet (текст 28 + caption 20)
-        var shieldGo = NewPanel(startGo.transform, "Btn_StartShield", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -620), new Vector2(560, 110));
-        shieldGo.GetComponent<Image>().color = new Color(0, 0, 0, 0);
-        var shieldBtn = shieldGo.AddComponent<Button>();
-        shieldBtn.targetGraphic = shieldGo.GetComponent<Image>();
-        var shieldText = NewText(shieldGo.transform, "ShieldText", "СТАРТОВЫЙ ЩИТ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 28, Palette.PickupShield, TextAlignmentOptions.Center);
-        var shieldCap = NewText(shieldGo.transform, "ShieldCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -36), 20, secondaryCol, TextAlignmentOptions.Center);
-        shieldCap.rectTransform.sizeDelta = new Vector2(560, 30);
+        // ——— UI v3 / v1.10: мета-прогрессия (GDD §11) — карточка уровня + 3 нижние кнопки + щит ———
+        // Карточка — инстанс LevelCard.prefab (610×128, ТЗ владельца). Старые PilotLevelText/
+        // XpBarBg/XpBarFill удалены: их заменили карточка и её бар 364×24 (#252C34 + Mask).
+        // В инстансе перезаписываем только раскладку (anchoredPosition/sizeDelta) — структура
+        // и содержимое остаются префабными, связь с префабом сохраняется.
+        var levelCardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/LevelCard.prefab");
+        GameObject levelCardGo = null;
+        LevelCardUI levelCardUi = null;
+        TextMeshProUGUI pilotT = null;
+        RectTransform xpFillRt = null;
+        if (levelCardPrefab != null)
+        {
+            levelCardGo = FindInHierarchy(startGo.transform, "LevelCard");
+            if (levelCardGo == null)
+                levelCardGo = (GameObject)PrefabUtility.InstantiatePrefab(levelCardPrefab, startGo.transform);
+            levelCardGo.name = "LevelCard";
+            var cardRt = levelCardGo.GetComponent<RectTransform>();
+            cardRt.anchorMin = cardRt.anchorMax = cardRt.pivot = new Vector2(0.5f, 0.5f);
+            cardRt.sizeDelta = new Vector2(610f, 128f);
+            // 210 (не 295): авторская раскладка префаба — источник истины, а GameUI
+            // масштабирует стартовую группу целиком от неё. 295 сдвигал бы карточку при каждом прогоне.
+            cardRt.anchoredPosition = new Vector2(0f, 210f); // ряд карточки — выше ряда кнопок
+            levelCardUi = levelCardGo.GetComponent<LevelCardUI>();
+            var labelTr = levelCardGo.transform.Find("LevelLabel");
+            pilotT = labelTr != null ? labelTr.GetComponent<TextMeshProUGUI>() : null;
+            var fillTr = levelCardGo.transform.Find("Bottom/ProgressRoot/Fill");
+            xpFillRt = fillTr as RectTransform;
+            log.Append("LevelCard OK; ");
+        }
+        else log.Append("LevelCard.prefab MISSING; ");
+
+        // Три нижние кнопки (префаб + варианты): фон/иконка/подпись — в префабе, клик — MenuButtonUI.
+        // Btn_TapToPlay стоит SetSiblingIndex(0), поэтому кнопки перехватывают тап раньше:
+        // тап по кнопке НЕ стартует игру, тап по пустому месту — стартует.
+        // Кнопки живут в ноде-ряду «Menu Buttons» (HorizontalLayoutGroup): только так
+        // GameUI может увести/вернуть весь ряд ОДНИМ SlideFade. Сами кнопки стоят
+        // на anchoredPosition 0,0, а раскладку им задаёт группа — двигать их по отдельности
+        // нельзя (позиции перезапишет лэйаут-группа при следующем ребилде).
+        var menuRowGo = FindInHierarchy(startGo.transform, "Menu Buttons");
+        if (menuRowGo == null && !Application.isPlaying)
+        {
+            var rowGo = new GameObject("Menu Buttons", typeof(RectTransform));
+            rowGo.transform.SetParent(startGo.transform, false);
+            var rrt = (RectTransform)rowGo.transform;
+            rrt.anchorMin = Vector2.zero;
+            rrt.anchorMax = new Vector2(1f, 0f);
+            rrt.pivot = new Vector2(0.5f, 0f);
+            rrt.anchoredPosition = new Vector2(0f, 120f);
+            rrt.sizeDelta = new Vector2(-56f, 208.26f);
+            var hlg = rowGo.AddComponent<HorizontalLayoutGroup>();
+            hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childControlWidth = false;
+            hlg.childControlHeight = false;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+            hlg.spacing = 0f;
+            menuRowGo = rowGo;
+            log.Append("Menu Buttons (ряд) создан; ");
+        }
+        if (menuRowGo != null)
+        {
+            // Миграция: кнопки могли остаться прямыми детьми StartPanel (имена — как у ассетов).
+            foreach (var n in new[] { "MenuButton_Settings", "MenuButton_Upgrade", "MenuButton_Shop" })
+            {
+                var btnGo = FindInHierarchy(startGo.transform, n);
+                if (btnGo != null && btnGo.transform.parent != menuRowGo.transform)
+                    btnGo.transform.SetParent(menuRowGo.transform, false);
+            }
+        }
+        // Шаг 300: фон кнопки — спрайт 848×512 с preserveAspect, при 232×120 реально
+        // занимает ≈199 px по ширине. Прежний шаг 186 давал наложение кнопок друг на друга.
+        var rowParent = menuRowGo != null ? menuRowGo.transform : startGo.transform;
+        PlaceMenuButton(rowParent, "Btn_MenuSettings", "MenuButton_Settings.prefab", new Vector2(-300f, 118f), log);
+        PlaceMenuButton(rowParent, "Btn_MenuUpgrade", "MenuButton_Upgrade.prefab", new Vector2(0f, 118f), log);
+        PlaceMenuButton(rowParent, "Btn_MenuShop", "MenuButton_Shop.prefab", new Vector2(300f, 118f), log);
+        var menuRowRt = menuRowGo != null ? (RectTransform)menuRowGo.transform : null;
+        // «ПРОКАЧКА» — единственный вход в панель дерева разблокировок (кнопка-заглушка
+        // «ДЕРЕВО» в углу удалена). Аналитика остаётся на MenuButtonUI этой кнопки.
+        var menuUpgradeBtn = FindInHierarchy(rowParent, "MenuButton_Upgrade")?.GetComponent<Button>();
+        if (menuUpgradeBtn == null) Debug.LogError("AstroDrift SceneSetup: не найдена кнопка «ПРОКАЧКА» (MenuButton_Upgrade) — дерево разблокировок не открыть.");
+
+        // Кнопка стартового щита: под нижним рядом, discreet (текст 28 + caption 20)
+        var shieldGo = FindInHierarchy(startGo.transform, "Btn_StartShield");
+        if (shieldGo == null)
+        {
+            shieldGo = NewPanel(startGo.transform, "Btn_StartShield", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 44), new Vector2(560, 110));
+            shieldGo.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            var shieldBtnNew = shieldGo.AddComponent<Button>();
+            shieldBtnNew.targetGraphic = shieldGo.GetComponent<Image>();
+            NewText(shieldGo.transform, "ShieldText", "СТАРТОВЫЙ ЩИТ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 28, Palette.PickupShield, TextAlignmentOptions.Center);
+            var cap = NewText(shieldGo.transform, "ShieldCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -36), 20, secondaryCol, TextAlignmentOptions.Center);
+            cap.rectTransform.sizeDelta = new Vector2(560, 30);
+        }
+        var shieldRt = shieldGo.GetComponent<RectTransform>();
+        shieldRt.anchoredPosition = new Vector2(0f, -34f); // ниже ряда кнопок (низ меню)
+        var shieldBtn = shieldGo.GetComponent<Button>();
+        var shieldText = FindInHierarchy(shieldGo.transform, "ShieldText")?.GetComponent<TextMeshProUGUI>();
+        var shieldCap = FindInHierarchy(shieldGo.transform, "ShieldCaption")?.GetComponent<TextMeshProUGUI>();
         // Кнопка скрыта по умолчанию (гейт уровня 8 решает GameUI.RefreshPilotBlock)
         EnsureCanvasGroup(shieldGo, visible: false);
         var shieldCg = shieldGo.GetComponent<CanvasGroup>();
-        var shieldTextCg = shieldText.gameObject.AddComponent<CanvasGroup>();
-        var shieldCapCg = shieldCap.gameObject.AddComponent<CanvasGroup>();
         shieldCg.alpha = 0f; shieldCg.blocksRaycasts = false;
-        shieldTextCg.alpha = 0f; shieldCapCg.alpha = 0f;
+        foreach (var t in shieldGo.GetComponentsInChildren<TextMeshProUGUI>(true))
+        {
+            var g = t.gameObject;
+            if (g.GetComponent<CanvasGroup>() == null) g.AddComponent<CanvasGroup>();
+            g.GetComponent<CanvasGroup>().alpha = 0f;
+        }
 
         // ——— DeathPanel (§3: кнопка = текст; NEW BEST — единственное золото) ———
         var deathGo = GameObject.Find("DeathPanel");
@@ -260,9 +417,11 @@ public static class AstroDriftSceneSetup
         SetRef(so, "deathPanel", deathGo, log);
         SetRef(so, "pausePanel", pauseGo, log);
         SetRef(so, "pauseBtn", pauseBtnGo, log);
-        SetRef(so, "title1", t1, log);
-        SetRef(so, "title2", t2, log);
+        SetRef(so, "logoImage", logoImg, log);
         SetRef(so, "startBest", bestT, log);
+        SetRef(so, "startBestValue", bestValueT, log);
+        SetRef(so, "menuButtonsRow", menuRowRt, log);
+        SetRef(so, "menuUpgradeBtn", menuUpgradeBtn, log);
         SetRef(so, "ctaText", ctaT, log);
         SetRef(so, "tapToPlayBtn", tapBtn, log);
         SetRef(so, "scoreText", scoreT, log);
@@ -279,7 +438,8 @@ public static class AstroDriftSceneSetup
         SetRef(so, "resumeBtn", resumeBtn, log);
         SetRef(so, "quitBtn", quitBtn, log);
         SetRef(so, "pilotLevelText", pilotT, log);
-        SetRef(so, "xpBarFill", xpFillImg, log);
+        SetRef(so, "levelCard", levelCardUi, log);
+        SetRef(so, "xpBarFill", xpFillRt, log);
         SetRef(so, "startShieldBtn", shieldBtn, log);
         SetRef(so, "startShieldText", shieldText, log);
         SetRef(so, "startShieldCaption", shieldCap, log);
@@ -317,6 +477,35 @@ public static class AstroDriftSceneSetup
         }
     }
 
+    /// <summary>Поиск по имени в иерархии, включая неактивные узлы (GameObject.Find их не видит).</summary>
+    private static GameObject FindInHierarchy(Transform parent, string name)
+    {
+        if (parent == null) return null;
+        var all = parent.GetComponentsInChildren<Transform>(true);
+        foreach (var t in all)
+            if (t != parent && t.name == name) return t.gameObject;
+        return null;
+    }
+
+    /// <summary>Кнопка меню = связанный инстанс варианта MenuButton (фон/иконка/подпись в префабе).
+    /// Ищем по ИМЕНИ АССЕТА (MenuButton_Settings и т.п.) И по старому имени ноды (Btn_MenuSettings):
+    /// кнопки в сцене уже названы по ассету, и find-or-create по одному имени плодил бы дубли.</summary>
+    private static void PlaceMenuButton(Transform parent, string goName, string prefabFile, Vector2 pos, System.Text.StringBuilder log)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/" + prefabFile);
+        if (prefab == null) { log.Append(prefabFile + " MISSING; "); return; }
+
+        string assetName = prefabFile.EndsWith(".prefab")
+            ? prefabFile.Substring(0, prefabFile.Length - ".prefab".Length) : prefabFile;
+        var go = FindInHierarchy(parent, assetName) ?? FindInHierarchy(parent, goName);
+        if (go == null) go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        // В ряду «Menu Buttons» раскладку задаёт HorizontalLayoutGroup — позицию не трогаем.
+        if (parent.GetComponent<HorizontalLayoutGroup>() == null) rt.anchoredPosition = pos;
+        log.Append(assetName + " OK; ");
+    }
+
     /// <summary>Полная очистка детей (обязательно с конца — иначе при удалении в foreach
     /// индексы сдвигаются и остаются дубли-«призраки»).</summary>
     private static void ClearChildren(Transform t)
@@ -340,8 +529,15 @@ public static class AstroDriftSceneSetup
     /// <summary>Панель всегда активна; видимость — CanvasGroup (никаких SetActive-миганий §8).</summary>
     private static void EnsureCanvasGroup(GameObject go, bool visible)
     {
+        if (go == null) return;
         var cg = go.GetComponent<CanvasGroup>();
-        if (cg == null) cg = go.AddComponent<CanvasGroup>();
+        if (cg == null)
+        {
+            // В Play-режиме (сцена уже проинициализирована) компоненты не добавляем:
+            // утилита рассчитана на Edit-режим, а префабы несут CanvasGroup заранее.
+            if (Application.isPlaying) return;
+            cg = go.AddComponent<CanvasGroup>();
+        }
         cg.alpha = visible ? 1f : 0f;
         cg.blocksRaycasts = visible;
         cg.interactable = visible;
@@ -360,8 +556,15 @@ public static class AstroDriftSceneSetup
         EditorSceneManager.MarkSceneDirty(scene);
     }
 
-    /// <summary>Заливка прогресс-бара: якоря (0,0)-(1,1), sizeDelta 0, Image.Type.Simple.
-    /// Filled-тип не используется — при растянутой заливке он даёт пустой/полный бар.</summary>
+    /// <summary>Спрайт заливки/фона прогресс-бара. БЕЗ него Image.OnPopulateMesh идёт
+    /// по пути «полный квад» и игнорирует Type.Filled — бар рисуется всегда полным.</summary>
+    private const string BarSpritePath = "Assets/New UI/Generated/RoundedBar.png";
+
+    /// <summary>Заливка прогресс-бара: ОДИН механизм — Image.Type.Filled, Horizontal/Left,
+    /// якоря растянуты (0,0)-(1,1), sizeDelta 0, значение в fillAmount (UiProgressBar.Set).
+    /// Прошлый анкорный вариант (Simple + anchorMax.x = t) конфликтовал с Debug-значением
+    /// fillAmount = 0.4 в префабе: бар «врал» на любом значении.
+    /// Спрайт обязателен: с sprite = null Filled не работает вообще.</summary>
     private static Image MakeFill(Transform parent, string name, Color color)
     {
         var go = new GameObject(name);
@@ -373,7 +576,13 @@ public static class AstroDriftSceneSetup
         rt.offsetMax = Vector2.zero;
         var img = go.AddComponent<Image>();
         img.color = color;
-        img.type = Image.Type.Simple;
+        img.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BarSpritePath);
+        if (img.sprite == null) Debug.LogError("AstroDrift SceneSetup: спрайт бара не найден — " + BarSpritePath);
+        img.raycastTarget = false;
+        img.type = Image.Type.Filled;
+        img.fillMethod = Image.FillMethod.Horizontal;
+        img.fillOrigin = (int)Image.OriginHorizontal.Left;
+        img.fillAmount = 0f;
         return img;
     }
 

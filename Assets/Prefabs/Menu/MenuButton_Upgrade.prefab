@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &4480510376688440413
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 435918592940346520, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -1279575281, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+    - target: {fileID: 1324812768912679317, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Name
+      value: MenuButton_Upgrade
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5089259485384180862, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: id
+      value: upgrade
+      objectReference: {fileID: 0}
+    - target: {fileID: 7133500106259068058, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_text
+      value: "\u041F\u0420\u041E\u041A\u0410\u0427\u041A\u0410"
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7282519640493583756}
+  m_SourcePrefab: {fileID: 100100000, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+--- !u!1 &4627545373084717521 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+  m_PrefabInstance: {fileID: 4480510376688440413}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7282519640493583756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4627545373084717521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b154993d9d7484e5caaacbf280f41f01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedTextUI
+  key: menu_upgrade
+  role: 2

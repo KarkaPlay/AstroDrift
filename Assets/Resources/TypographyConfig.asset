@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17608edf9f08249839204d0f82132199, type: 3}
   m_Name: TypographyConfig
   m_EditorClassIdentifier: Assembly-CSharp::TypographyConfig
-  headingLight: {fileID: 0}
-  bodyRegular: {fileID: 0}
-  ctaSemiBold: {fileID: 0}
+  headingLight: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
+  bodyRegular: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
+  ctaSemiBold: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
   titleSize: 96
   titleTracking: 12
   secondarySize: 34

@@ -31,7 +31,7 @@ MonoBehaviour:
     labelAdvSimLabel: 0
   Metrica:
     enable: 1
-    metricaCounterID: 83958072
+    metricaCounterID: 0
     log: 1
     useYandexMetrica: 1
   RewardedAdv:
@@ -39,23 +39,23 @@ MonoBehaviour:
     labelAdvSimLabel: 0
   Storage:
     saveLocal: 1
-    saveCloud: 1
+    saveCloud: 0
     flush: 0
   Basic:
-    platform: {fileID: 11400000, guid: 99e0ce8425e07fc49a5bc1fb394998a3, type: 2}
+    platform: {fileID: 11400000, guid: c52f82c26e790204788c390fcd914f66, type: 2}
     autoApplySettings: 1
     autoPauseGame: 0
     editTimeScale: 1
     editEventSystem: 1
     autoGRA: 0
     logInEditor: 1
-    archivingBuild: 1
+    archivingBuild: 0
     autoDefineSymbols: 1
     syncInitSDK: 0
     loadSceneIfSDKLate: 0
     loadSceneIndex: 0
     initDelaySimulation: 0
-    buildNumber: 21
+    buildNumber: 22
   Simulation:
     device: 1
     language: ru

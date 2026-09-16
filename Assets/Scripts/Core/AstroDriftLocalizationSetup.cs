@@ -23,7 +23,13 @@ public static class AstroDriftLocalizationSetup
         ("reroll_caption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ЗАБЕГ", "WATCH AD · 1/RUN"),
 
         // Стартовый экран (GDD §11)
+        // Рекорд меню разбит на две ноды: подпись (best_label) и число (best_value).
+        // Ключ best («РЕКОРД {0}» / «BEST {0}») НЕ трогаем — его биндит Death-экран.
+        ("best_label", "РЕКОРД", "BEST"),
+        ("best_value", "{0}", "{0}"),
         ("pilot_level", "УРОВЕНЬ ПИЛОТА {0}", "PILOT LEVEL {0}"),
+        // v1.10: подпись карточки уровня — БЕЗ параметра (число уровня отдельным нодом)
+        ("pilot_level_label", "УРОВЕНЬ ПИЛОТА", "PILOT LEVEL"),
         ("shield_cta", "СТАРТОВЫЙ ЩИТ", "START SHIELD"),
         ("shield_caption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", "WATCH AD · 1/DAY"),
         ("shield_used_today", "УЖЕ ИСПОЛЬЗОВАНА СЕГОДНЯ", "ALREADY USED TODAY"),
@@ -70,10 +76,16 @@ public static class AstroDriftLocalizationSetup
         ("unlock_Piercing", "Перк «Пробивающие пули»", "Perk: Piercing Shots"),
         ("unlock_RapidFire", "Пикап «Ускорение огня»", "Pickup: Rapid Fire"),
 
-        // Дерево разблокировок — заглушка стартового экрана (GDD §5bis)
-        ("unlock_tree_open", "ДЕРЕВО", "TREE"),
+        // Дерево разблокировок — панель стартового экрана (GDD §5bis).
+        // Ключ unlock_tree_open удалён вместе с кнопкой-заглушкой «ДЕРЕВО»:
+        // вход в панель теперь кнопка «ПРОКАЧКА» (ключ menu_upgrade).
         ("unlock_tree_title", "РАЗБЛОКИРОВКИ ПИЛОТА", "PILOT UNLOCKS"),
         ("unlock_soon", "скоро", "soon"),
+
+        // v1.10: нижние кнопки меню (экраны вне скоупа — кнопки только нажимаются)
+        ("menu_settings", "НАСТРОЙКИ", "SETTINGS"),
+        ("menu_upgrade", "ПРОКАЧКА", "UPGRADE"),
+        ("menu_shop", "МАГАЗИН", "SHOP"),
 
         // Нереализованные в Волне 1 награды дерева (§5bis.2) — для списка уровней 0–20
         ("unlock_Skin_Ship_Diamond", "Скин корабля «Ромб»", "Ship skin: Diamond"),

@@ -227,10 +227,6 @@ MonoBehaviour:
     m_Key: unlock_RapidFire
     m_Metadata:
       m_Items: []
-  - m_Id: 1584525502046248
-    m_Key: unlock_tree_open
-    m_Metadata:
-      m_Items: []
   - m_Id: 1584525502046249
     m_Key: unlock_tree_title
     m_Metadata:
@@ -285,6 +281,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 1584525502046262
     m_Key: unlock_Loadout
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228889575424
+    m_Key: pilot_level_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158336
+    m_Key: menu_settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158337
+    m_Key: menu_upgrade
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158338
+    m_Key: menu_shop
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4273617939456000
+    m_Key: best_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4273617960427520
+    m_Key: best_value
     m_Metadata:
       m_Items: []
   m_Metadata:

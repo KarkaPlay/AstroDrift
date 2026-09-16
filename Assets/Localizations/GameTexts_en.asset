@@ -290,6 +290,30 @@ MonoBehaviour:
     m_Localized: Loadout select
     m_Metadata:
       m_Items: []
+  - m_Id: 4162228889575424
+    m_Localized: PILOT LEVEL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158336
+    m_Localized: SETTINGS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158337
+    m_Localized: UPGRADE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4162228902158338
+    m_Localized: SHOP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4273617939456000
+    m_Localized: BEST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4273617960427520
+    m_Localized: '{0}'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

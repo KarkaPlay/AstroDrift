@@ -15,7 +15,7 @@ public class ShipController : MonoBehaviour
 
     private Rigidbody2D _rb;
     private CircleCollider2D _collider;
-    private MeshRenderer _renderer;
+    private Renderer _renderer; // базовый тип: подходит и SpriteRenderer (v1.10), и MeshRenderer
     private float _angularSpeed;
     private float _speed;
     private float _targetSpeed;   // целевая скорость (DifficultyManager пишет сюда; факт — после разгона)
@@ -37,7 +37,16 @@ public class ShipController : MonoBehaviour
         Instance = this;
         _rb = GetComponent<Rigidbody2D>();
         _collider = GetComponent<CircleCollider2D>();
-        _renderer = GetComponent<MeshRenderer>();
+        // v1.10: спрайт корабля живёт на дочернем узле Visual (корень не масштабируется —
+        // иначе lossyScale увёл бы CircleCollider2D вместе с визуалом). Ищем строго Visual:
+        // GetComponentInChildren вернул бы TrailRenderer (он тоже ребёнок), и мигание
+        // неуязвимости/скрытие после смерти управляли бы следом, а не корпусом.
+        _renderer = GetComponent<Renderer>();
+        if (_renderer == null)
+        {
+            var visual = transform.Find("Visual");
+            if (visual != null) _renderer = visual.GetComponent<Renderer>();
+        }
         _rb.bodyType = RigidbodyType2D.Kinematic;
         _collider.isTrigger = true;
         _collider.radius = config != null ? config.shipRadius : 0.25f;

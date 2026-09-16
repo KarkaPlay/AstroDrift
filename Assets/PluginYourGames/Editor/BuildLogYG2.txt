@@ -1,3 +1,3 @@
-﻿Build path: /Users/sergeikarpuskin/Documents/My Small Games/AstroDrift/Builds/YandexGames
-Build number: 21
+﻿Build path: /Users/sergeikarpuskin/Documents/My Small Games/AstroDrift/Builds/1.0.3/RuStore/Android_Build.apk
+Build number: 23
 PluginYG version: 2.0092
