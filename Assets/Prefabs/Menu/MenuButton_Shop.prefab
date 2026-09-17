@@ -17,6 +17,30 @@ PrefabInstance:
       value: MenuButton_Shop
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -67,10 +91,6 @@ PrefabInstance:
     - target: {fileID: 5089259485384180862, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: id
       value: shop
-      objectReference: {fileID: 0}
-    - target: {fileID: 7133500106259068058, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
-      propertyPath: m_text
-      value: "\u041C\u0410\u0413\u0410\u0417\u0418\u041D"
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

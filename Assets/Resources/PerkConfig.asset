@@ -16,67 +16,11 @@ MonoBehaviour:
   stubScoreBonus: 500
   rerollPerRun: 1
   perks:
-  - id: 0
-    titleKey: perk_bullet_speed_title
-    descKey: perk_bullet_speed_desc
-    rarity: 0
-    maxStacks: 3
-    unlockedByDefault: 1
-    unlockPilotLevel: 0
-    valuePerStack: 0.2
-  - id: 1
-    titleKey: perk_fire_rate_title
-    descKey: perk_fire_rate_desc
-    rarity: 0
-    maxStacks: 3
-    unlockedByDefault: 1
-    unlockPilotLevel: 0
-    valuePerStack: -0.15
-  - id: 2
-    titleKey: perk_turn_speed_title
-    descKey: perk_turn_speed_desc
-    rarity: 0
-    maxStacks: 2
-    unlockedByDefault: 0
-    unlockPilotLevel: 1
-    valuePerStack: 0.25
-  - id: 4
-    titleKey: perk_combo_ext_title
-    descKey: perk_combo_ext_desc
-    rarity: 0
-    maxStacks: 2
-    unlockedByDefault: 0
-    unlockPilotLevel: 2
-    valuePerStack: 2
-  - id: 3
-    titleKey: perk_bigger_bullets_title
-    descKey: perk_bigger_bullets_desc
-    rarity: 0
-    maxStacks: 2
-    unlockedByDefault: 0
-    unlockPilotLevel: 5
-    valuePerStack: 0.5
-  - id: 5
-    titleKey: perk_score_mult_title
-    descKey: perk_score_mult_desc
-    rarity: 0
-    maxStacks: 3
-    unlockedByDefault: 0
-    unlockPilotLevel: 6
-    valuePerStack: 0.25
-  - id: 6
-    titleKey: perk_missile_jammer_title
-    descKey: perk_missile_jammer_desc
-    rarity: 0
-    maxStacks: 2
-    unlockedByDefault: 0
-    unlockPilotLevel: 9
-    valuePerStack: -0.4
-  - id: 7
-    titleKey: perk_piercing_title
-    descKey: perk_piercing_desc
-    rarity: 1
-    maxStacks: 2
-    unlockedByDefault: 0
-    unlockPilotLevel: 11
-    valuePerStack: 1
+  - {fileID: 11400000, guid: 056cf3e38fad348a49ad769c95e4105c, type: 2}
+  - {fileID: 11400000, guid: 650c7e3636c1445389c0ade426d56196, type: 2}
+  - {fileID: 11400000, guid: c100e2bd13e7443689a50a0087f701c0, type: 2}
+  - {fileID: 11400000, guid: 1fe84ff2039304f7d91aa175361ba748, type: 2}
+  - {fileID: 11400000, guid: f3ab75fd498c8409ab83e7207a69d2b2, type: 2}
+  - {fileID: 11400000, guid: 9caaa854de3984a6ab3dd855a1b278b7, type: 2}
+  - {fileID: 11400000, guid: 89fd975eebec649b58a2b2bee3a2524e, type: 2}
+  - {fileID: 11400000, guid: 923dd5a142c654d0aab92bd1b19bce58, type: 2}

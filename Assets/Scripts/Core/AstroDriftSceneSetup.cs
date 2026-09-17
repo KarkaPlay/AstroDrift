@@ -24,6 +24,9 @@ public static class AstroDriftSceneSetup
     /// <summary>ТЗ v1.10: папка префабов меню (MenuLogo (child StartPanel), LevelCard, MenuButton*, StartPanel).</summary>
     private const string MenuPrefabFolder = "Assets/Prefabs/Menu";
 
+    /// <summary>Префабы оверлея перк-левелапа (AstroDrift → Build LevelUp Prefabs).</summary>
+    private const string LevelUpPrefabFolder = "Assets/Prefabs/LevelUp";
+
     [MenuItem("AstroDrift/Setup Scene UI")]
     public static void SetupSceneUI()
     {
@@ -374,36 +377,51 @@ public static class AstroDriftSceneSetup
         var sep2Go = NewPanel(pauseGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), new Vector2(420, 2));
         sep2Go.GetComponent<Image>().color = Palette.UiLine;
 
-        // ——— PerkPanel (Волна 1, GDD §15.3): оверлей выбора перка, строится кодом ———
+        // ——— PerkPanel (GDD §15.3): инстанс LevelUpPanel.prefab, правится инспектором ———
+        var levelUpPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/LevelUpPanel.prefab");
+        if (levelUpPrefab == null)
+        {
+            Debug.LogError("AstroDrift SceneSetup: не найден " + LevelUpPrefabFolder + "/LevelUpPanel.prefab — оверлей перка не собран (AstroDrift → Build LevelUp Prefabs).");
+            log.Append("LevelUpPanel.prefab MISSING; ");
+        }
         var perkGo = GameObject.Find("PerkPanel");
-        if (perkGo == null) perkGo = NewPanel(canvas.transform, "PerkPanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
-        ClearChildren(perkGo.transform);
-        perkGo.transform.SetAsLastSibling(); // поверх всех панелей
-        perkGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // затемнение делает PerkChoiceUI (0.6)
+        bool perkIsPrefabInstance = perkGo != null && PrefabUtility.IsPartOfPrefabInstance(perkGo);
+        if (levelUpPrefab != null && !perkIsPrefabInstance)
+        {
+            if (perkGo != null) Object.DestroyImmediate(perkGo); // распакованная/старая панель — заменяем инстансом
+            perkGo = (GameObject)PrefabUtility.InstantiatePrefab(levelUpPrefab, canvas.transform);
+            perkGo.name = "PerkPanel";
+        }
+        if (perkGo != null)
+        {
+            var perkRt = perkGo.GetComponent<RectTransform>();
+            perkRt.anchorMin = perkRt.anchorMax = perkRt.pivot = new Vector2(0.5f, 0.5f);
+            perkRt.anchoredPosition = Vector2.zero;
+            perkRt.sizeDelta = new Vector2(1080, 1920);
+            perkGo.transform.SetAsLastSibling(); // поверх всех панелей
+            EnsureCanvasGroup(perkGo, visible: false);
+        }
 
-        var perkTitle = NewText(perkGo.transform, "PerkTitle", "LEVEL UP!", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 640), 64, scoreTextCol, TextAlignmentOptions.Center);
-        var perkCards = new GameObject("PerkCards");
-        perkCards.transform.SetParent(perkGo.transform, false);
-        var perkCardsRt = perkCards.AddComponent<RectTransform>();
-        perkCardsRt.anchorMin = perkCardsRt.anchorMax = perkCardsRt.pivot = new Vector2(0.5f, 0.5f);
-        perkCardsRt.anchoredPosition = Vector2.zero;
-        perkCardsRt.sizeDelta = new Vector2(1080, 400);
-        // Реролл — ниже карт, discreet (мелкий текст + невидимая зона ≥ 88 pt, §3)
-        var rerollGo = NewPanel(perkGo.transform, "Btn_Reroll", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -420), new Vector2(500, 110));
-        rerollGo.GetComponent<Image>().color = new Color(0, 0, 0, 0);
-        var rerollBtn = rerollGo.AddComponent<Button>();
-        rerollBtn.targetGraphic = rerollGo.GetComponent<Image>();
-        var rerollText = NewText(rerollGo.transform, "RerollText", "РЕРОЛЛ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 28, secondaryCol, TextAlignmentOptions.Center);
-        var rerollCap = NewText(rerollGo.transform, "RerollCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ЗАБЕГ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -40), 20, secondaryCol, TextAlignmentOptions.Center);
-        rerollCap.rectTransform.sizeDelta = new Vector2(500, 30);
+        // Компонент живёт на самой панели (её и показывает/скрывает), а не на отдельном объекте.
+        var strayUi = GameObject.Find("PerkChoiceUI");
+        if (strayUi != null && (perkGo == null || strayUi != perkGo)) Object.DestroyImmediate(strayUi);
+        var perkUi = perkGo != null ? perkGo.GetComponent<PerkChoiceUI>() : null;
+        if (perkGo != null && perkUi == null) perkUi = perkGo.AddComponent<PerkChoiceUI>();
 
-        EnsureCanvasGroup(perkGo, visible: false);
-        var perkUiGo = GameObject.Find("PerkChoiceUI");
-        if (perkUiGo == null) perkUiGo = new GameObject("PerkChoiceUI");
-        perkUiGo.transform.SetParent(canvas.transform, false);
-        var perkUi = perkUiGo.GetComponent<PerkChoiceUI>();
-        if (perkUi == null) perkUi = perkUiGo.AddComponent<PerkChoiceUI>();
-        perkUi.Init(perkGo, perkCardsRt, perkTitle, rerollBtn, rerollText.GetComponent<TextMeshProUGUI>(), rerollCap);
+        var cardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/UpgradeCard.prefab");
+        var cardNewPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/UpgradeCard_New.prefab");
+        if (cardPrefab == null || cardNewPrefab == null) log.Append("UpgradeCard*.prefab MISSING; ");
+        if (perkGo != null)
+        {
+            var cardsRt = perkGo.transform.Find("CardsRoot") as RectTransform;
+            var perkTitle = perkGo.transform.Find("LevelUpTitle")?.GetComponent<TextMeshProUGUI>();
+            var rerollGo = perkGo.transform.Find("Btn_Reroll");
+            perkUi.Init(perkGo, cardsRt, perkTitle,
+                rerollGo != null ? rerollGo.GetComponent<Button>() : null,
+                rerollGo != null ? rerollGo.Find("RerollText")?.GetComponent<TextMeshProUGUI>() : null,
+                rerollGo != null ? rerollGo.Find("RerollCaption")?.GetComponent<TextMeshProUGUI>() : null,
+                cardPrefab, cardNewPrefab);
+        }
 
         // ——— GameUI с сериализованными ссылками ———
         var uiGo = GameObject.Find("GameUI");

@@ -1,13 +1,14 @@
 #if STORE_YANDEX
 using UnityEngine;
-using UnityEngine.Localization.Settings;
 using YG;
 
 /// <summary>
 /// Регистрация сервисов Яндекс Игр — зеркало RuStoreInstaller.
 /// BeforeSceneLoad: регистрируем сервисы и объявляем асинхронную инициализацию (PlatformBoot);
-/// по готовности SDK (сейвы загружены, язык известен) — применяем локаль и MarkReady().
+/// по готовности SDK (сейвы загружены, язык известен) — MarkReady().
 /// В отличие от RuStore регистрируем и Save (облако вместо PlayerPrefs) и Lifecycle.
+/// Локаль по языку игрока НЕ трогаем: за это отвечает AstroDriftLanguageBridge
+/// (единый мост YG2 → Unity Locale для всех платформ).
 /// </summary>
 public static class YandexGamesInstaller
 {
@@ -30,20 +31,8 @@ public static class YandexGamesInstaller
     private static void OnSdkReady()
     {
         YG2.onGetSDKData -= OnSdkReady;
-        ApplyLocale(YG2.envir.language); // ⚠️ v1.1: свойства YG2.lang в YG2 v2.0092 НЕТ — язык живёт в envir
         PlatformBoot.MarkReady();
-        Debug.Log($"[Platform] Yandex Games ready. lang={YG2.envir.language}, mobile={YG2.envir.isMobile}");
-    }
-
-    /// <summary>Язык игрока из Яндекса (двухбуквенный код) → Unity Localization. Нет такой локали — английский.</summary>
-    private static void ApplyLocale(string code)
-    {
-        LocalizationSettings.InitializationOperation.Completed += _ =>
-        {
-            var locales = LocalizationSettings.AvailableLocales;
-            var locale = locales.GetLocale(code) ?? locales.GetLocale("en");
-            if (locale != null) LocalizationSettings.SelectedLocale = locale;
-        };
+        Debug.Log($"[Platform] Yandex Games ready. lang={YG2.lang}, mobile={YG2.envir.isMobile}");
     }
 }
 #endif

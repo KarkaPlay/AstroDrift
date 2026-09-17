@@ -111,7 +111,7 @@ public static class AstroDriftSetup
         };
         EditorUtility.SetDirty(pickupCfg);
 
-        // ——— PerkConfig (GDD §15) ———
+        // ——— PerkConfig (GDD §15): перки — отдельные ассеты PerkDefinition ———
         var perkCfg = AssetDatabase.LoadAssetAtPath<PerkConfig>("Assets/Resources/PerkConfig.asset");
         if (perkCfg == null)
         {
@@ -121,17 +121,7 @@ public static class AstroDriftSetup
         perkCfg.offerCount = 3;
         perkCfg.stubScoreBonus = 500;
         perkCfg.rerollPerRun = 1;
-        perkCfg.perks = new[]
-        {
-            new PerkDef { id = PerkId.BulletSpeed,     titleKey = "perk_bullet_speed_title",     descKey = "perk_bullet_speed_desc",     rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = 0.20f },
-            new PerkDef { id = PerkId.FireRate,        titleKey = "perk_fire_rate_title",        descKey = "perk_fire_rate_desc",        rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = -0.15f },
-            new PerkDef { id = PerkId.TurnSpeed,       titleKey = "perk_turn_speed_title",       descKey = "perk_turn_speed_desc",       rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 1,  valuePerStack = 0.25f },
-            new PerkDef { id = PerkId.ComboExtension,  titleKey = "perk_combo_ext_title",        descKey = "perk_combo_ext_desc",        rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 2,  valuePerStack = 2.0f },
-            new PerkDef { id = PerkId.BiggerBullets,   titleKey = "perk_bigger_bullets_title",   descKey = "perk_bigger_bullets_desc",   rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 5,  valuePerStack = 0.50f },
-            new PerkDef { id = PerkId.ScoreMultiplier, titleKey = "perk_score_mult_title",       descKey = "perk_score_mult_desc",       rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = false, unlockPilotLevel = 6,  valuePerStack = 0.25f },
-            new PerkDef { id = PerkId.MissileJammer,   titleKey = "perk_missile_jammer_title",   descKey = "perk_missile_jammer_desc",   rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 9,  valuePerStack = -0.40f },
-            new PerkDef { id = PerkId.Piercing,        titleKey = "perk_piercing_title",         descKey = "perk_piercing_desc",         rarity = Rarity.Rare,   maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 11, valuePerStack = 1f },
-        };
+        perkCfg.perks = BuildPerkAssets();
         EditorUtility.SetDirty(perkCfg);
 
         // ——— Материал ———
@@ -147,6 +137,130 @@ public static class AstroDriftSetup
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("AstroDrift: GameConfig, DifficultyConfig, Material созданы (Assets/Settings/).");
+    }
+
+    // ————————————— Перки-ассеты (GDD §15) —————————————
+
+    private const string PerkFolder = "Assets/Resources/Perks";
+    private const string LegacyPerkConfigPath = "Tools/migration_backup/PerkConfig.legacy.asset.txt";
+
+    /// <summary>Значения перков «по умолчанию» (совпадают с прежним inline-набором PerkConfig).</summary>
+    private struct PerkSeed
+    {
+        public PerkId id;
+        public string titleKey, descKey;
+        public Rarity rarity;
+        public int maxStacks, unlockPilotLevel;
+        public bool unlockedByDefault;
+        public float valuePerStack;
+    }
+
+    private static readonly PerkSeed[] PerkSeeds =
+    {
+        new PerkSeed { id = PerkId.BulletSpeed,     titleKey = "perk_bullet_speed_title",  descKey = "perk_bullet_speed_desc",  rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = 0.20f },
+        new PerkSeed { id = PerkId.FireRate,        titleKey = "perk_fire_rate_title",     descKey = "perk_fire_rate_desc",     rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = -0.15f },
+        new PerkSeed { id = PerkId.TurnSpeed,       titleKey = "perk_turn_speed_title",    descKey = "perk_turn_speed_desc",    rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 1,  valuePerStack = 0.25f },
+        new PerkSeed { id = PerkId.ComboExtension,  titleKey = "perk_combo_ext_title",     descKey = "perk_combo_ext_desc",     rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 2,  valuePerStack = 2.0f },
+        new PerkSeed { id = PerkId.BiggerBullets,   titleKey = "perk_bigger_bullets_title",descKey = "perk_bigger_bullets_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 5,  valuePerStack = 0.50f },
+        new PerkSeed { id = PerkId.ScoreMultiplier, titleKey = "perk_score_mult_title",    descKey = "perk_score_mult_desc",    rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = false, unlockPilotLevel = 6,  valuePerStack = 0.25f },
+        new PerkSeed { id = PerkId.MissileJammer,   titleKey = "perk_missile_jammer_title",descKey = "perk_missile_jammer_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 9,  valuePerStack = -0.40f },
+        new PerkSeed { id = PerkId.Piercing,        titleKey = "perk_piercing_title",      descKey = "perk_piercing_desc",      rarity = Rarity.Rare,   maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 11, valuePerStack = 1f },
+    };
+
+    /// <summary>
+    /// Создаёт/находит 8 ассетов перков в Assets/Resources/Perks/ и возвращает их в
+    /// каноническом порядке. Источник значений по приоритету:
+    ///   1) ассет уже существует — НЕ перезаписываем (ручные правки владельца сохраняются);
+    ///   2) legacy inline-записи из бэкапа Tools/migration_backup/PerkConfig.legacy.asset.txt;
+    ///   3) значения PerkSeeds (совпадают с прежним inline-набором).
+    /// Повторный прогон идемпотентен: существующие ассеты не меняются.
+    /// </summary>
+    private static PerkDefinition[] BuildPerkAssets()
+    {
+        EnsureFolder(PerkFolder);
+        var legacy = LoadLegacyPerks();
+        var result = new PerkDefinition[PerkSeeds.Length];
+        int created = 0;
+        for (int i = 0; i < PerkSeeds.Length; i++)
+        {
+            var seed = PerkSeeds[i];
+            string path = PerkFolder + "/Perk_" + seed.id + ".asset";
+            var asset = AssetDatabase.LoadAssetAtPath<PerkDefinition>(path);
+            if (asset == null)
+            {
+                asset = ScriptableObject.CreateInstance<PerkDefinition>();
+                asset.titleKey = seed.titleKey;
+                asset.descKey = seed.descKey;
+                asset.rarity = seed.rarity;
+                asset.maxStacks = seed.maxStacks;
+                asset.unlockedByDefault = seed.unlockedByDefault;
+                asset.unlockPilotLevel = seed.unlockPilotLevel;
+                asset.valuePerStack = seed.valuePerStack;
+                asset.id = seed.id;
+                // Ручные правки владельца из прежнего inline-набора важнее дефолтов
+                PerkSeed l;
+                if (legacy.TryGetValue(seed.id, out l) && !string.IsNullOrEmpty(l.titleKey))
+                {
+                    asset.titleKey = l.titleKey;
+                    asset.descKey = l.descKey;
+                    asset.rarity = l.rarity;
+                    asset.maxStacks = l.maxStacks;
+                    asset.unlockedByDefault = l.unlockedByDefault;
+                    asset.unlockPilotLevel = l.unlockPilotLevel;
+                    asset.valuePerStack = l.valuePerStack;
+                }
+                AssetDatabase.CreateAsset(asset, path);
+                created++;
+            }
+            EditorUtility.SetDirty(asset);
+            result[i] = asset;
+        }
+        AssetDatabase.SaveAssets();
+        Debug.Log("AstroDrift Perks: ассетов создано " + created + " из " + PerkSeeds.Length
+                  + " (папка " + PerkFolder + "), id перков синхронизированы с кодом.");
+        return result;
+    }
+
+    /// <summary>Inline-записи перков из бэкапа прежнего PerkConfig.asset (если файл есть).</summary>
+    private static System.Collections.Generic.Dictionary<PerkId, PerkSeed> LoadLegacyPerks()
+    {
+        var map = new System.Collections.Generic.Dictionary<PerkId, PerkSeed>();
+        string full = System.IO.Path.GetFullPath(LegacyPerkConfigPath);
+        if (!System.IO.File.Exists(full)) return map;
+
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        PerkSeed cur = default;
+        bool inEntry = false;
+        foreach (string raw in System.IO.File.ReadAllLines(full))
+        {
+            string line = raw.Trim();
+            if (line.StartsWith("- id:"))
+            {
+                if (inEntry) map[cur.id] = cur;
+                cur = default;
+                int id;
+                inEntry = int.TryParse(line.Substring(line.IndexOf(':') + 1).Trim(), out id);
+                cur.id = (PerkId)id;
+                continue;
+            }
+            if (!inEntry) continue;
+            int c = line.IndexOf(':');
+            if (c < 0) continue;
+            string key = line.Substring(0, c).Trim();
+            string val = line.Substring(c + 1).Trim().Trim('"');
+            switch (key)
+            {
+                case "titleKey": cur.titleKey = val; break;
+                case "descKey": cur.descKey = val; break;
+                case "rarity": cur.rarity = (Rarity)int.Parse(val, culture); break;
+                case "maxStacks": cur.maxStacks = int.Parse(val, culture); break;
+                case "unlockedByDefault": cur.unlockedByDefault = int.Parse(val, culture) != 0; break;
+                case "unlockPilotLevel": cur.unlockPilotLevel = int.Parse(val, culture); break;
+                case "valuePerStack": cur.valuePerStack = float.Parse(val, culture); break;
+            }
+        }
+        if (inEntry) map[cur.id] = cur;
+        return map;
     }
 
     private static void EnsureFolder(string path)

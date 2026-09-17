@@ -1252,4 +1252,15 @@ public class GameUI : MonoBehaviour
     }
 
     private static string Format(int v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+
+    private void OnEnable()
+    {
+        Typography.LanguageChanged += ApplyTypography;
+        ApplyTypography();
+    }
+
+    private void OnDisable()
+    {
+        Typography.LanguageChanged -= ApplyTypography;
+    }
 }

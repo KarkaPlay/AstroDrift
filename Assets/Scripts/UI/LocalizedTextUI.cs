@@ -18,8 +18,18 @@ public class LocalizedTextUI : MonoBehaviour
 
     private void OnEnable()
     {
-        var tmp = GetComponent<TextMeshProUGUI>();
-        Typography.ApplyFontOnly(tmp, role);
-        L10n.Bind(tmp, key);
+        Typography.LanguageChanged += ApplyFont;
+        ApplyFont();
+        L10n.Bind(GetComponent<TextMeshProUGUI>(), key);
+    }
+
+    private void OnDisable()
+    {
+        Typography.LanguageChanged -= ApplyFont;
+    }
+
+    private void ApplyFont()
+    {
+        Typography.ApplyFontOnly(GetComponent<TextMeshProUGUI>(), role);
     }
 }

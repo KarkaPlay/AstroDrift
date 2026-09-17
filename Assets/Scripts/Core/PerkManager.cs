@@ -24,10 +24,10 @@ public class PerkManager : MonoBehaviour
     private int _rerollsLeft;
 
     /// <summary>Порог пересечён, оверлей должен открыться (GameManager → GameUI).</summary>
-    public event System.Action<PerkDef[]> OnLevelUpOffer;
+    public event System.Action<PerkDefinition[]> OnLevelUpOffer;
 
     /// <summary>Перк применён по тапу игрока (звук/флоатинг-текст).</summary>
-    public event System.Action<PerkDef> OnPerkChosen;
+    public event System.Action<PerkDefinition> OnPerkChosen;
 
     public void InitFrom(PerkConfig cfg, GameConfig gcfg)
     {
@@ -115,10 +115,10 @@ public class PerkManager : MonoBehaviour
     }
 
     /// <summary>3 карты: без повторов, максимизированные не попадают, доступных < 3 — сколько есть (GDD §15.3).</summary>
-    public PerkDef[] GenerateOffers()
+    public PerkDefinition[] GenerateOffers()
     {
         if (config == null) return null;
-        var pool = new List<PerkDef>();
+        var pool = new List<PerkDefinition>();
         var perks = config.perks;
         int pilotLevel = PilotProgressManager.Instance != null ? PilotProgressManager.Instance.PilotLevel : 0;
         for (int i = 0; i < perks.Length; i++)
@@ -132,7 +132,7 @@ public class PerkManager : MonoBehaviour
         }
 
         int offerCount = Mathf.Min(config.offerCount, pool.Count);
-        var result = new PerkDef[offerCount];
+        var result = new PerkDefinition[offerCount];
         for (int i = 0; i < offerCount; i++)
         {
             int j = Random.Range(i, pool.Count);
@@ -143,7 +143,7 @@ public class PerkManager : MonoBehaviour
     }
 
     /// <summary>Выбор карты игроком: стак+1, модификаторы пересчитаны, разморозка мгновенная.</summary>
-    public void Choose(PerkDef perk)
+    public void Choose(PerkDefinition perk)
     {
         if (perk == null) return;
         _stacks.TryGetValue(perk.id, out int st);
@@ -189,7 +189,7 @@ public class PerkManager : MonoBehaviour
 #endif
 
     /// <summary>Реролл за рекламу: перегенерирует карты из ТОГО ЖЕ пула (пул не расширяется, §15.3).</summary>
-    public PerkDef[] Reroll()
+    public PerkDefinition[] Reroll()
     {
         if (_rerollsLeft <= 0) return null;
         _rerollsLeft--;

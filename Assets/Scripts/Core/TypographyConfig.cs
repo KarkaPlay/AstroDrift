@@ -2,53 +2,86 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Типографический конфиг «Menu & Transitions v2» (§3, поправка владельца).
+/// Типографический конфиг: ТОЛЬКО шрифты. Размеры и трекинг — авторские,
+/// живут в префабах/сцене (Typography их не трогает).
 ///
 /// ИНСТРУКЦИЯ ДЛЯ ВЛАДЕЛЬЦА — как подставить шрифты:
-///   1. Положите .ttf файлы (например Inter-Light.ttf, Inter-Regular.ttf,
-///      Inter-SemiBold.ttf — но подойдёт ЛЮБОЙ шрифт) в папку Assets/TextMesh Pro/Fonts/.
-///   2. ПКМ по каждому .ttf → Create → TextMeshPro → Font Asset
-///      (создаст SDF-ассет рядом с файлом; для статического атласа —
-///      Multi Atlas Textures можно выключить, ASCII достаточно).
-///   3. Откройте ассет Assets/Resources/TypographyConfig.asset и перетащите
-///      созданные TMP Font Asset'ы в поля: Heading Light / Body Regular / CTA SemiBold.
-///   4. Всё. Весь UI подхватит шрифты автоматически (сцена перестроится при следующем запуске).
+///   1. Положите .ttf файлы в Assets/Fonts/ (подойдёт ЛЮБОЙ шрифт).
+///   2. ПКМ по каждому .ttf → Create → TextMeshPro → Font Asset.
+///   3. Откройте Assets/Resources/TypographyConfig.asset и перетащите созданные
+///      TMP Font Asset'ы в базовые слоты: Heading Light / Title Bold /
+///      Body Regular / CTA SemiBold.
+///   4. Нужен другой шрифт для конкретного языка — добавьте элемент в
+///      Language Overrides, укажите код языка и заполните только те слоты,
+///      которые отличаются (пустой слот = базовый).
 ///
 /// Пустые поля = fallback на LiberationSans SDF (TMP Settings) —
 /// никаких Missing/Null, сцена полностью работает и без заполненного конфига.
-/// Конфиг НЕ прибит к Inter: подставляются любые TMP Font Asset.
 /// </summary>
 [CreateAssetMenu(fileName = "TypographyConfig", menuName = "AstroDrift/TypographyConfig")]
 public class TypographyConfig : ScriptableObject
 {
-    [Header("Шрифты (пусто = fallback LiberationSans SDF)")]
-    [Tooltip("Заголовки и крупные цифры — Light вес (напр. Inter Light)")]
+    [Header("Базовые шрифты (пусто = fallback LiberationSans SDF)")]
+    [Tooltip("Заголовки и крупные цифры (Death: Score) — Light вес")]
     public TMP_FontAsset headingLight;
 
-    [Tooltip("Основной текст — Regular вес (напр. Inter Regular)")]
+    [Tooltip("Заголовок оверлея левел-апа. Пусто — берётся headingLight")]
+    public TMP_FontAsset titleBold;
+
+    [Tooltip("Основной текст — Regular вес")]
     public TMP_FontAsset bodyRegular;
 
-    [Tooltip("CTA / кнопки — SemiBold вес (напр. Inter SemiBold)")]
+    [Tooltip("CTA / кнопки — SemiBold вес")]
     public TMP_FontAsset ctaSemiBold;
 
-    [Header("Типографическая шкала §3 (1080×1920): размеры и трекинг (+%)")]
-    [Tooltip("Заголовок ASTRO DRIFT")]
-    public float titleSize = 96f;
-    public float titleTracking = 12f;
+    [Header("Переопределения по языку (пустой слот = базовый шрифт)")]
+    public TypographyLanguageFonts[] languageOverrides;
 
-    [Tooltip("Best / служебные")]
-    public float secondarySize = 34f;
-    public float secondaryTracking = 8f;
+    /// <summary>Набор разрешённых шрифтов для языка (базовые + переопределения).</summary>
+    public FontSet GetFonts(string langCode)
+    {
+        var set = new FontSet
+        {
+            heading = headingLight,
+            title = titleBold,
+            body = bodyRegular,
+            cta = ctaSemiBold,
+        };
+        if (string.IsNullOrEmpty(langCode) || languageOverrides == null) return set;
 
-    [Tooltip("CTA «TAP TO PLAY»")]
-    public float ctaSize = 44f;
-    public float ctaTracking = 16f;
+        for (int i = 0; i < languageOverrides.Length; i++)
+        {
+            var o = languageOverrides[i];
+            if (o == null || string.IsNullOrEmpty(o.langCode)) continue;
+            if (!string.Equals(o.langCode, langCode, System.StringComparison.OrdinalIgnoreCase)) continue;
+            if (o.heading != null) set.heading = o.heading;
+            if (o.titleBold != null) set.title = o.titleBold;
+            if (o.body != null) set.body = o.body;
+            if (o.cta != null) set.cta = o.cta;
+            break;
+        }
+        return set;
+    }
+}
 
-    [Tooltip("Death: Score")]
-    public float deathScoreSize = 88f;
-    public float deathScoreTracking = 4f;
+/// <summary>Шрифты одного языка: пустое поле = взять базовый слот конфига.</summary>
+[System.Serializable]
+public class TypographyLanguageFonts
+{
+    [Tooltip("Код языка YG2 (ru, en, tr…)")]
+    public string langCode;
 
-    [Tooltip("Кнопки RETRY / HOME / RESUME")]
-    public float buttonSize = 40f;
-    public float buttonTracking = 16f;
+    public TMP_FontAsset heading;
+    public TMP_FontAsset titleBold;
+    public TMP_FontAsset body;
+    public TMP_FontAsset cta;
+}
+
+/// <summary>Разрешённые шрифты по слотам (null = не задан).</summary>
+public struct FontSet
+{
+    public TMP_FontAsset heading;
+    public TMP_FontAsset title;
+    public TMP_FontAsset body;
+    public TMP_FontAsset cta;
 }

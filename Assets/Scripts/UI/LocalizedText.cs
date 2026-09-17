@@ -2,7 +2,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 /// <summary>
 /// Минимальный хелпер локализации UI (таблица GameTexts).
@@ -15,13 +14,27 @@ public static class L10n
 {
     private const string TableName = "GameTexts";
     private static bool _subscribed;
+    private static bool _refreshAttached;
 
+    /// <summary>Синхронное чтение (таблица из кэша/Addressables). Асинхронный
+    /// GetTableEntryAsync в Play Mode не завершается, пока таблицу никто не
+    /// запросил синхронно, поэтому читаем синхронно; неготовность = null,
+    /// текст дочитает RefreshAll на следующем кадре.</summary>
     public static string Get(string key)
     {
-        var op = LocalizationSettings.StringDatabase.GetTableEntryAsync(TableName, key);
-        if (!op.IsDone || op.Status != AsyncOperationStatus.Succeeded || op.Result.Entry == null)
-            return null;
-        return op.Result.Entry.GetLocalizedString();
+        try
+        {
+            var table = LocalizationSettings.StringDatabase.GetTable(TableName);
+            if (table == null) return null;
+            var entry = table.GetEntry(key);
+            if (entry == null) return null;
+            string s = entry.GetLocalizedString();
+            return string.IsNullOrEmpty(s) ? null : s;
+        }
+        catch (System.Exception)
+        {
+            return null; // локаль/таблица ещё не готова
+        }
     }
 
     public static string GetFormatted(string key, params object[] args)
@@ -70,22 +83,32 @@ public static class L10n
 
     private static void Subscribe()
     {
-        if (_subscribed) return;
-        _subscribed = true;
         // Единая подписка на весь список биндингов (вместо лямбды на каждый Bind):
         // локаль сменилась — перечитываем все зарегистрированные тексты.
-        LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
-        // Стартовый экран: локаль инициализируется асинхронно — обновляем все
-        // привязанные тексты, когда таблицы догрузились.
-        Application.onBeforeRender += RefreshAll;
+        if (!_subscribed)
+        {
+            _subscribed = true;
+            LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
+        }
+        // RefreshAll отписывается сам, когда все тексты применились, поэтому
+        // onBeforeRender нужно переподключать на каждый Bind — иначе новые
+        // карты/панели, созданные позже, останутся без перевода.
+        if (!_refreshAttached)
+        {
+            _refreshAttached = true;
+            Application.onBeforeRender += RefreshAll;
+        }
     }
 
     private static void OnLocaleChanged(Locale _)
     {
-        // Таблица новой локали грузится асинхронно: после смены локали снова
-        // включаем RefreshAll, пока все строки не перечитаются.
-        Application.onBeforeRender -= RefreshAll;
-        Application.onBeforeRender += RefreshAll;
+        // После смены локали таблица перезагружается асинхронно — снова держим
+        // RefreshAll подключённым, пока все строки не перечитаются.
+        if (!_refreshAttached)
+        {
+            _refreshAttached = true;
+            Application.onBeforeRender += RefreshAll;
+        }
         RefreshAll();
     }
 
@@ -100,11 +123,15 @@ public static class L10n
 
     private static void RefreshAll()
     {
-        if (_bindings.Count == 0) return;
+        if (_bindings.Count == 0)
+        {
+            DetachRefresh();
+            return;
+        }
         PurgeDestroyed();
         if (_bindings.Count == 0)
         {
-            Application.onBeforeRender -= RefreshAll;
+            DetachRefresh();
             return;
         }
         // Применяем ВСЕМ каждый проход: таблица могла перезагрузиться (смена
@@ -124,9 +151,13 @@ public static class L10n
         }
         // Отписываемся только когда ВСЕ биндинги успешно применились в одном
         // проходе — иначе частично готовые тексты навсегда останутся без перевода.
-        if (allApplied)
-        {
-            Application.onBeforeRender -= RefreshAll;
-        }
+        if (allApplied) DetachRefresh();
+    }
+
+    private static void DetachRefresh()
+    {
+        if (!_refreshAttached) return;
+        Application.onBeforeRender -= RefreshAll;
+        _refreshAttached = false;
     }
 }

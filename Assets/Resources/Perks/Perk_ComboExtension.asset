@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05fd1fcf483c445128b5c0bf5a7336c6, type: 3}
+  m_Name: Perk_ComboExtension
+  m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
+  id: 4
+  titleKey: perk_combo_ext_title
+  descKey: perk_combo_ext_desc
+  icon: {fileID: 21300000, guid: 125db18986c2e4a9ca3ad496fce461d3, type: 3}
+  rarity: 0
+  maxStacks: 2
+  unlockedByDefault: 0
+  unlockPilotLevel: 2
+  valuePerStack: 2

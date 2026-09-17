@@ -17,11 +17,63 @@ PrefabInstance:
       value: MenuButton_Upgrade
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
@@ -39,10 +91,6 @@ PrefabInstance:
     - target: {fileID: 5089259485384180862, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: id
       value: upgrade
-      objectReference: {fileID: 0}
-    - target: {fileID: 7133500106259068058, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
-      propertyPath: m_text
-      value: "\u041F\u0420\u041E\u041A\u0410\u0427\u041A\u0410"
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
