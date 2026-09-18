@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization.Components;
+using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 
 /// <summary>
@@ -47,7 +48,6 @@ public class GameUI : MonoBehaviour
     // LSE-ссылки (необязательны): нода с LocalizeStringEvent обычно та же, что TMP-ссылка,
     // поэтому GetLse берёт компонент с неё. Поля — для случая, когда владелец разнёс ноды.
     [SerializeField] private LocalizeStringEvent startBestValueLse;
-    [SerializeField] private LocalizeStringEvent shieldTextLse;
     [SerializeField] private LocalizeStringEvent shieldCaptionLse;
 
     // §3.4: горячий путь (RefreshHud на каждую смену счёта) — гард по значению +
@@ -177,7 +177,9 @@ public class GameUI : MonoBehaviour
     // ——— Панель дерева разблокировок (плейтест Волны 1) ———
 
     private GameObject _treePanel;
+    private CanvasGroup _treeCg;
     private TMPro.TextMeshProUGUI _treeText;
+    private bool _treeLocaleSubscribed;
 
     /// <summary>
     /// Панель со списком уровней 0–20 из PilotProgressConfig.unlocks. Чистый текст,
@@ -203,8 +205,8 @@ public class GameUI : MonoBehaviour
         panelRt.offsetMin = new Vector2(60f, 120f); panelRt.offsetMax = new Vector2(-60f, -120f);
         var panelImg = _treePanel.AddComponent<UnityEngine.UI.Image>();
         panelImg.color = Palette.UiPanel;
-        var panelCg = _treePanel.GetComponent<CanvasGroup>();
-        panelCg.alpha = 0f; panelCg.blocksRaycasts = false; panelCg.interactable = false;
+        _treeCg = _treePanel.GetComponent<CanvasGroup>();
+        _treeCg.alpha = 0f; _treeCg.blocksRaycasts = false; _treeCg.interactable = false;
 
         var titleGo = new GameObject("Title", typeof(RectTransform));
         titleGo.transform.SetParent(_treePanel.transform, false);
@@ -230,16 +232,33 @@ public class GameUI : MonoBehaviour
         _treeText.textWrappingMode = TMPro.TextWrappingModes.Normal;
     }
 
-    private void ToggleTree() => SetTreeVisible(_treePanel != null && _treePanel.GetComponent<CanvasGroup>().alpha < 0.5f);
+    private void ToggleTree() => SetTreeVisible(_treePanel != null && _treeCg.alpha < 0.5f);
 
     private void SetTreeVisible(bool show)
     {
         if (_treePanel == null) return;
-        var cg = _treePanel.GetComponent<CanvasGroup>();
         if (show) FillUnlockTree();
-        cg.alpha = show ? 1f : 0f;
-        cg.blocksRaycasts = show;
-        cg.interactable = show;
+        _treeCg.alpha = show ? 1f : 0f;
+        _treeCg.blocksRaycasts = show;
+        _treeCg.interactable = show;
+        SubscribeTreeLocale(show);
+    }
+
+    /// <summary>§10.1 п.4: дерево перерисовывается на смену локали, пока панель видима.
+    /// Подписка снимается при скрытии и в OnDestroy — статическая подписка без отписки
+    /// недопустима (образец — LanguageService.OnSelectedLocaleChanged).</summary>
+    private void SubscribeTreeLocale(bool on)
+    {
+        if (on == _treeLocaleSubscribed) return;
+        _treeLocaleSubscribed = on;
+        if (on) LocalizationSettings.SelectedLocaleChanged += OnTreeLocaleChanged;
+        else LocalizationSettings.SelectedLocaleChanged -= OnTreeLocaleChanged;
+    }
+
+    private void OnTreeLocaleChanged(UnityEngine.Localization.Locale _)
+    {
+        if (_treeCg == null || _treeCg.alpha < 0.5f) return;
+        FillUnlockTree();
     }
 
     /// <summary>Список «N — награда»: разблокированные зелёные, «скоро» — для нереализованных.</summary>
@@ -280,6 +299,7 @@ public class GameUI : MonoBehaviour
     private void OnDestroy()
     {
         _instances.Remove(this);
+        SubscribeTreeLocale(false);
         if (_score != null)
         {
             _score.OnScoreChanged -= OnScoreChanged;
@@ -1173,11 +1193,16 @@ public class GameUI : MonoBehaviour
     private void SetLocalized(TextMeshProUGUI tmp, string key, params object[] args)
         => ApplyEntry(GetLse(null, tmp), key, args);
 
-    /// <summary>Компонентный текст на ноде, которую создаёт сам GameUI (§8.0).</summary>
+    /// <summary>Компонентный текст на ноде, которую создаёт сам GameUI (§8.0).
+    /// Слушатель OnUpdateString → tmp.text вешаем в рантайме: билдеры префабов делают
+    /// это persistent-listener'ом, а нода, созданная кодом, обязана получить его сама —
+    /// иначе строка загружается, но в TMP не пишется (наблюдение задачи 6 по Title).</summary>
     private static void AddLocalized(TextMeshProUGUI tmp, string key)
     {
         if (tmp == null) return;
         var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        var captured = tmp;
+        lse.OnUpdateString.AddListener(v => captured.text = v);
         ApplyEntry(lse, key, null);
     }
 
