@@ -531,7 +531,9 @@ public LocalizedString desc;
 
 - [ ] Ноль `L10n.Bind` и `Application.onBeforeRender` в `Assets/Scripts`;
 - [ ] Дерево разблокировок корректно на RU/EN и перерисовывается при смене локали;
-- [ ] Флоатеры корректны; поведение при неготовой таблице — фолбэк, не исключение.
+- [ ] **Заголовок дерева резолвится** — `unlock_tree_title` даёт текст на RU/EN; подтверждено **прямым вызовом `FillUnlockTree()`** (кнопка «ПРОКАЧКА» не подключена — пост-милстоун дефект P1) + Play Mode. **Закрывает наблюдение задачи 6** по `UnlockTreePanel/Title` (санкция продюсера, задача 6, п.1);
+- [ ] Флоатеры корректны; поведение при неготовой таблице — фолбэк, не исключение;
+- [ ] **Cleanup–7 выполнен:** мёртвое поле `shieldTextLse` удалено; док-комментарий `L10n.Bind` снят (`Assets/Scripts/UI/LocalizedText.cs:10`) — [распределение cleanup](Assets/Docs/Localization_TZ.md:933).
 
 ---
 
@@ -597,6 +599,7 @@ Editor-меню, собирающее множество используемы�
 
 | Проверка | RuStore (активный профиль) | Editor | ЯИ WebGL (отложено, F5) |
 |---|---|---|---|
+| **Финальный обход экранов RU/EN — явным списком** (старт / смерть / пауза / оверлей перка / дерево разблокировок × RU + EN) — решение продюсера по задаче 6, п.2 (закрывает долг 4д) | + | + | отложено |
 | Холодный старт ru/en → верная локаль | + (systemLang) | + | отложено |
 | Неподдерживаемый язык → ru (D1) | + | − | отложено |
 | Все экраны RU/EN без визуальных отличий (вкл. B1-строки) | + | + | отложено |
@@ -883,7 +886,7 @@ Localization_yg
 | §8.2 теги сцены (3 в `Game.unity`) | `DeathScore`=3/`DeathBest`=1/`DeathNewBest`=1 — точно по таблице §8.2 (динамика через `Arguments`, см. [`AstroDriftSceneSetup.cs`](Assets/Scripts/Core/AstroDriftSceneSetup.cs:329)). Итого тегов **19 = 16 + 3**, базлайн был **0** | ✅ |
 | §8.2 статика без тегов | `AddLocalize(...)` на `PauseTitle`/`Btn_Resume`/`Btn_Home`×2/`ContinueText`/`ContinueCaption`/`DeathXp`/`DeathLevel`/`DeathNewBest`; тегов на них нет — совпадает с §8.4 | ✅ |
 | §8.0 правило владения | LSE и теги навешены **в билдерах префабов** (`AddLocalized`/`AddRole`) и в **коде сцены** (`AstroDriftSceneSetup`), не на чужих нодах. Вложенные префабы (`LevelCard`, `MenuButton_{Settings,Shop,Upgrade}` — по 23 ссылки guid внутри `StartPanel.prefab`) учтены: в сцене их собственных GameObject'ов нет, теги живут в префабах | ✅ |
-| §8.3 п.5 `L10n.Bind` = 0 / `LocalizedTextUI` удалён | `grep L10n.Bind` по `Assets` = **1** вхождение — док-комментарий [`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10), вызовов **0**. `LocalizedTextUI` = **0** вхождений в `Assets/**` (`*.cs`/`*.prefab`/`*.unity`), файл + `.meta` удалены. [`BindPauseTexts`](Assets/Scripts/UI/GameUI.cs) = 0, [`ApplyTypography`](Assets/Scripts/UI/GameUI.cs) = 0 | ✅ |
+| §8.3 п.5 `L10n.Bind` = 0 / `LocalizedTextUI` удалён | `grep L10n.Bind` по `Assets` = **1** вхождение — док-комментарий [`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10), вызовов **0**. Критерий §8.3 формально выполнен (он про **вызовы**); остаточная строка документации снимается в задаче 7 → на её приёмке grep = **буквально 0**. `LocalizedTextUI` = **0** вхождений в `Assets/**` (`*.cs`/`*.prefab`/`*.unity`), файл + `.meta` удалены. [`BindPauseTexts`](Assets/Scripts/UI/GameUI.cs) = 0, [`ApplyTypography`](Assets/Scripts/UI/GameUI.cs) = 0 | ✅ |
 | §8.3 п.4 ноль диффа начертания карт | `UpgradeCard.prefab`: `Title`/`Description` — `m_fontAsset` (`2ebd00df…`/`20fb9121…`) + `m_fontStyle: 0` **байт-в-байт равны** родителю `693787e` (сравнение Team Lead) → дифф нулевой, как и требует критерий | ✅ |
 | §8.3 п.3 гард горячего пути | [`GameUI.cs:55`](Assets/Scripts/UI/GameUI.cs:55) `_bestArgs` — `readonly object[1]`, создан один раз; [`GameUI.cs:1141`](Assets/Scripts/UI/GameUI.cs:1141) ранний выход `if (best == _lastBestShown) return;`; [`GameUI.cs:1158`](Assets/Scripts/UI/GameUI.cs:1158) сброс из [`ResetLanguageGuards()`](Assets/Scripts/UI/GameUI.cs:1152), который зовёт [`LanguageService.cs:78`](Assets/Scripts/Core/LanguageService.cs:78) — точка подписки одна | ✅ |
 | §8.1 билдеры на контейнере (решение продюсера) | Поиск спрайтов по имени удалён: `LoadSprite`/`GetSprite(`/`LoadAllAssetsAtPath` = **0** в обоих билдерах. Вход — [`PrefabBuilderSprites`](Assets/Scripts/Editor/PrefabBuilderSprites.cs) (13 полей), громкий стоп до записи: [`PrefabBuilderSprites.cs:72`](Assets/Scripts/Editor/PrefabBuilderSprites.cs:72) и [`:105`](Assets/Scripts/Editor/PrefabBuilderSprites.cs:105) `Debug.LogError(... «префабы не записаны»)`. Ассет закоммичен с 12 ссылками, `usePanelBg: 0`, `panelBg: {fileID: 0}` (законно) | ✅ |
@@ -925,10 +928,29 @@ Localization_yg
 
 **Следствие для задачи 7 (§10.2):** проверка дерева разблокировок выполняется **прямым вызовом** (кнопка не подключена) — метод фиксируется в брифе задачи 7 до выдачи.
 
-### Cleanup задач 7–8 (решение продюсера, п.3)
+### Распределение cleanup между задачами 7 и 8 (зафиксировано по фактам: решение продюсера, задача 6, п.4)
 
-- **Удалить мёртвое поле `shieldTextLse`** ([`GameUI.cs:50`](Assets/Scripts/UI/GameUI.cs:50), 0 обращений) — вместе со снятием диагностических логов.
-- **Док-комментарий с `L10n.Bind`** ([`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)) — **доживает до задачи 7** (файл её скоуп). На приёмке задачи 7 §15-grep по `L10n.Bind` должен дать **буквально 0**.
+Принцип раздела — **по владельцу файла**, без переносов на «конец милстоуна»:
+
+| Задача | Пункт | Файл / состав | Почему здесь |
+|---|---|---|---|
+| **7** | Мёртвое поле `shieldTextLse` ([`GameUI.cs:50`](Assets/Scripts/UI/GameUI.cs:50), 0 обращений) | `Assets/Scripts/UI/GameUI.cs` | Файл уже правится задачей 7 (точки `L10n.Get`) — нулевая цена, один коммит |
+| **7** | Док-комментарий `L10n.Bind` ([`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)) | `Assets/Scripts/UI/LocalizedText.cs` | **Файл целиком в скоупе задачи 7** — вместе со снятием `Bind`/`_bindings`/`RefreshAll`/`onBeforeRender` |
+| **7** | Логи задачи 4 | `Assets/Scripts/UI/Typography.cs`, `Assets/Scripts/UI/TypeRoleTag.cs` | Оба файла — её скоуп; логи про смену локали теряют смысл после ужатия `L10n` |
+| **8** | **9 диагностических логов задачи 3** | `Assets/Scripts/Core/LanguageService.cs` (9 точек) | Файл не трогается задачей 7; логи сторожат C1–C3, снимать их **до** финальной приёмки преждевременно |
+| **8** | Валидатор + сирота «ДЕРЕВО» | `Assets/Localizations/*` + новый editor-скрипт | Скоуп §11 по ТЗ |
+
+- **Точка контроля задачи 7 (обязательна):** §15-grep по `L10n.Bind` = **буквально 0** (сейчас 1 — док-комментарий), `Application.onBeforeRender` в `Assets/Scripts` = **0** (сейчас 2), `shieldTextLse` = **0**.
+- **Крайний срок логов задачи 3 — приёмка задачи 8** (перенос крайнего срока с 7 на 8 санкционирован продюсером; обоснование — логи C1–C3 остаются полезны до финальной сверки).
+
+### Решения продюсера по задаче 6 (приняты, записаны в ТЗ)
+
+- **п.1 Задача 6 ратифицирована**, тег `task6-accepted` в силе; журнал (таблица результата, клоузаут, Приложение B — 6 строк → ✅) ратифицирован. Отклонения приняты.
+- **п.1 (условие по `UnlockTreePanel/Title`).** Наблюдение «ложное срабатывание» принято **с условием**: приёмка задачи 7 **обязана явно подтвердить резолв заголовка дерева** — прямым вызовом `FillUnlockTree()` + Play Mode. Внесено отдельным критерием в [§10.2](Assets/Docs/Localization_TZ.md:530); этим наблюдение закрывается.
+- **п.2 Долг 4д — существенно закрытый с переносом вперёд.** На **финальной приёмке милстоуна ([§14](Assets/Docs/Localization_TZ.md:598))** выполняется полный обход экранов явным списком: старт / смерть / пауза / оверлей перка / дерево разблокировок × RU/EN.
+- **п.3 Санкция на выдачу задачи 7 выдана**; бриф подтверждён фактами (5 точек `L10n.Get`), метод проверки дерева зафиксирован, переподписка для видимого дерева — в скоупе. **Заморозка — до ПРИЁМКИ задачи 7** (не выдачи).
+- **п.4 Cleanup зафиксирован сейчас** — таблица выше, без дрейфа.
+- **п.5 Четыре долга журнала закрываются разом к отчёту задачи 7, без новых переносов:** 4а, 4б, 4в, 4г — [закрыты дословно](Assets/Docs/Localization_TZ.md:912) в записи «Уточнения по требованию продюсера (задача 5, п.4а–4д)». Процессная фиксация: переносы однострочников не накапливаются.
 
 ### Результат задачи 6 (коммит `42ddefc`, проверено Team Lead пофайлово и grep'ом)
 
