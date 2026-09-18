@@ -165,7 +165,7 @@ public class PickupManager : MonoBehaviour
             ParticlePool.Instance.Burst(pos, def.color, 8, 1.2f, 2.5f, 0.5f, 0.15f, 0.3f);
         if (FloatingTextPool.Instance != null)
         {
-            string name = L10n.Get(PickupNameKey(def.type));
+            string name = def.name.GetLocalizedString(); // синхронное чтение (§3.3); "" — проверка N3
             FloatingTextPool.Instance.Spawn(pos + Vector3.up * 1.0f,
                 string.IsNullOrEmpty(name) ? def.type.ToString() : name, def.color, 3.8f, 0.9f);
         }
@@ -224,12 +224,4 @@ public class PickupManager : MonoBehaviour
                 break;
         }
     }
-
-    private static string PickupNameKey(PickupType type) => type switch
-    {
-        PickupType.RapidFire => "pickup_rapid_fire",
-        PickupType.SpreadShot => "pickup_spread_shot",
-        PickupType.Shield => "pickup_shield",
-        _ => "pickup_shield",
-    };
 }

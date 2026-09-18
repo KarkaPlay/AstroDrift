@@ -13,11 +13,30 @@ MonoBehaviour:
   m_Name: Perk_ComboExtension
   m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
   id: 4
-  titleKey: perk_combo_ext_title
-  descKey: perk_combo_ext_desc
+  title:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_combo_ext_title
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  desc:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_combo_ext_desc
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
   icon: {fileID: 21300000, guid: 125db18986c2e4a9ca3ad496fce461d3, type: 3}
   rarity: 0
   maxStacks: 2
   unlockedByDefault: 0
   unlockPilotLevel: 2
   valuePerStack: 2
+  references:
+    version: 2
+    RefIds: []

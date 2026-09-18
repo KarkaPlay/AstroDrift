@@ -13,11 +13,30 @@ MonoBehaviour:
   m_Name: Perk_FireRate
   m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
   id: 1
-  titleKey: perk_fire_rate_title
-  descKey: perk_fire_rate_desc
+  title:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_fire_rate_title
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  desc:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_fire_rate_desc
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
   icon: {fileID: 21300000, guid: 28a305f2cb3bf473088f2fe95e9cfa1a, type: 3}
   rarity: 0
   maxStacks: 3
   unlockedByDefault: 1
   unlockPilotLevel: 0
   valuePerStack: -0.15
+  references:
+    version: 2
+    RefIds: []

@@ -13,11 +13,30 @@ MonoBehaviour:
   m_Name: Perk_BiggerBullets
   m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
   id: 3
-  titleKey: perk_bigger_bullets_title
-  descKey: perk_bigger_bullets_desc
+  title:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_bigger_bullets_title
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  desc:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_bigger_bullets_desc
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
   icon: {fileID: 21300000, guid: 5b918664700cd4a4bb3389ee580d3769, type: 3}
   rarity: 0
   maxStacks: 2
   unlockedByDefault: 0
   unlockPilotLevel: 5
   valuePerStack: 0.5
+  references:
+    version: 2
+    RefIds: []

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Localization;
 
 /// <summary>
 /// Редакторная утилита: создаёт ScriptableObject-ассеты GameConfig и DifficultyConfig
@@ -105,9 +106,9 @@ public static class AstroDriftSetup
         pickupCfg.maxPickupsOnGround = 4;
         pickupCfg.pickups = new[]
         {
-            new PickupDef { type = PickupType.RapidFire,  duration = 5f, dropChanceAsteroid = 0.08f, dropChanceMissile = 0f,    color = Palette.Hex("#FFD700"), unlockedByDefault = true,  unlockPilotLevel = 0 },
-            new PickupDef { type = PickupType.SpreadShot, duration = 5f, dropChanceAsteroid = 0.06f, dropChanceMissile = 0f,    color = Palette.Hex("#FFD700"), unlockedByDefault = false, unlockPilotLevel = 4 },
-            new PickupDef { type = PickupType.Shield,     duration = 0f, dropChanceAsteroid = 0f,    dropChanceMissile = 0.03f, color = Palette.Hex("#66CCFF"), unlockedByDefault = false, unlockPilotLevel = 8 },
+            new PickupDef { type = PickupType.RapidFire,  name = MakeRef("pickup_rapid_fire"),  duration = 5f, dropChanceAsteroid = 0.08f, dropChanceMissile = 0f,    color = Palette.Hex("#FFD700"), unlockedByDefault = true,  unlockPilotLevel = 0 },
+            new PickupDef { type = PickupType.SpreadShot, name = MakeRef("pickup_spread_shot"), duration = 5f, dropChanceAsteroid = 0.06f, dropChanceMissile = 0f,    color = Palette.Hex("#FFD700"), unlockedByDefault = false, unlockPilotLevel = 4 },
+            new PickupDef { type = PickupType.Shield,     name = MakeRef("pickup_shield"),      duration = 0f, dropChanceAsteroid = 0f,    dropChanceMissile = 0.03f, color = Palette.Hex("#66CCFF"), unlockedByDefault = false, unlockPilotLevel = 8 },
         };
         EditorUtility.SetDirty(pickupCfg);
 
@@ -148,7 +149,7 @@ public static class AstroDriftSetup
     private struct PerkSeed
     {
         public PerkId id;
-        public string titleKey, descKey;
+        public string titleEntry, descEntry;
         public Rarity rarity;
         public int maxStacks, unlockPilotLevel;
         public bool unlockedByDefault;
@@ -157,15 +158,23 @@ public static class AstroDriftSetup
 
     private static readonly PerkSeed[] PerkSeeds =
     {
-        new PerkSeed { id = PerkId.BulletSpeed,     titleKey = "perk_bullet_speed_title",  descKey = "perk_bullet_speed_desc",  rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = 0.20f },
-        new PerkSeed { id = PerkId.FireRate,        titleKey = "perk_fire_rate_title",     descKey = "perk_fire_rate_desc",     rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = -0.15f },
-        new PerkSeed { id = PerkId.TurnSpeed,       titleKey = "perk_turn_speed_title",    descKey = "perk_turn_speed_desc",    rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 1,  valuePerStack = 0.25f },
-        new PerkSeed { id = PerkId.ComboExtension,  titleKey = "perk_combo_ext_title",     descKey = "perk_combo_ext_desc",     rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 2,  valuePerStack = 2.0f },
-        new PerkSeed { id = PerkId.BiggerBullets,   titleKey = "perk_bigger_bullets_title",descKey = "perk_bigger_bullets_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 5,  valuePerStack = 0.50f },
-        new PerkSeed { id = PerkId.ScoreMultiplier, titleKey = "perk_score_mult_title",    descKey = "perk_score_mult_desc",    rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = false, unlockPilotLevel = 6,  valuePerStack = 0.25f },
-        new PerkSeed { id = PerkId.MissileJammer,   titleKey = "perk_missile_jammer_title",descKey = "perk_missile_jammer_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 9,  valuePerStack = -0.40f },
-        new PerkSeed { id = PerkId.Piercing,        titleKey = "perk_piercing_title",      descKey = "perk_piercing_desc",      rarity = Rarity.Rare,   maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 11, valuePerStack = 1f },
+        new PerkSeed { id = PerkId.BulletSpeed,     titleEntry = "perk_bullet_speed_title",  descEntry = "perk_bullet_speed_desc",  rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = 0.20f },
+        new PerkSeed { id = PerkId.FireRate,        titleEntry = "perk_fire_rate_title",     descEntry = "perk_fire_rate_desc",     rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = true,  unlockPilotLevel = 0,  valuePerStack = -0.15f },
+        new PerkSeed { id = PerkId.TurnSpeed,       titleEntry = "perk_turn_speed_title",    descEntry = "perk_turn_speed_desc",    rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 1,  valuePerStack = 0.25f },
+        new PerkSeed { id = PerkId.ComboExtension,  titleEntry = "perk_combo_ext_title",     descEntry = "perk_combo_ext_desc",     rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 2,  valuePerStack = 2.0f },
+        new PerkSeed { id = PerkId.BiggerBullets,   titleEntry = "perk_bigger_bullets_title",descEntry = "perk_bigger_bullets_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 5,  valuePerStack = 0.50f },
+        new PerkSeed { id = PerkId.ScoreMultiplier, titleEntry = "perk_score_mult_title",    descEntry = "perk_score_mult_desc",    rarity = Rarity.Common, maxStacks = 3, unlockedByDefault = false, unlockPilotLevel = 6,  valuePerStack = 0.25f },
+        new PerkSeed { id = PerkId.MissileJammer,   titleEntry = "perk_missile_jammer_title",descEntry = "perk_missile_jammer_desc",rarity = Rarity.Common, maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 9,  valuePerStack = -0.40f },
+        new PerkSeed { id = PerkId.Piercing,        titleEntry = "perk_piercing_title",      descEntry = "perk_piercing_desc",      rarity = Rarity.Rare,   maxStacks = 2, unlockedByDefault = false, unlockPilotLevel = 11, valuePerStack = 1f },
     };
+
+    /// <summary>Ссылка на строку таблицы GameTexts (ключи не переименовываются, §0.3 п.2).</summary>
+    private static LocalizedString MakeRef(string entry)
+    {
+        var ls = new LocalizedString();
+        ls.SetReference("GameTexts", entry);
+        return ls;
+    }
 
     /// <summary>
     /// Создаёт/находит 8 ассетов перков в Assets/Resources/Perks/ и возвращает их в
@@ -189,8 +198,8 @@ public static class AstroDriftSetup
             if (asset == null)
             {
                 asset = ScriptableObject.CreateInstance<PerkDefinition>();
-                asset.titleKey = seed.titleKey;
-                asset.descKey = seed.descKey;
+                asset.title = MakeRef(seed.titleEntry);
+                asset.desc = MakeRef(seed.descEntry);
                 asset.rarity = seed.rarity;
                 asset.maxStacks = seed.maxStacks;
                 asset.unlockedByDefault = seed.unlockedByDefault;
@@ -199,10 +208,10 @@ public static class AstroDriftSetup
                 asset.id = seed.id;
                 // Ручные правки владельца из прежнего inline-набора важнее дефолтов
                 PerkSeed l;
-                if (legacy.TryGetValue(seed.id, out l) && !string.IsNullOrEmpty(l.titleKey))
+                if (legacy.TryGetValue(seed.id, out l) && !string.IsNullOrEmpty(l.titleEntry))
                 {
-                    asset.titleKey = l.titleKey;
-                    asset.descKey = l.descKey;
+                    asset.title = MakeRef(l.titleEntry);
+                    asset.desc = MakeRef(l.descEntry);
                     asset.rarity = l.rarity;
                     asset.maxStacks = l.maxStacks;
                     asset.unlockedByDefault = l.unlockedByDefault;
@@ -250,13 +259,20 @@ public static class AstroDriftSetup
             string val = line.Substring(c + 1).Trim().Trim('"');
             switch (key)
             {
-                case "titleKey": cur.titleKey = val; break;
-                case "descKey": cur.descKey = val; break;
                 case "rarity": cur.rarity = (Rarity)int.Parse(val, culture); break;
                 case "maxStacks": cur.maxStacks = int.Parse(val, culture); break;
                 case "unlockedByDefault": cur.unlockedByDefault = int.Parse(val, culture) != 0; break;
                 case "unlockPilotLevel": cur.unlockPilotLevel = int.Parse(val, culture); break;
                 case "valuePerStack": cur.valuePerStack = float.Parse(val, culture); break;
+                default:
+                    // Legacy-ключи title/desc распознаём по значению (префикс perk_),
+                    // а не по метке поля: метки удалены из проекта (§3.6 п.8).
+                    if (!string.IsNullOrEmpty(val) && val.StartsWith("perk_", System.StringComparison.Ordinal))
+                    {
+                        if (val.EndsWith("_title", System.StringComparison.Ordinal)) cur.titleEntry = val;
+                        else if (val.EndsWith("_desc", System.StringComparison.Ordinal)) cur.descEntry = val;
+                    }
+                    break;
             }
         }
         if (inEntry) map[cur.id] = cur;

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Localization;
 
 /// <summary>
 /// Перк как ассет (GDD §15.2): данные живут в Assets/Resources/Perks/, владелец правит
@@ -9,8 +10,8 @@ using UnityEngine;
 public class PerkDefinition : ScriptableObject
 {
     public PerkId id;
-    public string titleKey = "";        // локализация (RU+EN)
-    public string descKey = "";
+    public LocalizedString title;       // Table: GameTexts, Entry: perk_*_title
+    public LocalizedString desc;        // Table: GameTexts, Entry: perk_*_desc
     public Sprite icon;                 // иконка карты; пусто → плашка-заглушка
     public Rarity rarity = Rarity.Common;
     public int maxStacks = 3;

@@ -207,10 +207,18 @@ public class PerkChoiceUI : MonoBehaviour
     private void FillCard(GameObject card, PerkDefinition def)
     {
         var title = FindTmp(card.transform, "Title");
-        if (title != null) SetEntry(title, def.titleKey, def.id.ToString());
+        if (title != null)
+        {
+            var lse = title.GetComponent<LocalizeStringEvent>();
+            if (lse != null) lse.StringReference = def.title;
+        }
 
         var desc = FindTmp(card.transform, "Description");
-        if (desc != null) SetEntry(desc, def.descKey, null);
+        if (desc != null)
+        {
+            var lse = desc.GetComponent<LocalizeStringEvent>();
+            if (lse != null) lse.StringReference = def.desc;
+        }
 
         var iconTr = card.transform.Find("Icon");
         if (iconTr != null)
@@ -276,24 +284,11 @@ public class PerkChoiceUI : MonoBehaviour
         AudioManager.Instance?.PlayPerkLevelUp();
     }
 
-    /// <summary>entry + перезапуск загрузки на компонентном тексте карты (§8.1).
-    /// fallback — до готовности таблицы (LSE сам перечитает при догрузке/смене локали).</summary>
-    private static void SetEntry(TextMeshProUGUI tmp, string key, string fallback)
-    {
-        if (!string.IsNullOrEmpty(fallback)) tmp.text = fallback;
-        if (string.IsNullOrEmpty(key)) return;
-        var lse = tmp.GetComponent<LocalizeStringEvent>();
-        if (lse == null) return;
-        var ls = lse.StringReference;
-        if (ls == null) return;
-        ls.TableReference = "GameTexts";
-        ls.TableEntryReference = key;
-        lse.StringReference = ls;
-    }
-
+    /// <summary>Синхронное чтение для флоатера (§3.3): пустая ссылка/неготовая таблица
+    /// дают "" (N3), поэтому проверка — IsNullOrEmpty.</summary>
     private static string PerkTitle(PerkDefinition def)
     {
-        string s = L10n.Get(def.titleKey);
+        string s = def.title.GetLocalizedString();
         return string.IsNullOrEmpty(s) ? def.id.ToString() : s;
     }
 

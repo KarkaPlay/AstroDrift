@@ -19,6 +19,15 @@ MonoBehaviour:
   maxPickupsOnGround: 4
   pickups:
   - type: 0
+    name:
+      m_TableReference:
+        m_TableCollectionName: GameTexts
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: pickup_rapid_fire
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     duration: 5
     dropChanceAsteroid: 0.08
     dropChanceMissile: 0
@@ -26,6 +35,15 @@ MonoBehaviour:
     unlockedByDefault: 1
     unlockPilotLevel: 0
   - type: 1
+    name:
+      m_TableReference:
+        m_TableCollectionName: GameTexts
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: pickup_spread_shot
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     duration: 5
     dropChanceAsteroid: 0.06
     dropChanceMissile: 0
@@ -33,9 +51,21 @@ MonoBehaviour:
     unlockedByDefault: 0
     unlockPilotLevel: 4
   - type: 2
+    name:
+      m_TableReference:
+        m_TableCollectionName: GameTexts
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: pickup_shield
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     duration: 0
     dropChanceAsteroid: 0
     dropChanceMissile: 0.03
     color: {r: 0.4, g: 0.8, b: 1, a: 1}
     unlockedByDefault: 0
     unlockPilotLevel: 8
+  references:
+    version: 2
+    RefIds: []

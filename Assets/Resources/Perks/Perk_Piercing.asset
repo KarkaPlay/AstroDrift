@@ -13,11 +13,30 @@ MonoBehaviour:
   m_Name: Perk_Piercing
   m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
   id: 7
-  titleKey: perk_piercing_title
-  descKey: perk_piercing_desc
+  title:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_piercing_title
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  desc:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_piercing_desc
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
   icon: {fileID: 21300000, guid: db704bdc5491b4388883e32acc341da0, type: 3}
   rarity: 1
   maxStacks: 2
   unlockedByDefault: 0
   unlockPilotLevel: 11
   valuePerStack: 1
+  references:
+    version: 2
+    RefIds: []
