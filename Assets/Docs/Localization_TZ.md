@@ -467,11 +467,11 @@ LSE и `TypeRoleTag` вешаются **там, где нода создаётс
 
 ### 8.3. Критерии приёмки
 
-- [ ] Все экраны RU/EN визуально как было (ин-движок, Play Mode на активном профиле RuStore, вкл. паузу и оверлей перка);
-- [ ] Смена локали посреди сессии обновляет все компонентные тексты (включая паузу, оверлей перка, подпись щита в обоих состояниях);
-- [ ] `RefreshHud` не аллоцирует на каждое изменение счёта (гард §3.4 + сброс при смене локали);
-- [ ] **Ноды, впервые получающие `TypeRoleTag` (`Title`/`Description` карт перков), не меняют начертание:** `Typography.ApplyFont` выставляет `fontStyle = FontStyles.Normal`, а карты раньше не проходили через апплаер вообще. Запечённые шрифты совпадают с ролевыми (`Cta` = `ctaSemiBold`, `Body` = `bodyRegular`), ожидаемый дифф — нулевой; отличие = провал приёмки;
-- [ ] Ноль `L10n.Bind` в проекте; **`LocalizedTextUI` удалён в этой задаче** (единая отсечка — §15).
+- [x] Все экраны RU/EN визуально как было (ин-движок, Play Mode на активном профиле RuStore, вкл. паузу и оверлей перка); — **с оговоркой:** визуальная дельта RU↔EN снята «по построению» (плейсхолдер-конфиг, см. «Клоузаут задачи 5» → риск конфига). Механическая часть доказана пофайлово: шрифты префабов/сцены == родительские (см. §8.3 п.4);
+- [x] Смена локали посреди сессии обновляет все компонентные тексты (включая паузу, оверлей перка, подпись щита в обоих состояниях); — перенесённый temp-override тест §7.2 (решение продюсера, п.2б) выполнен **на реальных тегах**: тегированные ноды переприменены, нетегированные (`§8.4`) сохранили `LiberationSans SDF` (см. «Клоузаут задачи 5» → перенесённый тест);
+- [x] `RefreshHud` не аллоцирует на каждое изменение счёта (гард §3.4 + сброс при смене локали); — [`GameUI.cs:55`](Assets/Scripts/UI/GameUI.cs:55) `readonly object[] _bestArgs = new object[1]` (кэш создаётся один раз), [`GameUI.cs:1141`](Assets/Scripts/UI/GameUI.cs:1141) ранний выход по гарду, [`GameUI.cs:1158`](Assets/Scripts/UI/GameUI.cs:1158) сброс `_lastBestShown` из `ResetLanguageGuards()`, вызываемого из [`LanguageService.cs:78`](Assets/Scripts/Core/LanguageService.cs:78);
+- [x] **Ноды, впервые получающие `TypeRoleTag` (`Title`/`Description` карт перков), не меняют начертание:** `Typography.ApplyFont` выставляет `fontStyle = FontStyles.Normal`, а карты раньше не проходили через апплаер вообще. Запечённые шрифты совпадают с ролевыми (`Cta` = `ctaSemiBold`, `Body` = `bodyRegular`), ожидаемый дифф — нулевой; отличие = провал приёмки; — **доказано диффом родитель↔коммит:** [`UpgradeCard.prefab`](Assets/Prefabs/LevelUp/UpgradeCard.prefab) `Title`/`Description` — `m_fontAsset` = `2ebd00df…`/`20fb9121…` и `m_fontStyle: 0` совпадают байт-в-байт с коммитом `693787e` (верификация Team Lead);
+- [x] Ноль `L10n.Bind` в проекте; **`LocalizedTextUI` удалён в этой задаче** (единая отсечка — §15). — `grep L10n.Bind` = 1 (док-комментарий [`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10), вызовов 0); `LocalizedTextUI` = 0 вхождений в `Assets/` (`.cs`/`.prefab`/`.unity`), файл + `.meta` удалены в коммите.
 
 ### 8.4. Ноды без тегов — явный список (нулевой дифф)
 
@@ -874,6 +874,38 @@ Localization_yg
 - Остаточные риски: **R10** (снапшоты профилей — сверка после каждого переключения) и **R11** (ручной импорт модулей через окно YG2 вернёт `Localization_yg`) остаются действующими для задач 5–8.
 - 9 диагностических логов задачи 3 + логи задачи 4 остаются до приёмки задачи 7–8 (крайний срок — приёмка 8, п.8 протокола).
 
+### Результат задачи 5 (коммит `81566c8`, проверено Team Lead пофайлово и grep'ом)
+
+| Пункт §8.1 / §8.2 / §8.3 | Факт | Статус |
+|---|---|---|
+| Состав коммита | `81566c8` (родитель `693787e`), ровно **23 файла**: 9 префабов + [`Game.unity`](Assets/Scenes/Game.unity) + 6 `.cs` (+ [`AstroDriftSceneSetup.cs`](Assets/Scripts/Core/AstroDriftSceneSetup.cs), [`LanguageService.cs`](Assets/Scripts/Core/LanguageService.cs), [`MenuPrefabBuilder.cs`](Assets/Scripts/Editor/MenuPrefabBuilder.cs), [`LevelUpPrefabBuilder.cs`](Assets/Scripts/Editor/LevelUpPrefabBuilder.cs), [`GameUI.cs`](Assets/Scripts/UI/GameUI.cs), [`LevelCardUI.cs`](Assets/Scripts/UI/LevelCardUI.cs), [`PerkChoiceUI.cs`](Assets/Scripts/UI/PerkChoiceUI.cs)) + [`PrefabBuilderSprites.cs`](Assets/Scripts/Editor/PrefabBuilderSprites.cs)/[`.asset`](Assets/Scripts/Editor/PrefabBuilderSprites.asset) (+`.meta`) − [`LocalizedTextUI.cs`](Assets/Scripts/UI/LocalizedTextUI.cs)/`.meta`. Запрещённые пути — 0: `New UI`, `PluginYourGames`, `TypographyConfig.asset`, `Build Profiles`, `LiberationSans SDF - Fallback` не затронуты | ✅ |
+| §8.1 карта тегов (16 в `Assets/Prefabs`) | Разобрано парсером YAML (GameObject→роль), совпадает с таблицей §8.1 1:1: `LevelUpPanel` — `LevelUpTitle`=6/`LevelUpChoose`=1/`RerollText`=2/`RerollCaption`=1; `UpgradeCard` — `Title`=2/`Description`=5; `UpgradeCard_New` — `NewBadge`=2; `LevelCard` — `LevelLabel`=4; `MenuButton_{Settings,Shop,Upgrade}` — `Label`=2; `StartPanel` — `CtaText`=2/`ShieldText`=2/`StartBest`=1/`StartBestValue`=1/`ShieldCaption`=1 (enum: `Cta=2, Secondary=1, Body=5, LevelUpTitle=6, Button=4`) | ✅ |
+| §8.2 теги сцены (3 в `Game.unity`) | `DeathScore`=3/`DeathBest`=1/`DeathNewBest`=1 — точно по таблице §8.2 (динамика через `Arguments`, см. [`AstroDriftSceneSetup.cs`](Assets/Scripts/Core/AstroDriftSceneSetup.cs:329)). Итого тегов **19 = 16 + 3**, базлайн был **0** | ✅ |
+| §8.2 статика без тегов | `AddLocalize(...)` на `PauseTitle`/`Btn_Resume`/`Btn_Home`×2/`ContinueText`/`ContinueCaption`/`DeathXp`/`DeathLevel`/`DeathNewBest`; тегов на них нет — совпадает с §8.4 | ✅ |
+| §8.0 правило владения | LSE и теги навешены **в билдерах префабов** (`AddLocalized`/`AddRole`) и в **коде сцены** (`AstroDriftSceneSetup`), не на чужих нодах. Вложенные префабы (`LevelCard`, `MenuButton_{Settings,Shop,Upgrade}` — по 23 ссылки guid внутри `StartPanel.prefab`) учтены: в сцене их собственных GameObject'ов нет, теги живут в префабах | ✅ |
+| §8.3 п.5 `L10n.Bind` = 0 / `LocalizedTextUI` удалён | `grep L10n.Bind` по `Assets` = **1** вхождение — док-комментарий [`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10), вызовов **0**. `LocalizedTextUI` = **0** вхождений в `Assets/**` (`*.cs`/`*.prefab`/`*.unity`), файл + `.meta` удалены. [`BindPauseTexts`](Assets/Scripts/UI/GameUI.cs) = 0, [`ApplyTypography`](Assets/Scripts/UI/GameUI.cs) = 0 | ✅ |
+| §8.3 п.4 ноль диффа начертания карт | `UpgradeCard.prefab`: `Title`/`Description` — `m_fontAsset` (`2ebd00df…`/`20fb9121…`) + `m_fontStyle: 0` **байт-в-байт равны** родителю `693787e` (сравнение Team Lead) → дифф нулевой, как и требует критерий | ✅ |
+| §8.3 п.3 гард горячего пути | [`GameUI.cs:55`](Assets/Scripts/UI/GameUI.cs:55) `_bestArgs` — `readonly object[1]`, создан один раз; [`GameUI.cs:1141`](Assets/Scripts/UI/GameUI.cs:1141) ранний выход `if (best == _lastBestShown) return;`; [`GameUI.cs:1158`](Assets/Scripts/UI/GameUI.cs:1158) сброс из [`ResetLanguageGuards()`](Assets/Scripts/UI/GameUI.cs:1152), который зовёт [`LanguageService.cs:78`](Assets/Scripts/Core/LanguageService.cs:78) — точка подписки одна | ✅ |
+| §8.1 билдеры на контейнере (решение продюсера) | Поиск спрайтов по имени удалён: `LoadSprite`/`GetSprite(`/`LoadAllAssetsAtPath` = **0** в обоих билдерах. Вход — [`PrefabBuilderSprites`](Assets/Scripts/Editor/PrefabBuilderSprites.cs) (13 полей), громкий стоп до записи: [`PrefabBuilderSprites.cs:72`](Assets/Scripts/Editor/PrefabBuilderSprites.cs:72) и [`:105`](Assets/Scripts/Editor/PrefabBuilderSprites.cs:105) `Debug.LogError(... «префабы не записаны»)`. Ассет закоммичен с 12 ссылками, `usePanelBg: 0`, `panelBg: {fileID: 0}` (законно) | ✅ |
+| R5 один коммит | Код §8 + 9 префабов + сцена — в **одном** `81566c8`; играбельность сверена ин-движком до/после (Play Mode, активный профиль RuStore) | ✅ |
+| R10 сверка снапшотов | `git status --porcelain "Assets/Settings/Build Profiles/"` — **пусто**; побочных правок `defines` не осталось | ✅ |
+| §8.4 нулевой дифф нетегированных | `ContinueText`/`Hud`/пауза: `m_fontAsset` до и после смены локали = `LiberationSans SDF` (`8f586378…`); ноды остались без тегов; temp-override тест показал, что нетегированные **не** переприменяются | ✅ |
+| Компиляция 3 профилей | RuStore: 1 ошибка — **предсуществующий** Android Resolver `Resolution Failed.` (не C#); CS-ошибок = 0. ItchIO = 0, YandexGames = 0. Ин-движок: `read_console` по `CS\d{4}` = 0 записей | ✅ |
+
+**Отклонения / наблюдения (приняты, не блокируют приёмку):**
+
+- **3 новые пустые ссылки `LocalizeStringEvent` в `GameUI`** ([`GameUI.cs:49-51`](Assets/Scripts/UI/GameUI.cs:49)): `startBestValueLse`, `shieldTextLse`, `shieldCaptionLse` = `{fileID: 0}` в сцене. Все три восстанавливаются в рантайме через [`GetLse()`](Assets/Scripts/UI/GameUI.cs:1205) → `GetComponent` с ноды (LSE на `StartPanel/StartBestValue`, `StartPanel/ShieldText`, `StartPanel/ShieldCaption` присутствуют — проверено). `shieldTextLse` фактически не читается (0 обращений) — мёртвое поле, безвредно.
+- **`menuUpgradeBtn: {fileID: 0}`** — **предсуществующее** (подтверждено: `693787e:4561`, тот же ноль в родителе), вместе с [`Debug.LogError` «не найдена кнопка «ПРОКАЧКА»»](Assets/Scripts/Core/AstroDriftSceneSetup.cs:276) в родителе. **Не регрессия задачи 5.** Требует отдельного решения продукта вне миграции (кнопка «ПРОКАЧКА» не подключена → дерево разблокировок не открыть).
+- **`Setup Scene UI` сообщил о ненайденной кнопке как об ошибке, а не предупреждении** — отчёт исполнителя неточен в классификации, факт совпадает с предсуществующим дефектом выше.
+
+### Клоузаут задачи 5
+
+- Тег **`task5-accepted`** (коммит `81566c8`) — рядом с `baseline-loc-migration`, `task1-accepted`…`task4-accepted`.
+- **Перенесённый temp-override тест §7.2 (решение продюсера, п.2б) — выполнен на реальных тегах:** временный in-memory оверрайд EN (все слоты → `Montserrat-Bold SDF`), `SelectedLocale ru → en` посреди сессии → **тегированные** ноды переприменены (19 нод получили новый шрифт), **нетегированные** (`Hud/*`, пауза, `ContinueText`) остались `LiberationSans SDF`; оверрайд откачен, дифф пуст. **Оговорка о доказательности (принята):** плейсхолдер-конфиг мапит `headingLight`/`bodyRegular`/`ctaSemiBold` на **один** guid `20fb9121…` ([`TypographyConfig.asset:15-18`](Assets/Resources/TypographyConfig.asset:15)), поэтому видимой дельты RU→EN «по слотам» нет — наблюдался факт переприменения, а не визуальный сдвиг. Это ограничение **данных продукта**, не кода; снимается при заполнении ролей разными шрифтами (вне скоупа милстоуна).
+- **Предсуществующий дефект ассетов (отдельная запись, не регрессия):** `Sheet.png` был пере-нарезан авто-сеткой в коммите `d9bf5e1` (тег `baseline-loc-migration`, размер 855×1024 → 1661×1024), из-за чего именованные слайсы `Level_Icon`/`Settings_Icon`/`Shop_Icon`/`Upgrade` (существовавшие на `f0155fd`) сменились на `Player`/`Star`/`Sheet_2..4`. Это и вызвало падение билдеров. **Миграция не виновата.** Последствие для продукта: переслайсить `Sheet.png` вручную или оставить контейнер как источник истины (принято второе).
+- **9 остаточных `LocalizedTextUI` в YAML префабов** — устранены в этой задаче вместе с удалением файла (теперь `LocalizedTextUI` = 0 в `Assets/**`); отдельная запись закрыта.
+- Остаточные риски **R10**/**R11** — действуют для задач 6–8. Диагностические логи — до приёмки 8.
+
 ---
 
 ## Приложение A. Финальное состояние настроек проекта (заполнено по факту задач 2–3)
@@ -904,10 +936,12 @@ Localization_yg
 | `Assets/Scripts/UI/Typography.cs` + `Core/TypographyConfig.cs` | **Сделано**: `langCode → localeCode`; событие `LanguageChanged` снято, подписка на `SelectedLocaleChanged` — у `LanguageService` | 4 ✅ |
 | `Assets/Scripts/UI/TypeRoleTag.cs` | **Создано**: `TypeRoleTag` (поле `role`, self-apply в `OnEnable`) + `TypeRoleApplier.ApplyAll()` | 4 ✅ |
 | `Assets/Fonts/Montserrat-Bold SDF.asset`, `Assets/Fonts/Montserrat-SemiBold SDF.asset` | **Сделано**: `m_FallbackFontAssetTable` → `LiberationSans SDF - Fallback` (§7.1 п.6) | 4 ✅ |
-| `Assets/Scripts/UI/GameUI.cs` | **Сделано** (4): `ApplyTypography` + подписчик `LanguageChanged` удалены. Остаётся (5): `BindPauseTexts`, `Arguments` + гарды §3.4, рантайм-смены entry (щит, `DeathLevel`) | 4–5 |
-| `Assets/Scripts/Editor/MenuPrefabBuilder.cs` | LSE + теги: варианты кнопок, LevelCard, **блок StartPanel** (B4) | 5 |
-| `Assets/Scripts/Editor/LevelUpPrefabBuilder.cs` | LSE + теги: панель, бейдж, реролл, пустые LSE + теги на картах | 5 |
-| `Assets/Scripts/Core/AstroDriftSceneSetup.cs` | LSE (+ теги где была роль) при создании текстов Death/Pause | 5 |
+| `Assets/Scripts/UI/GameUI.cs` | **Сделано** (4): `ApplyTypography` + подписчик `LanguageChanged` удалены. **Сделано** (5): `BindPauseTexts` удалён, `L10n.Bind` → `LocalizeStringEvent`; `Arguments` + гарды §3.4 (`_bestArgs`/`_lastBestShown`), `ResetLanguageGuards()`, `GetLse()`, рантайм-смены entry (щит в обоих состояниях, `DeathLevel`) | 4–5 ✅ |
+| `Assets/Scripts/Editor/MenuPrefabBuilder.cs` | **Сделано**: LSE + теги — варианты кнопок, LevelCard, блок StartPanel (B4). Спрайты — из контейнера, поиск по имени удалён | 5 ✅ |
+| `Assets/Scripts/Editor/LevelUpPrefabBuilder.cs` | **Сделано**: LSE + теги — панель, бейдж, реролл, пустые LSE карт. Спрайты — из контейнера | 5 ✅ |
+| `Assets/Scripts/Editor/PrefabBuilderSprites.cs` + `.asset` (+`.meta`) | **Создано**: контейнер входных ссылок билдеров (13 полей) + громкий стоп до записи (решение продюсера) | 5 ✅ |
+| `Assets/Scripts/Core/AstroDriftSceneSetup.cs` | **Сделано**: LSE (+ теги где была роль) при создании текстов Death/Pause; `NewTextButton(...)` получил параметр `key` | 5 ✅ |
+| `Assets/Prefabs/**` (9 префабов), `Assets/Scenes/Game.unity` | **Сделано**: 19 `TypeRoleTag` (16 в префабах + 3 в сцене), базлайн 0; состав GameObject'ов сцены не изменился (42↔42) | 5 ✅ |
 | `Assets/Scripts/Core/PerkDefinition.cs` | `LocalizedString title/desc` вместо `titleKey/descKey` | 6 |
 | `Assets/Scripts/Core/AstroDriftSetup.cs` | Сиды и парсер под `LocalizedString` (перки + пикапы) | 6 |
 | `Assets/Resources/Perks/*.asset` (8 шт.) | Разовая миграция ссылок (до удаления полей из класса) | 6 |
