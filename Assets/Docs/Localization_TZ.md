@@ -529,11 +529,12 @@ public LocalizedString desc;
 
 ### 10.2. Критерии приёмки
 
-- [ ] Ноль `L10n.Bind` и `Application.onBeforeRender` в `Assets/Scripts`;
-- [ ] Дерево разблокировок корректно на RU/EN и перерисовывается при смене локали;
-- [ ] **Заголовок дерева резолвится** — `unlock_tree_title` даёт текст на RU/EN; подтверждено **прямым вызовом `FillUnlockTree()`** (кнопка «ПРОКАЧКА» не подключена — пост-милстоун дефект P1) + Play Mode. **Закрывает наблюдение задачи 6** по `UnlockTreePanel/Title` (санкция продюсера, задача 6, п.1);
-- [ ] Флоатеры корректны; поведение при неготовой таблице — фолбэк, не исключение;
-- [ ] **Cleanup–7 выполнен:** мёртвое поле `shieldTextLse` удалено; док-комментарий `L10n.Bind` снят (`Assets/Scripts/UI/LocalizedText.cs:10`) — [распределение cleanup](Assets/Docs/Localization_TZ.md:933).
+- [x] Ноль `L10n.Bind` и `Application.onBeforeRender` в `Assets/Scripts`; — **Team Lead независимо:** оба = **0** (grep по `Assets/Scripts` + `Assets/_Platform`); сводно `L10n.Bind|onBeforeRender|LocalizedTextUI|AstroDriftLanguageBridge` = 0
+- [x] Дерево разблокировок корректно на RU/EN и перерисовывается при смене локали; — 21 уровень (0–20), цвета и «скоро» на месте; перерисовка: `visible → subscribed=True`, смена локали **без прямого вызова** → `textChanged=True`; `hidden → subscribed=False` → `textChanged=False`. Подписка симметрична: [`SetTreeVisible`](Assets/Scripts/UI/GameUI.cs:237) → [`SubscribeTreeLocale()`](Assets/Scripts/UI/GameUI.cs:250) на показ/скрытие, снятие в [`OnDestroy`](Assets/Scripts/UI/GameUI.cs:302)
+- [x] **Заголовок дерева резолвится** — RU `РАЗБЛОКИРОВКИ ПИЛОТА` / EN `PILOT UNLOCKS`, снято прямым вызовом `FillUnlockTree()` + Play Mode. **Закрывает наблюдение задачи 6** по `UnlockTreePanel/Title` — **причина найдена и устранена** (см. [Результат задачи 7](Assets/Docs/Localization_TZ.md:955))
+- [x] Флоатеры корректны; поведение при неготовой таблице — фолбэк, не исключение. — `combo` RU `КОМБО! +200` / EN `COMBO! +200`; `unlocked_title` RU `РАЗБЛОКИРОВАНО:` / EN `UNLOCKED:`; `DeathUnlocked` RU `РАЗБЛОКИРОВАНО: Перк «Поворотливость+», Перк «Комбо+»`; отсутствующий ключ → `''` + `(null=>True)`, исключений нет
+- [x] **Cleanup–7 выполнен:** мёртвое поле `shieldTextLse` удалено (`grep` = 0); док-комментарий `L10n.Bind` снят, файл переписан под `Get`/`GetFormatted` (в [`LocalizedText.cs`](Assets/Scripts/UI/LocalizedText.cs:1) `Bind|RefreshAll|onBeforeRender|TMPro` = 0 совпадений) — [распределение cleanup](Assets/Docs/Localization_TZ.md:931)
+- [x] Компиляция: **0 CS-ошибок** — ItchIO / YandexGames / RuStore; единственная ошибка — предсуществующий Android Resolver `Resolution Failed.` на RuStore (не C#)
 
 ---
 
@@ -612,6 +613,39 @@ Editor-меню, собирающее множество используемы�
 > собранного игрока. Арифметика дельты файла по-прежнему не считается доказательством —
 > 26.65 МБ YAML-таблиц жмутся, поэтому в приёмке задачи 1 основание — метрики ассета
 > (base: 34.66 МБ, Dynamic, multiAtlas on, 2048², PS 90, 99 глифов — см. §20).
+
+### Результат задачи 7 (коммит `2c7819b`, проверено Team Lead пофайлово и grep'ом)
+
+| Пункт §10.1 / §10.2 | Факт | Статус |
+|---|---|---|
+| Состав коммита | `2c7819b` (родитель `dbccb00`), ровно **2 файла**: [`LocalizedText.cs`](Assets/Scripts/UI/LocalizedText.cs) (+6/−127) и [`GameUI.cs`](Assets/Scripts/UI/GameUI.cs) (+34/−9). Запрещённые пути — 0; `.unity`/`.prefab` в коммите — **0** (задача чисто кодовая) | ✅ |
+| §10.1 п.1 ужатие до ридера | Публичная поверхность `L10n` = **ровно 2 метода**: [`Get`](Assets/Scripts/UI/LocalizedText.cs:19) + [`GetFormatted`](Assets/Scripts/UI/LocalizedText.cs:36), 42 строки. Контракт сохранён: `Get` → `null` при неготовой таблице, `GetFormatted` → `null` (N3) | ✅ |
+| §10.1 п.2 удаление биндингов | Удалены `Bind`, `_bindings`, struct `Binding`, `RefreshAll`, `OnLocaleChanged`, `Subscribe`, `PurgeDestroyed`, `DetachRefresh`, `_subscribed`, `_refreshAttached`, подписки на `SelectedLocaleChanged` и `Application.onBeforeRender`. Отпали `using TMPro`/`UnityEngine`/`UnityEngine.Localization` (остался только `.Settings`) | ✅ |
+| §10.1 п.3 call sites | Ровно **5** точек: [`GameUI.cs:271`](Assets/Scripts/UI/GameUI.cs:271) (`unlock_soon`), [`:288`](Assets/Scripts/UI/GameUI.cs:288) и [`:621`](Assets/Scripts/UI/GameUI.cs:621) (`unlock_<id>`), [`:626`](Assets/Scripts/UI/GameUI.cs:626) (`unlocked_title`), [`GameManager.cs:566`](Assets/Scripts/Core/GameManager.cs:566) (`combo`). Новых `LocalizeStringEvent` не заведено | ✅ |
+| §10.1 п.4 перерисовка дерева | [`SetTreeVisible`](Assets/Scripts/UI/GameUI.cs:237) → [`SubscribeTreeLocale(show)`](Assets/Scripts/UI/GameUI.cs:250): подписка **только при видимой панели**, снятие при скрытии и в [`OnDestroy`](Assets/Scripts/UI/GameUI.cs:302). Гард `if (on == _treeLocaleSubscribed) return;` — идемпотентно, двойных подписок нет; [`OnTreeLocaleChanged`](Assets/Scripts/UI/GameUI.cs:258) дополнительно проверяет видимость через `_treeCg.alpha` | ✅ |
+| §10.2 п.1 ноль запрещённых паттернов | **Team Lead независимо:** `L10n.Bind` = **0**, `onBeforeRender` = **0**, `LocalizedTextUI` = **0**, `AstroDriftLanguageBridge` = **0** (grep по `Assets/Scripts` + `Assets/_Platform`, `--include=*.cs`) | ✅ |
+| §10.2 п.2 дерево RU/EN + перерисовка | 21 уровень (0–20), `unlock_soon` RU `скоро` / EN `soon`; подписка симметрична: `visible → subscribed=True` → смена локали **без прямого вызова** даёт `textChanged=True`; `hidden → subscribed=False` → `textChanged=False` | ✅ |
+| §10.2 п.3 заголовок дерева (условие продюсера, задача 6 п.1) | `unlock_tree_title`: RU `РАЗБЛОКИРОВКИ ПИЛОТА` / EN `PILOT UNLOCKS` — снято прямым вызовом `FillUnlockTree()` + Play Mode. **Наблюдение задачи 6 закрыто, причина установлена (см. ниже)** | ✅ |
+| §10.2 п.4 флоатеры и фолбэк | `combo` RU `КОМБО! +200` / EN `COMBO! +200`; `unlocked_title` RU `РАЗБЛОКИРОВАНО:` / EN `UNLOCKED:`; `DeathUnlocked` (leveled 0→2) RU `РАЗБЛОКИРОВАНО: Перк «Поворотливость+», Перк «Комбо+»`; отсутствующий ключ → `''`, `(null=>True)` — исключений нет | ✅ |
+| §10.2 п.5 Cleanup–7 | `shieldTextLse` = **0** (поле снято из [`GameUI.cs`](Assets/Scripts/UI/GameUI.cs:48)); док-комментарий `L10n.Bind` снят — в [`LocalizedText.cs`](Assets/Scripts/UI/LocalizedText.cs:1) `Bind\|RefreshAll\|onBeforeRender\|TMPro` = **0 совпадений** | ✅ |
+| Логи задачи 3 сохранены (крайний срок — приёмка 8) | **Team Lead независимо:** `[Lang]` = **7** в [`LanguageService.cs`](Assets/Scripts/Core/LanguageService.cs), `[Boot] C2` = **2** в [`Bootstrap.cs`](Assets/Scripts/Core/Bootstrap.cs) — не тронуты | ✅ |
+| Компиляция 3 профилей | ItchIO 0, YandexGames 0, RuStore 1 — **предсуществующий** Android Resolver `Resolution Failed.` (не C#); **CS-ошибок = 0** | ✅ |
+
+### Клоузаут задачи 7
+
+- Тег **`task7-accepted`** (коммит `2c7819b`) — рядом с `baseline-loc-migration`, `task1-accepted`…`task6-accepted`.
+- **Главный результат: наблюдение задачи 6 по `UnlockTreePanel/Title` — не «ложное срабатывание», а НАСТОЯЩИЙ ДЕФЕКТ, найденный и устранённый.** Причина: [`GameUI.AddLocalized()`](Assets/Scripts/UI/GameUI.cs:1200) добавлял `LocalizeStringEvent` и задавал `StringReference`, но **не подписывал `OnUpdateString` → `tmp.text`**. Билдеры префабов делают это persistent-listener'ом ([`LevelUpPrefabBuilder.BindTmpText()`](Assets/Scripts/Editor/LevelUpPrefabBuilder.cs:248), `AddPersistentListener` + `EditorAndRuntime`), а нода, **созданная кодом**, слушателя не получала: `StringReference` корректен (`GameTexts` → `unlock_tree_title`), прямой `L10n.Get` даёт текст, но `tmp.text` остаётся пустым, `listeners=0`. Итог: **до фикса прямой вызов `FillUnlockTree()` критерий §10.2 п.3 не закрывал**. Минимальный фикс — рантайм-подписка `lse.OnUpdateString.AddListener(v => captured.text = v)`. **Асимметрия «билдеры подписывают, код — нет» устранена в общем хелпере**, поэтому чинит не только заголовок дерева, а все ноды, создаваемые `GameUI` в рантайме.
+- **Санкция Team Lead (в пределах скоупа §10):** правка — в [`GameUI.cs`](Assets/Scripts/UI/GameUI.cs:1200), критерий §10.2 п.3 прямо требует резолва заголовка, объём — 2 строки в существующем хелпере. Выход за дословный список шагов §10.1 признан **необходимым и оправданным**; на ратификацию продюсеру.
+- **Отклонения (приняты, не блокируют приёмку):**
+  - **Осиротевшая YAML-строка** [`Game.unity:4868`](Assets/Scenes/Game.unity:4868) — `shieldTextLse: {fileID: 0}`. Поле удалено из класса; Unity неизвестное имя при десериализации игнорирует (не ошибка, безвредно). Сцену править задачей 7 запрещено — **задача 8** (вместе с финальной чисткой; сцена всё равно не трогалась с задачи 5, там же дифф).
+  - **Кэш `CanvasGroup`** — поле `_treeCg` вместо повторного `GetComponent` в `ToggleTree`/`SetTreeVisible` (устранён `GetComponent` в горячем UI-пути). Поведение не меняется; **[`BuildTreePanel()`](Assets/Scripts/UI/GameUI.cs:190) и `FillUnlockTree()` девственны** — там правок нет.
+  - **`FillUnlockTree()` заголовок не рендерит** — он остаётся на `LocalizeStringEvent` (§3.1) и обновляется самим событием после фикса. Синхронный `L10n.Get("unlock_tree_title")` как fallback **не добавлялся** — строку уже резолвит событие; добавление было бы дублированием двух механизмов на одной ноде.
+  - **Побочный артефакт Unity откачен:** Play Mode перегенерировал [`LiberationSans SDF - Fallback.asset`](Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset) (динамический атлас) — `git checkout --`, в коммит не вошло. Дерево чистое (проверено Team Lead).
+- **Долг 4д (Play Mode-обход экранов)** остаётся на финальной приёмке милстоуна (§14, решение продюсера по задаче 6, п.2) — здесь взяты целевые строки дерева и флоатеров, а не полный обход.
+- Остаточные риски **R10**/**R11** — действуют до задачи 8. **Заморозка снята с момента приёмки задачи 7** (условие продюсера соблюдено: заморозка была «до ПРИЁМКИ, не выдачи»).
+- **Задача 8 (§11) подтверждена фактами:** сирота «ДЕРЕВО» (`id 1584525502046248`) не удалена (не её скоуп); 9 логов задачи 3 на месте; осиротевшая YAML-строка сцены — кандидат в задачу 8.
+
+---
 
 ## 15. Grep-контроль «нулевых ссылок»
 
@@ -979,12 +1013,12 @@ Localization_yg
 - **Новые отклонения (приняты, не блокируют приёмку):**
   - **Легаси-парсер `.txt` перков — эвристика по префиксу.** Вместо явного списка ключей ветка `default:` распознаёт `perk_*_title`/`perk_*_desc` через `StartsWith`/`EndsWith`. Принято: парсер обслуживает одноразовый импорт, источник истины — таблица `GameTexts`, ключи в ассетах не переименовывались.
   - **`FillCard` больше не подставляет фолбэк-строку при пустой ссылке карты.** Соответствует §3.2 вариант А дословно; пустое значение гасится на уровне `PerkTitle` (`GetLocalizedString()` + `string.IsNullOrEmpty` → `def.id`).
-  - **`UnlockTreePanel/Title` — «пустой `StringReference`» из отчёта исполнителя оценено как ложное срабатывание.** Ноды нет в сцене: она создаётся в рантайме в [`BuildTreePanel()`](Assets/Scripts/UI/GameUI.cs:189), ключ назначается там же — [`AddLocalized(titleTmp, "unlock_tree_title")`](Assets/Scripts/UI/GameUI.cs:220). Дефектом не заведено, наблюдение ведётся до задачи 7 (её скоуп — `GameUI`).
+  - **`UnlockTreePanel/Title` — «пустой `StringReference`» из отчёта исполнителя: оценено как ложное срабатывание — ОЦЕНКА ОКАЗАЛАСЬ НЕВЕРНОЙ.** Ноды нет в сцене (создаётся в рантайме в [`BuildTreePanel()`](Assets/Scripts/UI/GameUI.cs:190), ключ — [`AddLocalized(titleTmp, "unlock_tree_title")`](Assets/Scripts/UI/GameUI.cs:222)), и на этом основании наблюдение было списано. **Задача 7 показала, что дефект реальный:** `AddLocalized` не подписывал `OnUpdateString` → `tmp.text`, поэтому текст не появлялся. Исправлено в задаче 7. **Урок:** отсутствие ноды в сцене ≠ отсутствие дефекта; «ложное срабатывание» не следовало закрывать без прогона. Записано как расхождение журнала.
   - **Артефактов не осталось:** скриншоты задачи 6 удалены, код `execute_code` ин-движка на диск не писался — подтверждено чистым `git status` и составом коммита.
 - **Долг доказательности п.4д прошлого периода (перечень экранов Play Mode) — ЗАКРЫТ** дословным перечнем строк RU/EN в отчёте задачи 6.
 - **Скоуп задачи 7 подтверждён фактом:** чтения `L10n.Get` остались ровно в точках §10.1 п.3 — [`GameUI.cs:252`](Assets/Scripts/UI/GameUI.cs:252), [`:269`](Assets/Scripts/UI/GameUI.cs:269), [`:601`](Assets/Scripts/UI/GameUI.cs:601), [`:606`](Assets/Scripts/UI/GameUI.cs:606) + [`GameManager.cs:566`](Assets/Scripts/Core/GameManager.cs:566) (флоатер комбо).
 - **Следствие из пост-милстоун дефектов для задачи 7:** проверка дерева разблокировок — **прямым вызовом** `FillUnlockTree()` (кнопка «ПРОКАЧКА» не подключена, `menuUpgradeBtn: {fileID: 0}`). Метод фиксируется в брифе задачи 7 до выдачи.
-- Остаточные риски **R10**/**R11** — действуют для задач 7–8. Диагностические логи задачи 3 и логи задачи 4 — до приёмки 8. **Заморозка действует до приёмки задачи 7.**
+- Остаточные риски **R10**/**R11** — действуют для задачи 8. 9 диагностических логов задачи 3 — до приёмки 8 (упоминание «логи задачи 4» [снято как фантомное](Assets/Docs/Localization_TZ.md:976)). **Заморозка действовала до приёмки задачи 7 — снята.**
 
 ---
 
@@ -1028,7 +1062,8 @@ Localization_yg
 | `Assets/Scripts/Core/PickupConfig.cs` | **Сделано**: новое поле `PickupDef.name` (`LocalizedString`), 3 ссылки в `PickupConfig.asset` | 6 ✅ |
 | `Assets/Scripts/Spawners/PickupManager.cs` | **Сделано**: чтение из дефа (`GetLocalizedString()` + проверка N3), `PickupNameKey` удалён | 6 ✅ |
 | `Assets/Scripts/UI/PerkChoiceUI.cs` | **Сделано**: `FillCard` — вариант А (`StringReference = def.title/desc`), `SetEntry` удалён; `PerkTitle` — `GetLocalizedString()` | 6 ✅ |
-| `Assets/Scripts/UI/LocalizedText.cs` (`L10n`) | Ужать до `Get`/`GetFormatted` | 7 |
+| `Assets/Scripts/UI/LocalizedText.cs` (`L10n`) | **Сделано**: ужат до `Get`/`GetFormatted` (42 строки); `Bind`/`_bindings`/`Binding`/`RefreshAll`/`OnLocaleChanged`/`Subscribe`/`PurgeDestroyed`/`DetachRefresh`/`_subscribed`/`_refreshAttached` + подписки `onBeforeRender`/`SelectedLocaleChanged` удалены | 7 ✅ |
+| `Assets/Scripts/UI/GameUI.cs` (задача 7) | **Сделано**: `FillUnlockTree` — перерисовка по `SelectedLocaleChanged` при видимой панели (+снятие в `OnDestroy`); **`AddLocalized` — рантайм-подписка `OnUpdateString` → `tmp.text`** (устранена асимметрия с билдерами, закрывшая наблюдение 6 по `Title`); `shieldTextLse` удалено; кэш `_treeCg` вместо повторного `GetComponent` | 7 ✅ |
 | `Assets/Scripts/UI/LocalizedTextUI.cs` | Подписка `LanguageChanged` снята (4); **удалить** файл в задаче 5 (единая отсечка) | 4–5 |
 | `Assets/Localizations/GameTexts_{ru,en}.asset` | Удалить сироту «ДЕРЕВО» | 8 |
 | Новый editor-скрипт валидатора | **Создать** (ключи + coverage чарсета) | 8 |
