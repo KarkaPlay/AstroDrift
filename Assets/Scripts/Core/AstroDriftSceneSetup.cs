@@ -16,8 +16,8 @@ using UnityEngine.UI;
 /// • DeathPanel: Score (88 px Light) / BEST / NEW BEST (золото) + текстовые кнопки
 ///   с разделителями UiLine — без рамок и плашек.
 /// • PausePanel: оверлей UiOverlay + текстовый список (каскад §4.4).
-/// • Все панели всегда активны, видимость — через CanvasGroup (никаких мгновенных
-///   SetActive(true) на видимых панелях — §8).
+/// • §8 (новая редакция): скрытая панель — НЕАКТИВНА. Сцена сохраняется с выключенными
+///   Death/Pause/HUD/Perk/щитом — невидимое не виснет в сцене и не ловит клики.
 /// Меню: AstroDrift → Setup Scene UI.
 /// </summary>
 public static class AstroDriftSceneSetup
@@ -35,7 +35,7 @@ public static class AstroDriftSceneSetup
         var log = new System.Text.StringBuilder();
 
         // ——— Canvas ———
-        var canvasGo = GameObject.Find("Canvas");
+        var canvasGo = FindSceneObject("Canvas");
         if (canvasGo == null) canvasGo = new GameObject("Canvas");
         var canvas = canvasGo.GetComponent<Canvas>();
         if (canvas == null) canvas = canvasGo.AddComponent<Canvas>();
@@ -48,7 +48,7 @@ public static class AstroDriftSceneSetup
         if (canvasGo.GetComponent<GraphicRaycaster>() == null) canvasGo.AddComponent<GraphicRaycaster>();
 
         // ——— EventSystem ———
-        var esGo = GameObject.Find("EventSystem");
+        var esGo = FindSceneObject("EventSystem");
         if (esGo == null)
         {
             esGo = new GameObject("EventSystem");
@@ -60,7 +60,7 @@ public static class AstroDriftSceneSetup
         Color secondaryCol = Palette.SecondaryText;
 
         // ——— HUD (геймплейный — не трогаем, только ссылка) ———
-        var hudGo = GameObject.Find("Hud");
+        var hudGo = FindSceneObject("Hud");
         if (hudGo == null)
         {
             hudGo = NewPanel(canvas.transform, "Hud", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(1080, 200));
@@ -122,7 +122,7 @@ public static class AstroDriftSceneSetup
         // Утилита НЕ пересобирает содержимое по кускам (иначе повторный прогон воскрешал
         // текстовый логотип Title1/Title2 и сносил префаб-инстанс).
         var startPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/StartPanel.prefab");
-        var startGo = GameObject.Find("StartPanel");
+        var startGo = FindSceneObject("StartPanel");
         if (startPrefab == null)
         {
             Debug.LogError("AstroDrift SceneSetup: не найден " + MenuPrefabFolder + "/StartPanel.prefab — меню не собрано.");
@@ -272,7 +272,10 @@ public static class AstroDriftSceneSetup
         var menuRowRt = menuRowGo != null ? (RectTransform)menuRowGo.transform : null;
         // «ПРОКАЧКА» — единственный вход в панель дерева разблокировок (кнопка-заглушка
         // «ДЕРЕВО» в углу удалена). Аналитика остаётся на MenuButtonUI этой кнопки.
-        var menuUpgradeBtn = FindInHierarchy(rowParent, "MenuButton_Upgrade")?.GetComponent<Button>();
+        // Имя ноды в сцене — Btn_MenuUpgrade, имя ассета — MenuButton_Upgrade: ищем оба,
+        // иначе ссылка молча оставалась пустой и дерево разблокировок не открывалось.
+        var menuUpgradeBtn = (FindInHierarchy(rowParent, "MenuButton_Upgrade")
+                              ?? FindInHierarchy(rowParent, "Btn_MenuUpgrade"))?.GetComponent<Button>();
         if (menuUpgradeBtn == null) Debug.LogError("AstroDrift SceneSetup: не найдена кнопка «ПРОКАЧКА» (MenuButton_Upgrade) — дерево разблокировок не открыть.");
 
         // Кнопка стартового щита: под нижним рядом, discreet (текст 28 + caption 20)
@@ -292,7 +295,9 @@ public static class AstroDriftSceneSetup
         var shieldBtn = shieldGo.GetComponent<Button>();
         var shieldText = FindInHierarchy(shieldGo.transform, "ShieldText")?.GetComponent<TextMeshProUGUI>();
         var shieldCap = FindInHierarchy(shieldGo.transform, "ShieldCaption")?.GetComponent<TextMeshProUGUI>();
-        // Кнопка скрыта по умолчанию (гейт уровня 8 решает GameUI.RefreshPilotBlock)
+        // Кнопка скрыта по умолчанию (гейт уровня 8 решает GameUI.RefreshPilotBlock).
+        // §8: в сохранённой сцене кнопка выключена целиком — невидимая зона 560×110
+        // больше не ловит тапы по меню.
         EnsureCanvasGroup(shieldGo, visible: false);
         var shieldCg = shieldGo.GetComponent<CanvasGroup>();
         shieldCg.alpha = 0f; shieldCg.blocksRaycasts = false;
@@ -304,7 +309,7 @@ public static class AstroDriftSceneSetup
         }
 
         // ——— DeathPanel (§3: кнопка = текст; NEW BEST — единственное золото) ———
-        var deathGo = GameObject.Find("DeathPanel");
+        var deathGo = FindSceneObject("DeathPanel");
         if (deathGo == null) deathGo = NewPanel(canvas.transform, "DeathPanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
         ClearChildren(deathGo.transform);
         deathGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // прозрачный фон — плашку убрали
@@ -380,7 +385,7 @@ public static class AstroDriftSceneSetup
         deathLevelT.gameObject.SetActive(false);
 
         // ——— PausePanel (§4.4: оверлей + текстовый список, каскад) ———
-        var pauseGo = GameObject.Find("PausePanel");
+        var pauseGo = FindSceneObject("PausePanel");
         if (pauseGo == null) pauseGo = NewPanel(canvas.transform, "PausePanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
         ClearChildren(pauseGo.transform);
         pauseGo.GetComponent<Image>().color = Palette.UiOverlay;
@@ -399,7 +404,7 @@ public static class AstroDriftSceneSetup
             Debug.LogError("AstroDrift SceneSetup: не найден " + LevelUpPrefabFolder + "/LevelUpPanel.prefab — оверлей перка не собран (AstroDrift → Build LevelUp Prefabs).");
             log.Append("LevelUpPanel.prefab MISSING; ");
         }
-        var perkGo = GameObject.Find("PerkPanel");
+        var perkGo = FindSceneObject("PerkPanel");
         bool perkIsPrefabInstance = perkGo != null && PrefabUtility.IsPartOfPrefabInstance(perkGo);
         if (levelUpPrefab != null && !perkIsPrefabInstance)
         {
@@ -418,7 +423,7 @@ public static class AstroDriftSceneSetup
         }
 
         // Компонент живёт на самой панели (её и показывает/скрывает), а не на отдельном объекте.
-        var strayUi = GameObject.Find("PerkChoiceUI");
+        var strayUi = FindSceneObject("PerkChoiceUI");
         if (strayUi != null && (perkGo == null || strayUi != perkGo)) Object.DestroyImmediate(strayUi);
         var perkUi = perkGo != null ? perkGo.GetComponent<PerkChoiceUI>() : null;
         if (perkGo != null && perkUi == null) perkUi = perkGo.AddComponent<PerkChoiceUI>();
@@ -439,7 +444,7 @@ public static class AstroDriftSceneSetup
         }
 
         // ——— GameUI с сериализованными ссылками ———
-        var uiGo = GameObject.Find("GameUI");
+        var uiGo = FindSceneObject("GameUI");
         if (uiGo == null) uiGo = new GameObject("GameUI");
         var ui = uiGo.GetComponent<GameUI>();
         if (ui == null) ui = uiGo.AddComponent<GameUI>();
@@ -483,7 +488,7 @@ public static class AstroDriftSceneSetup
         SetRef(so, "deathUnlocked", deathUnlockT, log);
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        // Начальные состояния: панели ВСЕГДА активны, видимость — CanvasGroup (§8).
+        // Начальные состояния (§8): скрытые панели в сохранённой сцене — НЕАКТИВНЫ.
         EnsureCanvasGroup(startGo, visible: true);
         EnsureCanvasGroup(deathGo, visible: false);
         EnsureCanvasGroup(pauseGo, visible: false);
@@ -493,6 +498,9 @@ public static class AstroDriftSceneSetup
         EditorUtility.SetDirty(ui);
         EditorUtility.SetDirty(perkUi);
         MarkSceneDirty(scene);
+        // Без явного SaveScene §8-состояние (скрытое = неактивно) оставалось только в памяти
+        // редактора: в файле сцены панели по-прежнему активны.
+        EditorSceneManager.SaveScene(scene);
         Debug.Log("AstroDrift SceneSetup v2: UI построен по макету §2–§3. " + log);
     }
 
@@ -508,6 +516,20 @@ public static class AstroDriftSceneSetup
             if (!kept) { kept = true; continue; }
             Object.DestroyImmediate(c.gameObject);
         }
+    }
+
+    /// <summary>Поиск сценового объекта по имени, ВКЛЮЧАЯ неактивные (§8: скрытые панели
+    /// выключены → GameObject.Find их не находит и утилита плодила бы дубли при повторном прогоне).</summary>
+    private static GameObject FindSceneObject(string name)
+    {
+        var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+        foreach (var r in roots)
+        {
+            if (r.name == name) return r;
+            var found = FindInHierarchy(r.transform, name);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     /// <summary>Поиск по имени в иерархии, включая неактивные узлы (GameObject.Find их не видит).</summary>
@@ -593,7 +615,9 @@ public static class AstroDriftSceneSetup
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    /// <summary>Панель всегда активна; видимость — CanvasGroup (никаких SetActive-миганий §8).</summary>
+    /// <summary>Начальное состояние панели (§8, новая редакция): CanvasGroup + активность.
+    /// Скpытая панель — alpha 0, raycasts/interactable off и SetActive(false): так она и в
+    /// сохранённую сцену попадёт. Рантайм показывает её через UiAnim.SetVisible.</summary>
     private static void EnsureCanvasGroup(GameObject go, bool visible)
     {
         if (go == null) return;
@@ -608,6 +632,7 @@ public static class AstroDriftSceneSetup
         cg.alpha = visible ? 1f : 0f;
         cg.blocksRaycasts = visible;
         cg.interactable = visible;
+        go.SetActive(visible);
     }
 
     private static void SetRef(SerializedObject so, string prop, Object val, System.Text.StringBuilder log)

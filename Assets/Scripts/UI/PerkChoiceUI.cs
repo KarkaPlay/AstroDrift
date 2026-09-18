@@ -30,7 +30,11 @@ public class PerkChoiceUI : MonoBehaviour
 
     private const float CardW = 300f, CardH = 420f, CardGap = 30f;
 
-    private void Awake() => EnsureSceneRefs();
+    private void Awake()
+    {
+        EnsureSceneRefs();
+        ResetCanvasGroupOnly();
+    }
 
     /// <summary>
     /// Самоподключение к сценовым объектам (fallback, если ссылки не выставлены
@@ -40,7 +44,8 @@ public class PerkChoiceUI : MonoBehaviour
     {
         if (_panel == null)
         {
-            var panelGo = GameObject.Find("PerkPanel");
+            // §8: скрытая панель неактивна → GameObject.Find её не видит (ищет только активные).
+            var panelGo = GameObject.Find("PerkPanel") ?? FindInactive("PerkPanel");
             if (panelGo == null)
             {
                 Debug.LogError("PerkChoiceUI: PerkPanel не найден в сцене (AstroDrift → Setup Scene UI).");
@@ -72,7 +77,16 @@ public class PerkChoiceUI : MonoBehaviour
         if (_cardNewPrefab == null) _cardNewPrefab = LoadPrefab("UpgradeCard_New");
 
         BindReroll();
-        HideImmediate();
+    }
+
+    /// <summary>Панель уже неактивна (префаб/сцена, §8) — Awake лишь обнуляет CanvasGroup.
+    /// Вызывать HideImmediate отсюда нельзя: Awake приходит из PerkChoiceUI.Show
+    /// (первая активация скрытой панели) и SetActive(false) убил бы корутину показа.</summary>
+    private void ResetCanvasGroupOnly()
+    {
+        if (_panel == null) return;
+        var cg = Cg(_panel);
+        cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false;
     }
 
     /// <summary>Подключение ссылок из сцены (вызывает AstroDrift → Setup Scene UI).</summary>
@@ -135,9 +149,12 @@ public class PerkChoiceUI : MonoBehaviour
         _currentOffers = offers;
         if (_panel == null) EnsureSceneRefs();
         if (_panel == null) return;
-        SetVisible(_panel, true);
+        // §8: панель скрыта целиком (SetActive(false)) — сначала оживляем, потом анимируем
         var cg = Cg(_panel);
+        UiAnim.EnsureActive(cg);
         cg.alpha = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
 
         RebuildCards();          // карты создаются сразу, stagger — внутри CardSlideIn (unscaled)
         UpdateRerollVisibility();
@@ -298,13 +315,11 @@ public class PerkChoiceUI : MonoBehaviour
         HideImmediate();
     }
 
+    /// <summary>§8: скрытая панель неактивна (SetActive(false) + alpha 0 + raycasts off).</summary>
     private void HideImmediate()
     {
         if (_panel == null) return;
-        var cg = Cg(_panel);
-        cg.alpha = 0f;
-        cg.blocksRaycasts = false;
-        cg.interactable = false;
+        SetVisible(_panel, false);
         foreach (var c in _cards) if (c != null) Destroy(c);
         _cards.Clear();
     }
@@ -313,6 +328,19 @@ public class PerkChoiceUI : MonoBehaviour
     {
         var t = parent.Find(name);
         return t != null ? t.GetComponent<TextMeshProUGUI>() : null;
+    }
+
+    /// <summary>Поиск по имени в иерархии сцены, включая неактивные узлы (§8: скрытое = неактивное).</summary>
+    private static GameObject FindInactive(string name)
+    {
+        var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            var all = roots[i].GetComponentsInChildren<Transform>(true);
+            foreach (var t in all)
+                if (t.name == name) return t.gameObject;
+        }
+        return null;
     }
 
     /// <summary>Fallback-загрузка префаба карты в редакторе: в билде ссылки всегда
@@ -339,12 +367,7 @@ public class PerkChoiceUI : MonoBehaviour
         return cg;
     }
 
-    private static void SetVisible(Object c, bool visible)
-    {
-        var cg = Cg(c);
-        if (cg == null) return;
-        cg.alpha = visible ? 1f : 0f;
-        cg.blocksRaycasts = visible;
-        cg.interactable = visible;
-    }
+    /// <summary>§8: скрытие гасит объект целиком (alpha 0 + raycasts/interactable off +
+    /// SetActive(false)); показ — активация + alpha 1. Звать только когда анимации уже нет.</summary>
+    private static void SetVisible(Object c, bool visible) => UiAnim.SetVisible(Cg(c), visible);
 }

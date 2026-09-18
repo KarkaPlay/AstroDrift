@@ -340,11 +340,15 @@ public static class MenuPrefabBuilder
         SetRect(shieldCap.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -36f), new Vector2(560f, 30f));
         AddLocalize(shieldCap, "shield_caption");
         AddRole(shieldCap, TypeRole.Secondary);
-        // Скрыта по умолчанию — включается GameUI.RefreshPilotBlock при выполнении гейта
+        // Скрыта по умолчанию — включается GameUI.RefreshPilotBlock при выполнении гейта.
+        // §8: в префабе кнопка ВЫКЛЮЧЕНА целиком (alpha 0 + raycasts off + SetActive(false)):
+        // невидимая зона 560×110 иначе ловила бы тапы по меню.
         shield.gameObject.AddComponent<CanvasGroup>().alpha = 0f;
         shield.GetComponent<CanvasGroup>().blocksRaycasts = false;
+        shield.GetComponent<CanvasGroup>().interactable = false;
         foreach (var t in shield.GetComponentsInChildren<TextMeshProUGUI>(true))
             t.gameObject.AddComponent<CanvasGroup>().alpha = 0f;
+        shield.gameObject.SetActive(false);
 
         // 7. CTA (самый верхний узел: текст поверх остальных)
         var cta = NewTmp(panel.transform, "CtaText", "TAP TO PLAY", cfg.ctaSemiBold, 44f, Palette.ScoreText, TextAlignmentOptions.Center);

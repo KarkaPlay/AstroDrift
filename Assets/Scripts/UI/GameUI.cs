@@ -13,8 +13,8 @@ using UnityEngine.UI;
 /// • Переходы — по двум каноническим кривым (UiAnim), каскады 60–90 мс, unscaled time.
 /// • HUD геймплея не тронут (только fade-появление §5 и притушивание в паузе §4.4).
 /// • Шрифты — только через Typography (TypographyConfig); пустой конфиг = LiberationSans.
-/// Ни одного мгновенного SetActive(true) на видимой панели: панели всегда активны,
-/// видимость управляется CanvasGroup (alpha + blocksRaycasts).
+/// §8 (новая редакция): скрытая панель — НЕАКТИВНА (SetActive(false)) + alpha 0 + raycasts/
+/// interactable off. Показ всегда начинается с активации (SetVisible / PrepareForShow).
 /// </summary>
 public class GameUI : MonoBehaviour
 {
@@ -207,6 +207,7 @@ public class GameUI : MonoBehaviour
         panelImg.color = Palette.UiPanel;
         _treeCg = _treePanel.GetComponent<CanvasGroup>();
         _treeCg.alpha = 0f; _treeCg.blocksRaycasts = false; _treeCg.interactable = false;
+        // (целиком панель гасится в конце BuildTreePanel — уже после создания нод с LSE)
 
         var titleGo = new GameObject("Title", typeof(RectTransform));
         titleGo.transform.SetParent(_treePanel.transform, false);
@@ -230,6 +231,9 @@ public class GameUI : MonoBehaviour
         _treeText.fontSize = 24; _treeText.alignment = TMPro.TextAlignmentOptions.TopLeft;
         _treeText.raycastTarget = false;
         _treeText.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+        // §8: скрытая панель дерева неактивна (ноды с LSE уже созданы и один раз активировались)
+        UiAnim.SetVisible(_treeCg, false);
     }
 
     private void ToggleTree() => SetTreeVisible(_treePanel != null && _treeCg.alpha < 0.5f);
@@ -238,9 +242,7 @@ public class GameUI : MonoBehaviour
     {
         if (_treePanel == null) return;
         if (show) FillUnlockTree();
-        _treeCg.alpha = show ? 1f : 0f;
-        _treeCg.blocksRaycasts = show;
-        _treeCg.interactable = show;
+        UiAnim.SetVisible(_treeCg, show); // §8: скрытая панель — неактивна
         SubscribeTreeLocale(show);
     }
 
@@ -403,6 +405,9 @@ public class GameUI : MonoBehaviour
     /// </summary>
     private void ShowDeathPanelNoOffer()
     {
+        // Aborted-реклама может закрыться РАНЬШЕ, чем доиграет fade-out панели (§5.3):
+        // его корутина в конце погасила бы заново показанную панель.
+        StopTransitions();
         SetVisible(deathPanel, true);
         var panelCg = Cg(deathPanel);
         panelCg.alpha = 1f;
@@ -465,11 +470,11 @@ public class GameUI : MonoBehaviour
             { "score", _score != null ? _score.Score : 0 },
         });
         if (continueText != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueText), Cg(continueText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueText), Cg(continueText).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
         if (continueCaption != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueCaption), Cg(continueCaption).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueCaption), Cg(continueCaption).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
         if (continueTimerLine != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueTimerLine.gameObject), Cg(continueTimerLine.gameObject).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueTimerLine.gameObject), Cg(continueTimerLine.gameObject).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
     }
 
     private void OnApplicationFocus(bool hasFocus)
@@ -483,7 +488,7 @@ public class GameUI : MonoBehaviour
 
     // ——— Типографика: роли носит TypeRoleTag (§3.5, задача 4); ручных применений в GameUI нет ———
 
-    // ——— Экраны: показ/скрытие через CanvasGroup (без SetActive) ———
+    // ——— Экраны: показ/скрытие. §8: скрытое — НЕАКТИВНО (SetActive(false)) ———
 
     private static CanvasGroup Cg(Object c)
     {
@@ -499,13 +504,21 @@ public class GameUI : MonoBehaviour
         return cg;
     }
 
-    private static void SetVisible(Object c, bool visible)
+    /// <summary>Мгновенный показ/скрытие (§8: скрытое неактивно). Скрытие = alpha 0 +
+    /// raycasts/interactable off + SetActive(false). НЕ звать посреди анимации: деактивация
+    /// оборвала бы fade — для уходов есть FadeOut / Fade(..., deactivateWhenHidden: true).</summary>
+    private static void SetVisible(Object c, bool visible) => UiAnim.SetVisible(Cg(c), visible);
+
+    /// <summary>Подготовка узла к анимации входа: живой, но alpha 0 и не ловит raycast.
+    /// Отличается от SetVisible: тот гасит объект целиком и убил бы следующий за ним SlideFade.</summary>
+    private static void PrepareForShow(Object c)
     {
         var cg = Cg(c);
         if (cg == null) return;
-        cg.alpha = visible ? 1f : 0f;
-        cg.blocksRaycasts = visible;
-        cg.interactable = visible;
+        UiAnim.EnsureActive(cg);
+        cg.alpha = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
     }
 
     private static RectTransform Rt(Object c)
@@ -541,11 +554,19 @@ public class GameUI : MonoBehaviour
         bool show = pointEnabled && levelOk;
         bool usedToday = pilot.StartShieldUsedToday;
 
-        SetVisible(startShieldBtn, show);
-        SetVisible(startShieldText, show);
-        SetVisible(startShieldCaption, show);
-        if (show)
+        // §8: прячем ДО возможной активации — кнопка, показанная прошлым кадром, при
+        // снятом гейте должна уйти целиком (не остаться невидимой, но кликабельной).
+        if (!show)
         {
+            SetVisible(startShieldBtn, false);
+            SetVisible(startShieldText, false);
+            SetVisible(startShieldCaption, false);
+        }
+        else
+        {
+            SetVisible(startShieldBtn, true);
+            SetVisible(startShieldText, true);
+            SetVisible(startShieldCaption, true);
             startShieldBtn.interactable = !usedToday && adReady;
             if (usedToday)
             {
@@ -598,8 +619,9 @@ public class GameUI : MonoBehaviour
 
         // Фикс плейтеста: в сцене DeathXp/DeathLevel создаются SetActive(false) и
         // нигде не включались — «+Y XP» и уровень не были видны на Death-экране.
-        deathXp.gameObject.SetActive(true);
-        if (deathLevel != null) deathLevel.gameObject.SetActive(true);
+        // §8: их возвращает тот же помощник, что и прячет (SetActive + alpha).
+        SetVisible(deathXp, true);
+        if (deathLevel != null) SetVisible(deathLevel, true);
 
         // Холодный путь (§3.4): Arguments можно пересобирать.
         SetLocalized(deathXp, "xp_gain", Format(pilot.LastRunXp));
@@ -650,6 +672,7 @@ public class GameUI : MonoBehaviour
         // Фикс плейтеста: XP/уровень пилота перечитываются при каждом показе меню
         // (после забега бар и текст показывали значения с момента Init).
         RefreshPilotBlock();
+        _lastBestShown = -1; // §8: ноды меню могли быть неактивны — число рекорда пишем заново
         StartCtaPulse();
     }
 
@@ -789,7 +812,7 @@ public class GameUI : MonoBehaviour
         SetVisible(hudRoot, false);
         // CTA: чистый fade-out 0.25 s EaseInQuick, 0 мс (без слайда — решение владельца)
         if (ctaText != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick)));
+            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(ctaText), Cg(ctaText).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
         // Логотип ASTRO DRIFT: улетает вверх за экран, 0.30 s, 0 мс
         SlideOut(logoImage, ExitUpTitle, 0.30f, 0f);
         // Рекорд: подпись и число — вместе, 0.30 s, 70 мс
@@ -806,12 +829,13 @@ public class GameUI : MonoBehaviour
         _transitions.Add(StartCoroutine(HideStartPanelAfter(0.55f)));
     }
 
-    /// <summary>Уход элемента стартовой группы (SlideFade out) в общий список переходов.</summary>
+    /// <summary>Уход элемента стартовой группы (SlideFade out) в общий список переходов.
+    /// §8: по завершении узел гасится целиком — невидимое в меню не остаётся живым.</summary>
     private void SlideOut(Object c, Vector2 offset, float dur, float delay)
     {
         var rt = Rt(c);
         if (rt == null) return;
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(c), rt, offset, false, dur, delay, UiAnim.EaseInQuick)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(c), rt, offset, false, dur, delay, UiAnim.EaseInQuick, deactivateWhenHidden: true)));
     }
 
     /// <summary>Щит меню сейчас виден (гейт уровня 8 выполнен — решает RefreshPilotBlock).</summary>
@@ -840,18 +864,20 @@ public class GameUI : MonoBehaviour
         _offerActive = false;
         _continueDeclinedLogged = false; // новая смерть — правило §2.5 начинается заново
 
-        // deathNewBest — статичный компонентный текст (§8.2), здесь только видимость.
-        SetLocalized(deathScore, "score", Format(score));
-        SetLocalized(deathBest, "best", Format(best));
-        deathNewBest.gameObject.SetActive(newBest);
-        FillDeathMeta(); // UI v3: «+Y XP», уровень, прогресс-бар, «Разблокировано»
-        if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
-
+        // §8: панель могла быть погашена предыдущим уходом (PlayDeathOut/PlayContinueOut/
+        // PlayPanelOut) — оживляем ДО текстов: LSE на неактивной ноде обновит строку
+        // только после OnEnable, иначе Death-экран показал бы прошлые значения.
         SetVisible(deathPanel, true);
         var panelCg = Cg(deathPanel);
         panelCg.alpha = 1f;
         panelCg.blocksRaycasts = true;
         panelCg.interactable = true;
+
+        // deathNewBest — статичный компонентный текст (§8.2), здесь только видимость.
+        SetLocalized(deathScore, "score", Format(score));
+        SetLocalized(deathBest, "best", Format(best));
+        FillDeathMeta(); // UI v3: «+Y XP», уровень, прогресс-бар, «Разблокировано»
+        if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
 
         // Реклама не готова → предложение скрыто целиком (§9: не disabled-серое),
         // каскад без него, таймер не запускается. 1 continue за забег (§3).
@@ -863,14 +889,26 @@ public class GameUI : MonoBehaviour
         if (continueText != null)
             continueText.color = newBest ? Color.white : Palette.UiAccent;
 
-        SetVisible(deathScore, false);
-        SetVisible(deathBest, false);
-        SetVisible(deathNewBest, false);
-        SetVisible(continueBtn, false);
-        SetVisible(continueText, false);
-        SetVisible(continueCaption, false);
-        if (continueTimerLine != null) SetVisible(continueTimerLine, false);
-        SetVisible(homeBtn, false);
+        // Каскад входит сразу после: узлы-участники держим ЖИВЫМИ с alpha 0 (PrepareForShow),
+        // а не SetVisible — тот погасил бы их вместе с будущей анимацией.
+        PrepareForShow(deathScore);
+        PrepareForShow(deathBest);
+        if (newBest) PrepareForShow(deathNewBest); else SetVisible(deathNewBest, false);
+        if (offerVisible)
+        {
+            PrepareForShow(continueBtn);
+            PrepareForShow(continueText);
+            PrepareForShow(continueCaption);
+            if (continueTimerLine != null) PrepareForShow(continueTimerLine);
+        }
+        else
+        {
+            SetVisible(continueBtn, false);
+            SetVisible(continueText, false);
+            SetVisible(continueCaption, false);
+            if (continueTimerLine != null) SetVisible(continueTimerLine, false);
+        }
+        PrepareForShow(homeBtn);
 
         // Каскад §5.1: Score 0 мс → Best/NEW BEST 70 мс → предложение (+подпись+линия) 140 мс → Домой 210 мс
         _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathScore), deathScore.rectTransform, SlideScore, true, 0.40f, 0f, UiAnim.EaseOutSoft)));
@@ -938,12 +976,12 @@ public class GameUI : MonoBehaviour
     /// <summary>Сброс флага «continue использован» (GameManager.BeginRun — новый забег).</summary>
     public void ResetContinueFlag() => _continueUsedThisRun = false;
 
-    /// <summary>HUD score fade-out 0.20 s EaseInQuick (§4.2, сразу при смерти).</summary>
+    /// <summary>HUD выключается сразу при смерти (§4.2). §8: скрытое — неактивно.
+    /// Прежний FadeOut здесь анимировал уже нулевую альфу (SetVisible гасил её первым).</summary>
     public void HudOut()
     {
         SetVisible(hudRoot, false);
         if (pauseBtn != null) pauseBtn.SetActive(false);
-        _transitions.Add(StartCoroutine(FadeOut(hudRoot, 0.20f, 0f)));
     }
 
     // ——— §4.3 Retry: Death panel fade-out 0.25 s EaseInQuick, HUD fade-in 0.3 s на 0.45 s ———
@@ -954,11 +992,12 @@ public class GameUI : MonoBehaviour
         _transitions.Add(StartCoroutine(FadeOut(deathPanel, 0.25f, 0f)));
     }
 
-    /// <summary>HUD fade-in (§5: delay = startUnlockTime; §6.1: delay 0.45, dur 0.3).</summary>
+    /// <summary>HUD fade-in (§5: delay = startUnlockTime; §6.1: delay 0.45, dur 0.3).
+    /// §8: вход начинается с активации — HUD гасится целиком на Death/в меню.</summary>
     public void HudIn(float delay, float dur)
     {
         var cg = Cg(hudRoot);
-        SetVisible(hudRoot, true);
+        SetVisible(hudRoot, true); // SetActive(true): HUD мог быть погашен уходом
         cg.alpha = 0f;
         // Кнопка паузы живёт вместе с HUD (v2-регрессия: после SetActive(false)
         // в Setup она больше нигде не включалась — в геймплее паузы не было).
@@ -999,7 +1038,8 @@ public class GameUI : MonoBehaviour
     {
         StopTransitions();
         if (pauseBtn != null) pauseBtn.SetActive(true);
-        _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(pausePanel), Cg(pausePanel).alpha, 0f, 0.22f, UiAnim.EaseInQuick)));
+        // §8: уход доводится до неактивной панели (SetActive(false) ПОСЛЕ fade, не в середине)
+        _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(pausePanel), Cg(pausePanel).alpha, 0f, 0.22f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
         // HUD возвращается полностью видимым (страховка от заниженной альфы,
         // если пауза случилась посреди HUD-fade старта)
         var hudCg = Cg(hudRoot);
@@ -1012,7 +1052,7 @@ public class GameUI : MonoBehaviour
     private void SlideInEl(RectTransform rt, Vector2 offset, float dur, float delay)
     {
         if (rt == null) return;
-        SetVisible(rt, false);
+        PrepareForShow(rt); // §8: узел оживает здесь — уход гасил его целиком
         _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(rt), rt, offset, true, dur, delay, UiAnim.EaseOutSoft)));
     }
 
@@ -1034,7 +1074,7 @@ public class GameUI : MonoBehaviour
         if (hudCg != null && hudCg.alpha > 0.05f)
         {
             if (pauseBtn != null) pauseBtn.SetActive(false);
-            _transitions.Add(StartCoroutine(UiAnim.Fade(hudCg, hudCg.alpha, 0f, 0.20f, UiAnim.EaseInQuick)));
+            _transitions.Add(StartCoroutine(UiAnim.Fade(hudCg, hudCg.alpha, 0f, 0.20f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
         }
     }
 
@@ -1050,7 +1090,7 @@ public class GameUI : MonoBehaviour
         _screen = Screen.Start;
         StopTransitions();
         ApplyAdaptiveStartLayout(force: true); // rest-позиции под текущий кадр ДО старта каскада
-        SetVisible(startPanel, true);
+        SetVisible(startPanel, true); // §8: оживление ДО каскада (панель могла быть погашена)
         var startCg = Cg(startPanel);
         startCg.alpha = 1f;
         startCg.blocksRaycasts = true;
@@ -1060,6 +1100,7 @@ public class GameUI : MonoBehaviour
         // ВАЖНО: до каскада — RefreshPilotBlock решает, виден ли щит; иначе SlideFade
         // показал бы щит всегда, даже когда гейт уровня не выполнен.
         RefreshPilotBlock();
+        _lastBestShown = -1; // §8: ноды меню были неактивны — число рекорда пишем заново
         ResetRestAll(); // страховка от прерванных на середине уходов (StopTransitions)
 
         SlideInEl(Rt(logoImage), SlideTitle, 0.35f, 0.15f);
@@ -1080,9 +1121,10 @@ public class GameUI : MonoBehaviour
         yield return UiAnim.Fade(Cg(go), 0f, 1f, dur, UiAnim.EaseOutSoft, delay);
     }
 
+    /// <summary>Уход панели/HUD: по завершении объект гасится целиком (§8: скрытое — неактивно).</summary>
     private IEnumerator FadeOut(GameObject go, float dur, float delay)
     {
-        yield return UiAnim.Fade(Cg(go), Cg(go).alpha, 0f, dur, UiAnim.EaseInQuick, delay);
+        yield return UiAnim.Fade(Cg(go), Cg(go).alpha, 0f, dur, UiAnim.EaseInQuick, delay, deactivateWhenHidden: true);
     }
 
     // ——— Пульс CTA (§3): alpha текста 1→0.72→1, период 1.8 s, синхронно с линией ———
@@ -1127,7 +1169,7 @@ public class GameUI : MonoBehaviour
         if (comboChip != null)
         {
             bool show = m > 1 && (_screen == Screen.Hud || _screen == Screen.Pause);
-            comboChip.gameObject.SetActive(show);
+            UiAnim.SetVisible(Cg(comboChip.gameObject), show); // §8: скрытый чип неактивен
             if (show)
             {
                 comboChip.text = "x" + m;
@@ -1144,7 +1186,7 @@ public class GameUI : MonoBehaviour
         bool perkBarShow = perks != null && perks.PerkProgressAvailable && perkBarRoot != null;
         if (perkBarRoot != null)
         {
-            perkBarRoot.gameObject.SetActive(perkBarShow);
+            UiAnim.SetVisible(Cg(perkBarRoot.gameObject), perkBarShow); // §8: скрытый бар неактивен
             if (perkBarShow) UiProgressBar.Set(Rt(perkProgressBarFill), perks.PerkProgress(score));
         }
 

@@ -163,7 +163,8 @@ public class Bootstrap : MonoBehaviour
 
             // Оверлей выбора перка строится в сцене (AstroDrift → Setup Scene UI);
             // PerkManager сам включает фриз, PerkChoiceUI показывает карты и вызывает Choose.
-            var perkUi = FindFirstObjectByType<PerkChoiceUI>();
+            // §8: панель перка скрыта = неактивна → искать обязательно с Include.
+            var perkUi = FindFirstObjectByType<PerkChoiceUI>(FindObjectsInactive.Include);
             if (perkUi != null)
                 perks.OnLevelUpOffer += offers =>
                 {

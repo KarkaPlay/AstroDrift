@@ -164,8 +164,10 @@ public static class LevelUpPrefabBuilder
         img.color = new Color(0f, 0f, 0f, 0.5f);
         img.raycastTarget = true;
 
+        // §8: скрытый по умолчанию оверлей неактивен (PerkChoiceUI.Show сначала активирует)
         var cg = root.GetComponent<CanvasGroup>();
         cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false;
+        root.SetActive(false);
 
         // Звезда-акцент над заголовком
         var starRt = NewRect(root.transform, "Star");
