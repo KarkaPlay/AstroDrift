@@ -875,7 +875,7 @@ Localization_yg
 
 - Тег **`task4-accepted`** (коммит `a8cc489`) — рядом с `task1-accepted`…`task3-accepted`, `baseline-loc-migration`.
 - Остаточные риски: **R10** (снапшоты профилей — сверка после каждого переключения) и **R11** (ручной импорт модулей через окно YG2 вернёт `Localization_yg`) остаются действующими для задач 5–8.
-- 9 диагностических логов задачи 3 + логи задачи 4 остаются до приёмки задачи 7–8 (крайний срок — приёмка 8, п.8 протокола).
+- 9 диагностических логов задачи 3 (7 в [`LanguageService.cs`](Assets/Scripts/Core/LanguageService.cs) + 2 в [`Bootstrap.cs`](Assets/Scripts/Core/Bootstrap.cs)) остаются до приёмки задачи 8 (крайний срок, п.8 протокола). **Поправка (задача 6, п.4):** упоминание «логи задачи 4» в исходной формулировке — **фантомное**, задача 4 не добавила ни одной `Debug.Log`-строки (проверено `git show a8cc489` = 0); распределение cleanup актуализировано [ниже](Assets/Docs/Localization_TZ.md:931).
 
 ### Результат задачи 5 (коммит `81566c8`, проверено Team Lead пофайлово и grep'ом)
 
@@ -935,12 +935,17 @@ Localization_yg
 | Задача | Пункт | Файл / состав | Почему здесь |
 |---|---|---|---|
 | **7** | Мёртвое поле `shieldTextLse` ([`GameUI.cs:50`](Assets/Scripts/UI/GameUI.cs:50), 0 обращений) | `Assets/Scripts/UI/GameUI.cs` | Файл уже правится задачей 7 (точки `L10n.Get`) — нулевая цена, один коммит |
-| **7** | Док-комментарий `L10n.Bind` ([`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)) | `Assets/Scripts/UI/LocalizedText.cs` | **Файл целиком в скоупе задачи 7** — вместе со снятием `Bind`/`_bindings`/`RefreshAll`/`onBeforeRender` |
-| **7** | Логи задачи 4 | `Assets/Scripts/UI/Typography.cs`, `Assets/Scripts/UI/TypeRoleTag.cs` | Оба файла — её скоуп; логи про смену локали теряют смысл после ужатия `L10n` |
-| **8** | **9 диагностических логов задачи 3** | `Assets/Scripts/Core/LanguageService.cs` (9 точек) | Файл не трогается задачей 7; логи сторожат C1–C3, снимать их **до** финальной приёмки преждевременно |
+| **7** | Док-комментарий `L10n.Bind` ([`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)) | `Assets/Scripts/UI/LocalizedText.cs` | **Файл целиком в скоупе задачи 7** — вместе со снятием `Bind`/`_bindings`/`RefreshAll`/`onBeforeRender`/`DetachRefresh` |
+| **8** | **9 диагностических логов задачи 3** — `[Lang]` ×7 + `[Boot] C2` ×2 | `Assets/Scripts/Core/LanguageService.cs` (7) + `Assets/Scripts/Core/Bootstrap.cs` (2, [`Bootstrap.cs:41`](Assets/Scripts/Core/Bootstrap.cs:41), [`:61`](Assets/Scripts/Core/Bootstrap.cs:61)) | `Bootstrap.cs` задачей 7 **не** трогается; логи сторожат C1–C3, снимать их **до** финальной приёмки преждевременно |
 | **8** | Валидатор + сирота «ДЕРЕВО» | `Assets/Localizations/*` + новый editor-скрипт | Скоуп §11 по ТЗ |
 
-- **Точка контроля задачи 7 (обязательна):** §15-grep по `L10n.Bind` = **буквально 0** (сейчас 1 — док-комментарий), `Application.onBeforeRender` в `Assets/Scripts` = **0** (сейчас 2), `shieldTextLse` = **0**.
+**Факты, которыми распределение подтверждено (проверено Team Lead по git-истории, не по памяти):**
+
+- **`9 диагностических логов задачи 3` — цифра ТЗ верна и адресована точно.** Коммит [`93c0bd5`](Assets/Docs/Localization_TZ.md) добавил ровно **9** вызовов `Debug.Log*`: **7** в [`LanguageService.cs`](Assets/Scripts/Core/LanguageService.cs) (`:49`, `:95`, `:144`, `:151`, `:171`, `:179`, `:187`) + **2** в [`Bootstrap.cs`](Assets/Scripts/Core/Bootstrap.cs) (`[Boot] C2`). Авторство обоих файлов — задача 3 (в задаче 4 `Bootstrap.cs` не менялся).
+- **`Логи задачи 4` — фантомные: задача 4 не добавила ни одного `Debug.Log`.** Коммит `a8cc489` правил 6 `.cs`-файлов, добавленных `Debug.Log` строк — **0**; и [`Typography.cs`](Assets/Scripts/UI/Typography.cs), и [`TypeRoleTag.cs`](Assets/Scripts/UI/TypeRoleTag.cs) содержат **0** логов сегодня. Пункт «логи задачи 4» из формулировки cleanup **снят** (нечего чистить); в §20 веду как расхождение журнала.
+- **Следствие для плана:** cleanup освободился от задачи 7 целиком, кроме двух файлов, которые она и так правит.
+
+- **Точка контроля задачи 7 (обязательна):** §15-grep по `L10n.Bind` = **буквально 0** (сейчас **1** — док-комментарий, [`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)), `Application.onBeforeRender` в `Assets/Scripts` = **0** (сейчас **4** строки — 1 комментарий + 3 использования в `LocalizedText.cs:99,110,160`), `shieldTextLse` = **0** (сейчас **1** — объявление поля).
 - **Крайний срок логов задачи 3 — приёмка задачи 8** (перенос крайнего срока с 7 на 8 санкционирован продюсером; обоснование — логи C1–C3 остаются полезны до финальной сверки).
 
 ### Решения продюсера по задаче 6 (приняты, записаны в ТЗ)
