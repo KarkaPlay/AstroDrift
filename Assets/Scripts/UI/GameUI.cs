@@ -145,7 +145,6 @@ public class GameUI : MonoBehaviour
         if (continueTimerLine != null)
             _offerLineRestWidth = continueTimerLine.sizeDelta.x;
 
-        ApplyTypography();
         RefreshPilotBlock();
         ShowStartImmediate();
         RefreshHud();
@@ -461,17 +460,7 @@ public class GameUI : MonoBehaviour
 
     private bool Screen_DeathVisible => _screen == Screen.Death && deathPanel != null && Cg(deathPanel).alpha > 0.5f;
 
-    // ——— Типографика (§3, поправка владельца: только через TypographyConfig) ———
-
-    private void ApplyTypography()
-    {
-        Typography.Apply(startBest, TypeRole.Secondary);
-        Typography.Apply(ctaText, TypeRole.Cta);
-        Typography.Apply(deathScore, TypeRole.DeathScore);
-        Typography.Apply(deathBest, TypeRole.Secondary);
-        Typography.Apply(deathNewBest, TypeRole.Secondary);
-        // HUD-тексты (score/combo) не трогаем — геймплейный HUD вне скоупа.
-    }
+    // ——— Типографика: роли носит TypeRoleTag (§3.5, задача 4); ручных применений в GameUI нет ———
 
     // ——— Экраны: показ/скрытие через CanvasGroup (без SetActive) ———
 
@@ -1252,15 +1241,4 @@ public class GameUI : MonoBehaviour
     }
 
     private static string Format(int v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
-
-    private void OnEnable()
-    {
-        Typography.LanguageChanged += ApplyTypography;
-        ApplyTypography();
-    }
-
-    private void OnDisable()
-    {
-        Typography.LanguageChanged -= ApplyTypography;
-    }
 }

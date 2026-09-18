@@ -11,9 +11,9 @@ using UnityEngine;
 ///   3. Откройте Assets/Resources/TypographyConfig.asset и перетащите созданные
 ///      TMP Font Asset'ы в базовые слоты: Heading Light / Title Bold /
 ///      Body Regular / CTA SemiBold.
-///   4. Нужен другой шрифт для конкретного языка — добавьте элемент в
-///      Language Overrides, укажите код языка и заполните только те слоты,
-///      которые отличаются (пустой слот = базовый).
+///   4. Нужен другой шрифт для конкретной локали — добавьте элемент в
+///      Language Overrides, укажите код локали (LocaleIdentifier.Code, напр. `zh-Hans`)
+///      и заполните только те слоты, которые отличаются (пустой слот = базовый).
 ///
 /// Пустые поля = fallback на LiberationSans SDF (TMP Settings) —
 /// никаких Missing/Null, сцена полностью работает и без заполненного конфига.
@@ -34,11 +34,11 @@ public class TypographyConfig : ScriptableObject
     [Tooltip("CTA / кнопки — SemiBold вес")]
     public TMP_FontAsset ctaSemiBold;
 
-    [Header("Переопределения по языку (пустой слот = базовый шрифт)")]
+    [Header("Переопределения по локали (пустой слот = базовый шрифт)")]
     public TypographyLanguageFonts[] languageOverrides;
 
-    /// <summary>Набор разрешённых шрифтов для языка (базовые + переопределения).</summary>
-    public FontSet GetFonts(string langCode)
+    /// <summary>Набор разрешённых шрифтов для локали (базовые + переопределения).</summary>
+    public FontSet GetFonts(string localeCode)
     {
         var set = new FontSet
         {
@@ -47,13 +47,13 @@ public class TypographyConfig : ScriptableObject
             body = bodyRegular,
             cta = ctaSemiBold,
         };
-        if (string.IsNullOrEmpty(langCode) || languageOverrides == null) return set;
+        if (string.IsNullOrEmpty(localeCode) || languageOverrides == null) return set;
 
         for (int i = 0; i < languageOverrides.Length; i++)
         {
             var o = languageOverrides[i];
-            if (o == null || string.IsNullOrEmpty(o.langCode)) continue;
-            if (!string.Equals(o.langCode, langCode, System.StringComparison.OrdinalIgnoreCase)) continue;
+            if (o == null || string.IsNullOrEmpty(o.localeCode)) continue;
+            if (!string.Equals(o.localeCode, localeCode, System.StringComparison.OrdinalIgnoreCase)) continue;
             if (o.heading != null) set.heading = o.heading;
             if (o.titleBold != null) set.title = o.titleBold;
             if (o.body != null) set.body = o.body;
@@ -64,12 +64,12 @@ public class TypographyConfig : ScriptableObject
     }
 }
 
-/// <summary>Шрифты одного языка: пустое поле = взять базовый слот конфига.</summary>
+/// <summary>Шрифты одной локали: пустое поле = взять базовый слот конфига.</summary>
 [System.Serializable]
 public class TypographyLanguageFonts
 {
-    [Tooltip("Код языка YG2 (ru, en, tr…)")]
-    public string langCode;
+    [Tooltip("Код локали (LocaleIdentifier.Code): ru, en, zh-Hans…")]
+    public string localeCode;
 
     public TMP_FontAsset heading;
     public TMP_FontAsset titleBold;

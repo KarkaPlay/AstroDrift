@@ -50,6 +50,10 @@ public static class LanguageService
         if (_started) return;
         _started = true;
 
+        // Единственная точка реакций на язык (§3.5): заголовки типографики отдельной
+        // цепочки не имеют. Подписка одна за сессию (_started идемпотентен).
+        LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
+
         // C1: IsDone → применяем сразу; иначе ждём Completed (на baseline Locales.Count == 0).
         if (LocalizationSettings.InitializationOperation.IsDone)
         {
@@ -59,6 +63,19 @@ public static class LanguageService
 
         ArmWatchdog(); // C3
         LocalizationSettings.InitializationOperation.Completed += _ => OnLocalesReady();
+    }
+
+    /// <summary>
+    /// Смена локали (§3.5): свип тегов ролей + сброс гардов горячего пути (§3.4).
+    /// Свип opt-in — нетегированные ноды (HUD и др.) не трогаются.
+    /// </summary>
+    private static void OnSelectedLocaleChanged(Locale _)
+    {
+        TypeRoleApplier.ApplyAll();
+
+        // §3.4: сброс _lastBestShown + кэша Arguments живёт у владельца гарда
+        // (GameUI.RefreshBestValue) и приезжает вместе с ним в задаче 5 (§8.1,
+        // StartBestValue). Здесь — точка подписки; фиктивных полей/нод нет.
     }
 
     /// <summary>

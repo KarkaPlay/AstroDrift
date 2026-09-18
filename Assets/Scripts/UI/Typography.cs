@@ -8,24 +8,18 @@ public enum TypeRole { Title, Secondary, Cta, DeathScore, Button, Body, LevelUpT
 /// Единая точка доступа к типографике. Весь UI берёт шрифты ТОЛЬКО отсюда
 /// (Assets/Resources/TypographyConfig.asset). Размеры и трекинг — авторские,
 /// из префабов/сцены: Typography их не трогает.
-/// Шрифт выбирается по текущему языку YG2 (переопределения языка в конфиге);
+/// Шрифт выбирается по текущей локали Unity (переопределения локали в конфиге);
 /// пока владелец не подставил шрифты — fallback на TMP Settings default
 /// (LiberationSans SDF): ни Missing, ни Null, сцена работает с пустым конфигом.
+///
+/// Реакции на смену локали у Typography НЕТ (ТЗ §3.5): единственная точка подписки на
+/// SelectedLocaleChanged — LanguageService, он же вызывает TypeRoleApplier.ApplyAll()
+/// и сброс гардов §3.4. Носитель роли — TypeRoleTag (self-apply в OnEnable).
 /// </summary>
 public static class Typography
 {
     private static TypographyConfig _cfg;
     private static bool _loaded;
-
-    /// <summary>Язык сменился (YG2) — подписчики переприменяют шрифты.
-    /// Размеры/трекинг не трогаются, поэтому дёшево вызывать повторно.</summary>
-    public static event System.Action LanguageChanged;
-
-    /// <summary>Уведомить подписчиков о смене языка (зовёт мост YG2 → Unity Locale).</summary>
-    public static void NotifyLanguageChanged()
-    {
-        LanguageChanged?.Invoke();
-    }
 
     public static TypographyConfig Config
     {
