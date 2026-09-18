@@ -7,8 +7,8 @@ using YG;
 /// BeforeSceneLoad: регистрируем сервисы и объявляем асинхронную инициализацию (PlatformBoot);
 /// по готовности SDK (сейвы загружены, язык известен) — MarkReady().
 /// В отличие от RuStore регистрируем и Save (облако вместо PlayerPrefs) и Lifecycle.
-/// Локаль по языку игрока НЕ трогаем: за это отвечает AstroDriftLanguageBridge
-/// (единый мост YG2 → Unity Locale для всех платформ).
+/// Локаль по языку игрока НЕ трогаем: за это отвечает LanguageService
+/// (единый владелец языка для всех платформ).
 /// </summary>
 public static class YandexGamesInstaller
 {

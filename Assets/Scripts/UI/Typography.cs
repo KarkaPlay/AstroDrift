@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
 
 public enum TypeRole { Title, Secondary, Cta, DeathScore, Button, Body, LevelUpTitle }
 
@@ -39,16 +40,13 @@ public static class Typography
         }
     }
 
-    /// <summary>Код текущего языка. Источник истины — YG2 (PluginYG2, модуль Localization).</summary>
+    /// <summary>Код текущей локали. Источник истины — Unity Localization (владелец — LanguageService).</summary>
     private static string CurrentLang
     {
         get
         {
-#if Localization_yg
-            return YG.YG2.lang;
-#else
-            return null;
-#endif
+            var locale = LocalizationSettings.SelectedLocale;
+            return locale != null ? locale.Identifier.Code : null;
         }
     }
 
