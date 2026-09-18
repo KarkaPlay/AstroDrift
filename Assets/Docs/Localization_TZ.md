@@ -92,7 +92,7 @@ YG2 отдаёт ISO 639-1 (`ru`, `en`, `tr`, `Lang_yg.cs:57`), `LocaleIdentifie
 
 ### 1.6. Зафиксированные долги (закрываются задачей 8)
 
-- Массив `Entries` в `AstroDriftLocalizationSetup.cs` **неполон**: ~20 ключей (`title_main`, `title_sub`, `best`, `score`, `new_best`, `continue_*`, `pause_*`, `combo`, `pilot_level`, `shield_*`, `pickup_*`) созданы вне его. Валидатор не опирается на `Entries`.
+- Массив `Entries` в `AstroDriftLocalizationSetup.cs` **неполон**: ~20 ключей (`best`, `score`, `new_best`, `continue_*`, `pause_*`, `combo`, `shield_*`, `pickup_*`) созданы вне его. Валидатор не опирается на `Entries`. **Фактическая правка (по проверке задачи 8):** `title_main`, `title_sub`, `pilot_level` из этого перечня **исключены** — они, наоборот, **есть** в `Entries` ([`AstroDriftLocalizationSetup.cs:22`](Assets/Scripts/Core/AstroDriftLocalizationSetup.cs:22)) и имеют строки в обеих таблицах, но **не читаются ни одной нодой/полем** (§8.1/§8.2 их не назначают; `pilot_level` вытеснен `pilot_level_label`). Логотип меню — картинка ([`MenuLogo.prefab`](Assets/Prefabs/Menu/MenuLogo.prefab)). Так как источник №1 валидатора исключает `Entries` по построению, эти 3 ключа в отчёт не попадают — критерий «0 сирот» остаётся достижимым без правки продукта.
 - Осиротевшая строка id `1584525502046248` («ДЕРЕВО») в обеих таблицах без ключа — удалить.
 - Рантайм-ключи `unlock_*` — тянуть из `PilotProgressManager.AllUnlocks`.
 - Максимальный кодпоинт таблиц — `U+2212` (зафиксировано ревью v2) → чарсет §4.2 полон для текущих таблиц.
@@ -559,8 +559,8 @@ Editor-меню, собирающее множество используемы�
 
 ### 11.3. Критерии приёмки
 
-- [ ] Отчёт зелёный на RU/EN (0 missing, 0 сирот после чистки, 0 непокрытых символов);
-- [ ] Валидатор варнит при ключе без перевода и при символе вне чарсета (проверка временными кейсами).
+- [x] Отчёт зелёный на RU/EN — **с квалификацией** (см. ниже): `missing=0`, `uncovered=0`, объявленных сирот **0** после чистки; `orphans=3` — это `title_main`/`title_sub`/`pilot_level`, которые **находятся в `Entries`** и потому вне источников валидатора по построению ([§11.2 п.1](Assets/Docs/Localization_TZ.md:551)); фактическая правка внесена в [§1.6](Assets/Docs/Localization_TZ.md:95), удаление не требуется. **Замер Team Lead независимо:** ключей в таблицах 76 → 75 (ru и en), diff по обеим таблицам — **ровно по одной строке** `m_Localized` («ДЕРЕВО» / `TREE`), ссылок на id `1584525502046248` в `Assets/**` — 0
+- [x] Валидатор варнит при ключе без перевода и при символе вне чарсета — **временными кейсами, откачены:** `__loc_test_missing_key` → `missing=1`; `U+1F600` → `uncovered=1`; `IsGreen` = `Missing==0 && Orphans==0 && Uncovered==0` ([`LocalizationValidator.cs:50`](Assets/Scripts/Editor/LocalizationValidator.cs:50))
 
 ---
 
@@ -959,8 +959,10 @@ Localization_yg
 |---|---|---|---|
 | 1 | `menuUpgradeBtn: {fileID: 0}` в [`Game.unity`](Assets/Scenes/Game.unity:4863) | **P1** | Кнопка «ПРОКАЧКА» не подключена — дерево разблокировок недоступно из UI. Предсуществующее (`693787e:4561`), не регрессия миграции |
 | 2 | `Sheet.png` — потерянные именованные слайсы | P2 | Пере-нарезка авто-сеткой в `d9bf5e1` (тег `baseline-loc-migration`): 855×1024 → 1661×1024, слайсы `Level_Icon`/`Settings_Icon`/`Shop_Icon`/`Upgrade` → `Player`/`Star`/`Sheet_2..4`. Миграция не виновата; вход билдеров переведён на контейнер |
+| 3 | **3 нечитаемых ключа в `Entries`:** `title_main`, `title_sub`, `pilot_level` ([`AstroDriftLocalizationSetup.cs:22`](Assets/Scripts/Core/AstroDriftLocalizationSetup.cs:22)) | P3 | Найдено валидатором задачи 8. Ключи **есть** в `Entries` и имеют строки в обеих таблицах, но не назначены ни одной нодой/полем (§8.1/§8.2 их не мапят); `pilot_level` вытеснен `pilot_level_label`, логотип меню — картинка. Валидатор их не видит (источник №1 исключает `Entries` по построению, [§11.2 п.1](Assets/Docs/Localization_TZ.md:551)). **Удаление/назначение — решение продукта**; в милстоуне не делалось (ключи не удаляются/не переименовываются без санкции, §0.3) |
 
 **Следствие для задачи 7 (§10.2):** проверка дерева разблокировок выполняется **прямым вызовом** (кнопка не подключена) — метод фиксируется в брифе задачи 7 до выдачи.
+**Следствие для задачи 8:** запуск валидатора аддитивно открывает сцену → TMP-автозаполнение может запачкать [`LiberationSans SDF - Fallback.asset`](Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset) (в коммит не попало, откачено). Проверять `git status` после прогона.
 
 ### Распределение cleanup между задачами 7 и 8 (зафиксировано по фактам: решение продюсера, задача 6, п.4)
 
@@ -1054,6 +1056,33 @@ Localization_yg
 
 *После задачи 8:* финальная матрица §14 + полный обход экранов RU/EN, затем решение о мерже.
 
+### Результат задачи 8 (коммит `efc914f`, проверено Team Lead пофайлово, git-историей и grep'ом)
+
+| Пункт §11.1 / §11.2 / §11.3 + Cleanup-8 | Факт | Статус |
+|---|---|---|
+| Состав коммита | `efc914f` (родитель `0a920d0`), 7 файлов, +396/−27. Запрещённые пути — **0**: `New UI`, `PluginYourGames`, `TypographyConfig.asset`, `Build Profiles`, `Localization_TZ.md` не тронуты; дифф `Assets/Settings/Build Profiles/` пуст (**R10** соблюдён) | ✅ |
+| §11.1 сирота «ДЕРЕВО» | Ключ id `1584525502046248` удалён из `GameTexts_ru` **и** `GameTexts_en`. Бэкап **до** удаления: `_backup_loc_tables_20260918/` (вне дерева ассетов). Независимо: `grep -rn 1584525502046248 Assets/` = **0**; diff обеих таблиц = **1 строка** каждая (`m_Localized`), 76 → 75 ключей (ru/en) | ✅ |
+| §11.2 валидатор: 6 источников | [`LocalizationValidator.cs`](Assets/Scripts/Editor/LocalizationValidator.cs) (новый, 391 строка), меню `AstroDrift/Validate Localization`. Источники сработали все: LSE префабы+сцены — **46 компонентов**; `Perks/*.asset` 16 ссылок; `PickupConfig.asset` 3; `PerkConfig.asset`; `PilotProgressConfig.unlocks` → `unlock_<id>` ×23 + `unlock_soon`; белый список §3.3 ×9; карта §8.2 ×10 | ✅ |
+| §11.2 п.6 coverage чарсета | Трактовка **объединение назначенных шрифтов** применена (`unionFonts=4`, `strings=150`, `codepoints=120`), `uncovered=0` | ✅ |
+| §11.3 п.1 отчёт зелёный | `missing=0`, `uncovered=0`, объявленных сирот 0; `orphans=3` разобраны как находка журнала (см. строку ниже), а не дефект | ✅ c квалификацией |
+| §11.3 п.2 варны | Временные кейсы: ключ без перевода → `missing=1`; символ вне чарсета → `uncovered=1`; оба откачены | ✅ |
+| Cleanup-8: 9 логов задачи 3 | Удалены **9** (`git show efc914f \| grep -c "^-.*Debug.Log"` = 9): 7 в [`LanguageService.cs`](Assets/Scripts/Core/LanguageService.cs) + 2 в [`Bootstrap.cs`](Assets/Scripts/Core/Bootstrap.cs). `Debug.Log` в `Assets/Scripts/Core` 33 → 24 (разница ровно 9). **Сверка с «логами задачи 4»** — фантом подтверждён повторно: `a8cc489` не добавил ни одного `Debug.Log`; ничего реального не потеряно | ✅ |
+| Cleanup-8: осиротевшая YAML-строка сцены | [`Game.unity:4868`](Assets/Scenes/Game.unity:4868) `shieldTextLse: {fileID: 0}` удалена. **Дифф сцены — ровно она** (`--numstat` = `0 1`, `git show` = одна удалённая строка). **R5** соблюдён: состав GameObject'ов не менялся, `.prefab` не тронуты | ✅ |
+| Cleanup-8: подтверждение по задаче 7 | Поле `shieldTextLse` уже удалено в задаче 7: `grep -rn shieldTextLse Assets/**/*.cs,*.unity,*.prefab` = **0** (8 вхождений — только в тексте ТЗ, исторический след) | ✅ |
+| Закрытие долгов журнала (бриф п.4) | Долги 4а–4г + (i)/(ii) закрыты в §20 до выдачи задачи 8 (коммит `0a920d0`); задача 8 новых долгов не создала: правок ТЗ нет, ключи не переименованы, сцена/префабы — только одна осиротевшая строка | ✅ |
+| Компиляция | Валидатор компилируется в редакторе; `CS0246` из первой итерации исправлен (`StringTableCollection` — `UnityEditor.Localization`). ⚠️ наблюдение: `validate_script` даёт 0 диагностик там, где реальная компиляция Unity падает — ошибки видны только в `~/Library/Logs/Unity/Editor.log` | ✅ c замечанием |
+
+### Клоузаут задачи 8
+
+- Тег **`task8-accepted`** (коммит `efc914f`) — рядом с `baseline-loc-migration`, `task1-accepted`…`task7-accepted`.
+- **Находка журнала (§1.6 была неточна, исправлено по факту):** `title_main`, `title_sub`, `pilot_level` — **не** «созданы вне `Entries`», как утверждала §1.6: они **в** `Entries` и имеют строки в обеих таблицах, но не читаются ни одной нодой/полем; `pilot_level` вытеснен `pilot_level_label`, логотип меню — картинка. Внесена фактическая правка в [§1.6](Assets/Docs/Localization_TZ.md:95); **удаление ключей — решение продукта**, в милстоуне не делалось (вне санкции, §0.3 — ключи не переименовывать/не удалять без санкции). Долг продукта — ниже.
+- **Новые отклонения (приняты):**
+  - **Реализация источника №1 отличается от буквального чтения ТЗ.** `AssetDatabase.FindAssets("t:LocalizeStringEvent")` возвращает **0** — тип компонента не является asset-типом для поиска. Исполнитель переписал сбор на `PrefabUtility.LoadPrefabContents` (префабы) + аддитивное `EditorSceneManager.OpenScene` (сцены); первая итерация давала 16 **ложных** сирот, после правки — 3 (разобранные выше). Отклонение в реализации, не в результате.
+  - **Строки логов в брифе были указаны неточно:** бриф цитировал `Bootstrap.cs:41`/`:61`, фактические — `:25`/`:36`. Количество (2) совпало.
+  - **Побочный эффект валидатора — найден и откачен:** аддитивное открытие сцены триггерит TMP-автозаполнение глифов и пачкает [`LiberationSans SDF - Fallback.asset`](Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset) (+56/−6, греческие глифы). В коммит не попало (`git checkout`); **известное ограничение:** повторный прогон валидатора может снова его запачкать — при коммитах после валидатора проверять `git status`.
+- **Долг продукта (вне скоупа милстоуна, к пост-милстоун списку):** 3 объявленных, но нечитаемых ключа в `Entries` — `title_main`, `title_sub`, `pilot_level`. Валидатор их не видит (источник №1 исключает `Entries`). Решение — удалить или назначить — за продуктом.
+- Остаточные риски **R10**/**R11** — по задаче 8 закрыты в части наблюдения: снапшоты профилей не тронуты (`Build Profiles` дифф пуст); R11 (ручной импорт модулей YG2 + повторный grep) остаётся процедурным требованием на будущее.
+
 ---
 
 ## Приложение A. Финальное состояние настроек проекта (заполнено по факту задач 2–3)
@@ -1078,8 +1107,8 @@ Localization_yg
 | `Assets/_Platform/YandexGames/YandexLanguageSource.cs` | **Создано**: `GetAccountLanguage()` — источник гейта G1; вне WebGL/ЯИ no-op | 2 ✅ |
 | `Assets/_Platform/YandexGames/YandexGamesInstaller.cs:35` | **Сделано**: чтение `YG2.lang` убрано из лога (B3 закрыт) | 2 ✅ |
 | `Assets/Scripts/Core/AstroDriftLanguageBridge.cs` | **Удалено** (+ `.meta`) | 3 ✅ |
-| `Assets/Scripts/Core/LanguageService.cs` | **Создано**: маппинг §6.1 + D1, C1–C3, заглушка `TryApplyPlayerOverride()` | 3 ✅ |
-| `Assets/Scripts/Core/Bootstrap.cs` | **Сделано**: C2 — `Build` по «И» (`PlatformBoot.Ready && StartupApplied`) | 3 ✅ |
+| `Assets/Scripts/Core/LanguageService.cs` | **Создано**: маппинг §6.1 + D1, C1–C3, заглушка `TryApplyPlayerOverride()`. **Сделано (8):** 7 диагностических логов сняты | 3 ✅, 8 ✅ |
+| `Assets/Scripts/Core/Bootstrap.cs` | **Сделано**: C2 — `Build` по «И» (`PlatformBoot.Ready && StartupApplied`). **Сделано (8):** 2 диагностических лога сняты | 3 ✅, 8 ✅ |
 | `Assets/PluginYourGames/Resources/SettingsYG2.asset` | **Сделано** (F7, вариант B): `autoDefineSymbols: 1 → 0` | 3 ✅ |
 | `Assets/Scripts/UI/Typography.cs` + `Core/TypographyConfig.cs` | **Сделано**: `langCode → localeCode`; событие `LanguageChanged` снято, подписка на `SelectedLocaleChanged` — у `LanguageService` | 4 ✅ |
 | `Assets/Scripts/UI/TypeRoleTag.cs` | **Создано**: `TypeRoleTag` (поле `role`, self-apply в `OnEnable`) + `TypeRoleApplier.ApplyAll()` | 4 ✅ |
@@ -1099,6 +1128,9 @@ Localization_yg
 | `Assets/Scripts/UI/LocalizedText.cs` (`L10n`) | **Сделано**: ужат до `Get`/`GetFormatted` (42 строки); `Bind`/`_bindings`/`Binding`/`RefreshAll`/`OnLocaleChanged`/`Subscribe`/`PurgeDestroyed`/`DetachRefresh`/`_subscribed`/`_refreshAttached` + подписки `onBeforeRender`/`SelectedLocaleChanged` удалены | 7 ✅ |
 | `Assets/Scripts/UI/GameUI.cs` (задача 7) | **Сделано**: `FillUnlockTree` — перерисовка по `SelectedLocaleChanged` при видимой панели (+снятие в `OnDestroy`); **`AddLocalized` — рантайм-подписка `OnUpdateString` → `tmp.text`** (устранена асимметрия с билдерами, закрывшая наблюдение 6 по `Title`); `shieldTextLse` удалено; кэш `_treeCg` вместо повторного `GetComponent` | 7 ✅ |
 | `Assets/Scripts/UI/LocalizedTextUI.cs` | Подписка `LanguageChanged` снята (4); **удалить** файл в задаче 5 (единая отсечка) | 4–5 |
-| `Assets/Localizations/GameTexts_{ru,en}.asset` | Удалить сироту «ДЕРЕВО» | 8 |
-| Новый editor-скрипт валидатора | **Создать** (ключи + coverage чарсета) | 8 |
+| `Assets/Localizations/GameTexts_{ru,en}.asset` | **Сделано**: сирота «ДЕРЕВО» (id `1584525502046248`) удалена из обеих таблиц (76 → 75 ключей); бэкап вне дерева ассетов | 8 ✅ |
+| `Assets/Scripts/Editor/LocalizationValidator.cs` (+`.meta`) | **Создано**: 6 источников ключей + coverage чарсета (объединение назначенных шрифтов); меню `AstroDrift/Validate Localization` | 8 ✅ |
+| `Assets/Scenes/Game.unity:4868` | **Сделано**: осиротевшая YAML-строка `shieldTextLse: {fileID: 0}` удалена — дифф сцены ровно одна строка | 8 ✅ |
+| `Assets/Docs/Localization_TZ.md:95` | **Сделано**: фактическая правка §1.6 — `title_main`/`title_sub`/`pilot_level` исключены из перечня «созданы вне `Entries`» | 8 ✅ |
+| `Assets/Scripts/Editor/LocalizationValidator.cs` (побочный эффект) | ⚠️ Прогон валидатора аддитивно открывает сцену → TMP-автозаполнение глифов пачкает `LiberationSans SDF - Fallback.asset`; в коммит не попало, при коммитах после валидатора проверять `git status` | 8 |
 | `ProjectSettings/ProjectSettings.asset` | **Сделано**: defines `AutoTranslateLangs_yg` (задача 2) и `Localization_yg` (задача 3, вариант B) удалены со всех платформ | 2–3 ✅ |
