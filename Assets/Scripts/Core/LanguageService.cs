@@ -73,9 +73,9 @@ public static class LanguageService
     {
         TypeRoleApplier.ApplyAll();
 
-        // §3.4: сброс _lastBestShown + кэша Arguments живёт у владельца гарда
-        // (GameUI.RefreshBestValue) и приезжает вместе с ним в задаче 5 (§8.1,
-        // StartBestValue). Здесь — точка подписки; фиктивных полей/нод нет.
+        // §3.4: сброс гарда горячего пути (best_value) — поля живут у владельца
+        // (GameUI), а точка подписки остаётся ровно одна: здесь (§3.5).
+        GameUI.ResetLanguageGuards();
     }
 
     /// <summary>

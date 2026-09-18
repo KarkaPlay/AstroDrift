@@ -2,13 +2,17 @@
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
 /// Редакторная утилита: собирает префабы оверлея перк-левелапа (GDD §15.3), чтобы
 /// владелец правил оверлей в инспекторе без кода.
-///   Assets/Prefabs/LevelUp/UpgradeCard.prefab      — базовая карта улучшения (фон — слайс Upgrade)
-///   Assets/Prefabs/LevelUp/UpgradeCard_New.prefab  — префаб-вариант базовой: фон Upgrade_new + бейдж «НОВОЕ»
+/// Внешние спрайты берутся ТОЛЬКО из контейнера Assets/Resources/PrefabBuilderSprites.asset
+/// (поля cardBg/cardNewBg/star/rerollBg + panelBg при usePanelBg). Поиска по имени слайса
+/// здесь нет: пустое обязательное поле — ошибка со списком всех пустых полей до записи.
+///   Assets/Prefabs/LevelUp/UpgradeCard.prefab      — базовая карта улучшения (фон — cardBg)
+///   Assets/Prefabs/LevelUp/UpgradeCard_New.prefab  — префаб-вариант базовой: фон cardNewBg + бейдж «НОВОЕ»
 ///   Assets/Prefabs/LevelUp/LevelUpPanel.prefab     — оверлей целиком (инстанс в сцене)
 /// Вариант отличается от базы ровно двумя вещами (спрайт фона и бейдж), поэтому собирается
 /// как Prefab Variant: правки базы доезжают до него без пересборки.
@@ -23,10 +27,6 @@ public static class LevelUpPrefabBuilder
     private const string CardNewPath = Folder + "/UpgradeCard_New.prefab";
     private const string PanelPath = Folder + "/LevelUpPanel.prefab";
 
-    // Единый атлас UI: иконки меню (Settings_Icon/Level_Icon/Shop_Icon/Player)
-    // и слайсы оверлея (Star/Upgrade/Upgrade_new/Update Perks) в одной текстуре.
-    private const string SheetPath = "Assets/New UI/Sheet.png";
-
     // Раскладка (координаты референса 1080×1920, якорь/пивот центра)
     private const float CardW = 300f, CardH = 420f, CardGap = 30f;
     private const float PanelW = 1080f, PanelH = 1920f;
@@ -35,29 +35,34 @@ public static class LevelUpPrefabBuilder
     public static void BuildAll()
     {
         var log = new System.Text.StringBuilder();
-        EnsureFolders();
 
-        var cfg = AssetDatabase.LoadAssetAtPath<TypographyConfig>("Assets/Resources/TypographyConfig.asset");
-        if (cfg == null) { Debug.LogError("LevelUpPrefabBuilder: нет Assets/Resources/TypographyConfig.asset"); return; }
+        var cfg = PrefabBuilderAssets.LoadContainer<TypographyConfig>("Assets/Resources/TypographyConfig.asset", "LevelUpPrefabBuilder");
+        if (cfg == null) return;
         if (cfg.bodyRegular == null) log.Append("ВНИМАНИЕ: TypographyConfig пуст (шрифт — fallback); ");
         if (cfg.titleBold == null) log.Append("ВНИМАНИЕ: TypographyConfig.titleBold пуст (заголовок возьмёт headingLight); ");
 
-        var star = LoadSprite(SheetPath, "Star");
-        var upgrade = LoadSprite(SheetPath, "Upgrade");
-        var upgradeNew = LoadSprite(SheetPath, "Upgrade_new");
-        var btnBg = LoadSprite(SheetPath, "Update Perks");
-        if (star == null || upgrade == null || upgradeNew == null || btnBg == null)
-        {
-            Debug.LogError("LevelUpPrefabBuilder: не найдены слайсы в " + SheetPath + ". star=" + (star != null)
-                + " upgrade=" + (upgrade != null) + " upgrade_new=" + (upgradeNew != null) + " btn=" + (btnBg != null));
-            return;
-        }
+        var src = PrefabBuilderAssets.LoadContainer<PrefabBuilderSprites>(PrefabBuilderAssets.SpritesContainerPath, "LevelUpPrefabBuilder",
+            "Создайте: ПКМ в Project → Create → AstroDrift → Prefab Builder Sprites (см. поля контейнера).");
+        if (src == null) return;
 
-        BuildBaseCard(cfg, upgrade);
+        // Внешние ассеты приходят ТОЛЬКО отсюда; проверка до первой записи префаба.
+        // panelBg обязателен ровно тогда, когда включён usePanelBg: «панель без спрайта» —
+        // осознанный выбор флагом, а не молчаливая деградация из-за незаполненного поля.
+        if (!PrefabBuilderAssets.RequireAll(src, "LevelUpPrefabBuilder",
+                PrefabBuilderAssets.Field(src.cardBg, nameof(src.cardBg)),
+                PrefabBuilderAssets.Field(src.cardNewBg, nameof(src.cardNewBg)),
+                PrefabBuilderAssets.Field(src.star, nameof(src.star)),
+                PrefabBuilderAssets.Field(src.rerollBg, nameof(src.rerollBg)),
+                PrefabBuilderAssets.FieldIf(src.usePanelBg, src.panelBg, nameof(src.panelBg)))) return;
+        if (!src.usePanelBg) log.Append("usePanelBg=false — панель без спрайта (как на HEAD); ");
+
+        EnsureFolders();
+
+        BuildBaseCard(cfg, src.cardBg);
         log.Append("UpgradeCard (base) OK; ");
-        BuildNewVariant(cfg, upgradeNew);
+        BuildNewVariant(cfg, src.cardNewBg);
         log.Append("UpgradeCard_New (variant) OK; ");
-        BuildPanel(cfg, star, btnBg);
+        BuildPanel(cfg, src.star, src.rerollBg, src.panelBg);
         log.Append("LevelUpPanel OK");
 
         AssetDatabase.SaveAssets();
@@ -101,6 +106,14 @@ public static class LevelUpPrefabBuilder
         SetRect(desc.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -286f), new Vector2(CardW - 24f, 110f));
         desc.textWrappingMode = TextWrappingModes.Normal;
 
+        // §8.1: пустой LSE — ссылку присвоит PerkChoiceUI.FillCard (вариант А, задача 6).
+        // Теги ролей по запечённым шрифтам (Cta=ctaSemiBold, Body=bodyRegular) → нулевой
+        // дифф (§8.3 п.4); применит OnEnable тега при Instantiate (N2).
+        AddLocalizeEmpty(title);
+        AddRole(title, TypeRole.Cta);
+        AddLocalizeEmpty(desc);
+        AddRole(desc, TypeRole.Body);
+
         PrefabUtility.SaveAsPrefabAsset(root, CardPath);
         Object.DestroyImmediate(root);
     }
@@ -127,11 +140,8 @@ public static class LevelUpPrefabBuilder
 
         var badge = NewTmp(root.transform, "NewBadge", "НОВОЕ", cfg.ctaSemiBold, 30f, Palette.Gold, TextAlignmentOptions.Center);
         SetRect(badge.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(220f, 46f));
-        var loc = badge.gameObject.AddComponent<LocalizedTextUI>();
-        var so = new SerializedObject(loc);
-        so.FindProperty("key").stringValue = "levelup_new";
-        so.FindProperty("role").enumValueIndex = (int)TypeRole.Cta;
-        so.ApplyModifiedPropertiesWithoutUndo();
+        AddLocalize(badge, "levelup_new");
+        AddRole(badge, TypeRole.Cta);
 
         PrefabUtility.SaveAsPrefabAsset(root, CardNewPath);
         Object.DestroyImmediate(root);
@@ -139,15 +149,18 @@ public static class LevelUpPrefabBuilder
 
     // ————————————— Оверлей целиком (1080×1920) —————————————
 
-    private static void BuildPanel(TypographyConfig cfg, Sprite star, Sprite rerollBg)
+    private static void BuildPanel(TypographyConfig cfg, Sprite star, Sprite rerollBg, Sprite panelBg)
     {
         var root = new GameObject("LevelUpPanel", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
         var rt = root.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(PanelW, PanelH);
 
+        // Фон панели: спрайт из контейнера (пусто = чистый затемняющий прямоугольник, как на HEAD).
         // Затемнение 50% чёрного — цвет живёт в префабе, PerkChoiceUI только гасит CanvasGroup
         var img = root.GetComponent<Image>();
+        img.sprite = panelBg;
+        img.type = Image.Type.Simple;
         img.color = new Color(0f, 0f, 0f, 0.5f);
         img.raycastTarget = true;
 
@@ -209,9 +222,43 @@ public static class LevelUpPrefabBuilder
 
     private static void AddLocalized(TextMeshProUGUI tmp, string key, TypeRole role)
     {
-        var loc = tmp.gameObject.AddComponent<LocalizedTextUI>();
-        var so = new SerializedObject(loc);
-        so.FindProperty("key").stringValue = key;
+        AddLocalize(tmp, key);
+        AddRole(tmp, role);
+    }
+
+    /// <summary>LocalizeStringEvent на ноде + persistent-listener TMP.text
+    /// (та же схема, что LocalizeComponent_TMP.SetupForLocalization).</summary>
+    private static LocalizeStringEvent AddLocalize(TextMeshProUGUI tmp, string key)
+    {
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        lse.StringReference.TableReference = "GameTexts";
+        lse.StringReference.TableEntryReference = key;
+        BindTmpText(lse, tmp);
+        return lse;
+    }
+
+    /// <summary>Пустой LSE: таблицу/ключ присвоит код в рантайме (§8.1, карты перков).</summary>
+    private static LocalizeStringEvent AddLocalizeEmpty(TextMeshProUGUI tmp)
+    {
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        BindTmpText(lse, tmp);
+        return lse;
+    }
+
+    private static void BindTmpText(LocalizeStringEvent lse, TextMeshProUGUI tmp)
+    {
+        var setter = tmp.GetType().GetProperty("text").GetSetMethod();
+        var handler = System.Delegate.CreateDelegate(typeof(UnityEngine.Events.UnityAction<string>), tmp, setter)
+            as UnityEngine.Events.UnityAction<string>;
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(lse.OnUpdateString, handler);
+        lse.OnUpdateString.SetPersistentListenerState(0, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
+    }
+
+    /// <summary>Тег шрифтовой роли. Имя поля 'role' зафиксировано ТЗ §3.5.</summary>
+    private static void AddRole(TextMeshProUGUI tmp, TypeRole role)
+    {
+        var tag = tmp.gameObject.AddComponent<TypeRoleTag>();
+        var so = new SerializedObject(tag);
         so.FindProperty("role").enumValueIndex = (int)role;
         so.ApplyModifiedPropertiesWithoutUndo();
     }
@@ -220,17 +267,6 @@ public static class LevelUpPrefabBuilder
     {
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs")) AssetDatabase.CreateFolder("Assets", "Prefabs");
         if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Prefabs", "LevelUp");
-    }
-
-    private static Sprite LoadSprite(string assetPath, string spriteName)
-    {
-        var all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-        foreach (var o in all)
-        {
-            var s = o as Sprite;
-            if (s != null && s.name == spriteName) return s;
-        }
-        return null;
     }
 
     private static RectTransform NewRect(Transform parent, string name)

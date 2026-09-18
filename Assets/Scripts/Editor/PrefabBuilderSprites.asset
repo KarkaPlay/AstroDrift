@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a93f31bd96aa432483eca26789b27ee, type: 3}
+  m_Name: PrefabBuilderSprites
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::PrefabBuilderSprites
+  logo: {fileID: 21300000, guid: 4d8451e4b1c154980b799dc3719a1a6f, type: 3}
+  levelIcon: {fileID: -5407506169051849089, guid: 7e6ef627ea21d45389f3d90fa208bbe7, type: 3}
+  settingsIcon: {fileID: 836187889693664109, guid: 7e6ef627ea21d45389f3d90fa208bbe7, type: 3}
+  shopIcon: {fileID: 5130829821354636663, guid: 7e6ef627ea21d45389f3d90fa208bbe7, type: 3}
+  upgradeIcon: {fileID: -5407506169051849089, guid: 7e6ef627ea21d45389f3d90fa208bbe7, type: 3}
+  buttonBg: {fileID: 7444542342398288595, guid: 0c97d0bab80cd4a4780f7c8dd726c248, type: 3}
+  barSprite: {fileID: 21300000, guid: ca67b4eeef8a84a13bcf92980665f25c, type: 3}
+  cardBg: {fileID: -2091637126, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+  cardNewBg: {fileID: 165531351, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+  usePanelBg: 0
+  panelBg: {fileID: 0}
+  star: {fileID: -404725576, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+  rerollBg: {fileID: 1250482101, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}

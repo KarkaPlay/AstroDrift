@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
@@ -325,17 +326,26 @@ public static class AstroDriftSceneSetup
         deathScrimImg.color = new Color(0f, 0f, 0f, 0.7f);
         deathScrimImg.raycastTarget = false;
 
+        // §8.2: динамика через Arguments (ставит GameUI.PlayDeathIn), теги ролей 1:1.
         var deathScoreT = NewText(deathGo.transform, "DeathScore", "SCORE 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 300), 88, scoreTextCol, TextAlignmentOptions.Center);
+        AddLocalize(deathScoreT, "score");
+        AddRole(deathScoreT, TypeRole.DeathScore);
         var deathBestT = NewText(deathGo.transform, "DeathBest", "BEST 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 180), 34, secondaryCol, TextAlignmentOptions.Center);
+        AddLocalize(deathBestT, "best");
+        AddRole(deathBestT, TypeRole.Secondary);
         var newBestT = NewText(deathGo.transform, "DeathNewBest", "NEW BEST!", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 110), 34, Palette.Gold, TextAlignmentOptions.Center);
         newBestT.gameObject.SetActive(false);
+        AddLocalize(newBestT, "new_best");
+        AddRole(newBestT, TypeRole.Secondary);
 
         // Death v2 (GDD_DeathScreen_Continue §4): предложение ПРОДОЛЖИТЬ (текст + подпись +
         // линия-таймер + невидимая тап-зона ≥720×160) ВЫШЕ «Домой»; RETRY удалён.
         var continueT = NewText(deathGo.transform, "ContinueText", "ПРОДОЛЖИТЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), 40, scoreTextCol, TextAlignmentOptions.Center);
         continueT.rectTransform.sizeDelta = new Vector2(600, 60);
+        AddLocalize(continueT, "continue_cta");
         var continueCapT = NewText(deathGo.transform, "ContinueCaption", "ЗА ПРОСМОТР РЕКЛАМЫ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -120), 24, secondaryCol, TextAlignmentOptions.Center);
         continueCapT.rectTransform.sizeDelta = new Vector2(600, 40);
+        AddLocalize(continueCapT, "continue_caption");
         // ux5-6 [ВИДИМОСТЬ]: линия-таймер утолщена 2→4 px (плохо читалась на фоне);
         // ширина 600 не трогается, OfferTimerRoutine меняет только sizeDelta.x,
         // _offerLineRestWidth хранит ширину — высота на фикс восстановления не влияет.
@@ -348,14 +358,18 @@ public static class AstroDriftSceneSetup
         var continueBtn = continueGo.AddComponent<Button>();
         continueBtn.targetGraphic = continueGo.GetComponent<Image>();
 
-        var homeBtn = NewTextButton(deathGo.transform, "Btn_Home", "ДОМОЙ", new Vector2(0, -280), 420);
+        var homeBtn = NewTextButton(deathGo.transform, "Btn_Home", "ДОМОЙ", new Vector2(0, -280), 420, "home");
         // Разделитель между предложением и «Домой» — тонкая линия UiLine (§3)
         var sepGo = NewPanel(deathGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -220), new Vector2(420, 2));
         sepGo.GetComponent<Image>().color = Palette.UiLine;
 
         // ——— UI v3: Death-экран мета-блок (GDD §7): +XP / Level / бар / Разблокировано ———
+        // роли не было → без тегов (§8.4); DeathLevel — двухсостоятельный
+        // (level_up_line ↔ level_line, рантайм-смена entry в GameUI.FillDeathMeta)
         var deathXpT = NewText(deathGo.transform, "DeathXp", "+0 XP", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 120), 34, Palette.XpBar, TextAlignmentOptions.Center);
+        AddLocalize(deathXpT, "xp_gain");
         var deathLevelT = NewText(deathGo.transform, "DeathLevel", "LEVEL 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 430), 30, scoreTextCol, TextAlignmentOptions.Center);
+        AddLocalize(deathLevelT, "level_line");
         var deathXpBg = NewPanel(deathGo.transform, "DeathXpBarBg", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 80), new Vector2(360, 10));
         deathXpBg.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
         var deathXpFillImg = MakeFill(deathXpBg.transform, "DeathXpBarFill", Palette.XpBar);
@@ -372,8 +386,9 @@ public static class AstroDriftSceneSetup
         pauseGo.GetComponent<Image>().color = Palette.UiOverlay;
 
         var pauseTitle = NewText(pauseGo.transform, "PauseTitle", "PAUSE", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), 48, scoreTextCol, TextAlignmentOptions.Center);
-        var resumeBtn = NewTextButton(pauseGo.transform, "Btn_Resume", "RESUME", new Vector2(0, 20), 420);
-        var quitBtn = NewTextButton(pauseGo.transform, "Btn_Home", "HOME", new Vector2(0, -100), 420);
+        AddLocalize(pauseTitle, "pause_title");
+        var resumeBtn = NewTextButton(pauseGo.transform, "Btn_Resume", "RESUME", new Vector2(0, 20), 420, "resume");
+        var quitBtn = NewTextButton(pauseGo.transform, "Btn_Home", "HOME", new Vector2(0, -100), 420, "home");
         var sep2Go = NewPanel(pauseGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), new Vector2(420, 2));
         sep2Go.GetComponent<Image>().color = Palette.UiLine;
 
@@ -532,8 +547,9 @@ public static class AstroDriftSceneSetup
             Object.DestroyImmediate(t.GetChild(i).gameObject);
     }
 
-    /// <summary>Кнопка = текст + невидимая кликабельная зона (≥ 88 pt) — §3.</summary>
-    private static Button NewTextButton(Transform parent, string name, string label, Vector2 pos, float width)
+    /// <summary>Кнопка = текст + невидимая кликабельная зона (≥ 88 pt) — §3.
+    /// key — LSE на ноде Text (без тега роли: шрифт остаётся текущим дефолтом, §8.4).</summary>
+    private static Button NewTextButton(Transform parent, string name, string label, Vector2 pos, float width, string key)
     {
         var go = NewPanel(parent, name, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(width, 88));
         go.GetComponent<Image>().color = new Color(0, 0, 0, 0);
@@ -541,7 +557,40 @@ public static class AstroDriftSceneSetup
         btn.targetGraphic = go.GetComponent<Image>();
         var txt = NewText(go.transform, "Text", label, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 40, Color.white, TextAlignmentOptions.Center);
         txt.rectTransform.sizeDelta = new Vector2(width, 80);
+        AddLocalize(txt, key);
         return btn;
+    }
+
+    // ————————————— локализация (§8.2): LSE + тег роли —————————————
+    // Владелец ноды вешает компоненты сам (§8.0).
+
+    /// <summary>LocalizeStringEvent на ноде + persistent-listener TMP.text
+    /// (та же схема, что LocalizeComponent_TMP.SetupForLocalization).</summary>
+    private static LocalizeStringEvent AddLocalize(TextMeshProUGUI tmp, string key)
+    {
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        lse.StringReference.TableReference = "GameTexts";
+        lse.StringReference.TableEntryReference = key;
+        BindTmpText(lse, tmp);
+        return lse;
+    }
+
+    private static void BindTmpText(LocalizeStringEvent lse, TextMeshProUGUI tmp)
+    {
+        var setter = tmp.GetType().GetProperty("text").GetSetMethod();
+        var handler = System.Delegate.CreateDelegate(typeof(UnityEngine.Events.UnityAction<string>), tmp, setter)
+            as UnityEngine.Events.UnityAction<string>;
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(lse.OnUpdateString, handler);
+        lse.OnUpdateString.SetPersistentListenerState(0, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
+    }
+
+    /// <summary>Тег шрифтовой роли. Имя поля 'role' зафиксировано ТЗ §3.5.</summary>
+    private static void AddRole(TextMeshProUGUI tmp, TypeRole role)
+    {
+        var tag = tmp.gameObject.AddComponent<TypeRoleTag>();
+        var so = new SerializedObject(tag);
+        so.FindProperty("role").enumValueIndex = (int)role;
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>Панель всегда активна; видимость — CanvasGroup (никаких SetActive-миганий §8).</summary>

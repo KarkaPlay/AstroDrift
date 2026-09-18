@@ -11,7 +11,8 @@ GameObject:
   - component: {fileID: 4714875248814807890}
   - component: {fileID: 2014282257234478402}
   - component: {fileID: 5070525263198086542}
-  - component: {fileID: 830391647717068714}
+  - component: {fileID: 5738133844596260755}
+  - component: {fileID: 4346963927525594866}
   m_Layer: 0
   m_Name: NewBadge
   m_TagString: Untagged
@@ -138,7 +139,7 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &830391647717068714
+--- !u!114 &5738133844596260755
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -147,10 +148,49 @@ MonoBehaviour:
   m_GameObject: {fileID: 6954345522298205202}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b154993d9d7484e5caaacbf280f41f01, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedTextUI
-  key: levelup_new
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Components.LocalizeStringEvent
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: levelup_new
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 5070525263198086542}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &4346963927525594866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6954345522298205202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
   role: 2
 --- !u!1001 &2399931446343601719
 PrefabInstance:
@@ -243,7 +283,7 @@ PrefabInstance:
     - target: {fileID: 1985326987005176607, guid: c00b41e9fc0844d49bd7b4574f0fab5b, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 8222604357750818144, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+      objectReference: {fileID: 165531351, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
     - target: {fileID: 2914433878025837124, guid: c00b41e9fc0844d49bd7b4574f0fab5b, type: 3}
       propertyPath: m_Name
       value: UpgradeCard_New

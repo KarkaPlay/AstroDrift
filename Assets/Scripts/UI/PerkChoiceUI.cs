@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
@@ -198,24 +199,18 @@ public class PerkChoiceUI : MonoBehaviour
         }
     }
 
-    // Ключи — из данных перка (LocalizedTextUI на эти ноды не ставим).
-    // Bind, а не Get: таблица грузится асинхронно, иначе карта навсегда осталась бы
-    // с фолбэком-id; Bind же перечитает текст при догрузке таблицы и смене локали.
+    // Ключи — из данных перка. LSE на нодах — пустой (§8.1): владелец ноды (билдер карт)
+    // создаёт компонент, а ссылку/ключ присваивает рантайм (§3.2). Владеет подпиской LSE
+    // (StringChanged напрямую на LocalizedString — запрещён, §3.6).
+    // Перезапуск загрузки — присваивание StringReference, простой RefreshString()
+    // на только что созданной карте молча ничего не делает (операции ещё нет).
     private void FillCard(GameObject card, PerkDefinition def)
     {
         var title = FindTmp(card.transform, "Title");
-        if (title != null)
-        {
-            title.text = def.id.ToString(); // фолбэк до готовности таблицы
-            L10n.Bind(title, def.titleKey);
-        }
+        if (title != null) SetEntry(title, def.titleKey, def.id.ToString());
 
         var desc = FindTmp(card.transform, "Description");
-        if (desc != null)
-        {
-            desc.text = "";
-            L10n.Bind(desc, def.descKey);
-        }
+        if (desc != null) SetEntry(desc, def.descKey, null);
 
         var iconTr = card.transform.Find("Icon");
         if (iconTr != null)
@@ -279,6 +274,21 @@ public class PerkChoiceUI : MonoBehaviour
                 : Vector3.zero,
             PerkTitle(def), Palette.PerkRare, 4.2f, 1.0f);
         AudioManager.Instance?.PlayPerkLevelUp();
+    }
+
+    /// <summary>entry + перезапуск загрузки на компонентном тексте карты (§8.1).
+    /// fallback — до готовности таблицы (LSE сам перечитает при догрузке/смене локали).</summary>
+    private static void SetEntry(TextMeshProUGUI tmp, string key, string fallback)
+    {
+        if (!string.IsNullOrEmpty(fallback)) tmp.text = fallback;
+        if (string.IsNullOrEmpty(key)) return;
+        var lse = tmp.GetComponent<LocalizeStringEvent>();
+        if (lse == null) return;
+        var ls = lse.StringReference;
+        if (ls == null) return;
+        ls.TableReference = "GameTexts";
+        ls.TableEntryReference = key;
+        lse.StringReference = ls;
     }
 
     private static string PerkTitle(PerkDefinition def)

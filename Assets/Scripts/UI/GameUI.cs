@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
@@ -42,6 +43,19 @@ public class GameUI : MonoBehaviour
     [SerializeField] private Button startShieldBtn;          // «Стартовый щит за рекламу»
     [SerializeField] private TextMeshProUGUI startShieldText;
     [SerializeField] private TextMeshProUGUI startShieldCaption;
+
+    // LSE-ссылки (необязательны): нода с LocalizeStringEvent обычно та же, что TMP-ссылка,
+    // поэтому GetLse берёт компонент с неё. Поля — для случая, когда владелец разнёс ноды.
+    [SerializeField] private LocalizeStringEvent startBestValueLse;
+    [SerializeField] private LocalizeStringEvent shieldTextLse;
+    [SerializeField] private LocalizeStringEvent shieldCaptionLse;
+
+    // §3.4: горячий путь (RefreshHud на каждую смену счёта) — гард по значению +
+    // кэшированный массив. Сброс — LanguageService → ResetLanguageGuards (подписка одна).
+    private readonly object[] _bestArgs = new object[1];
+    private int _lastBestShown = -1;
+    private string _shieldCaptionKey; // текущее состояние двухсостоятельной подписи щита
+    private static readonly List<GameUI> _instances = new List<GameUI>();
 
     [Header("UI v3: Death-экран (GDD §7)")]
     [SerializeField] private TextMeshProUGUI deathXp;        // «+Y XP»
@@ -109,18 +123,12 @@ public class GameUI : MonoBehaviour
         // Поведение кнопок (структура — в сцене, обработчики — здесь)
         if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
 
-        // Локализация статичных текстов (перечитываются при смене локали;
-        // динамические — в PlayDeathIn/RefreshHud). Заголовок — картинка, локали не требует.
-        L10n.Bind(ctaText, "tap_to_play");
-        L10n.Bind(continueText, "continue_cta");
-        L10n.Bind(continueCaption, "continue_caption");
-        L10n.Bind(deathNewBest, "new_best");
-        L10n.Bind(homeBtn != null ? homeBtn.GetComponentInChildren<TMPro.TextMeshProUGUI>() : null, "home");
-        BindPauseTexts();
-        // Рекорд меню разбит на две ноды: подпись (best_label) + число (best_value,
-        // обновляется в RefreshHud). Ключ best с форматом «РЕКОРД {0}» остаётся только
-        // за Death-экраном — на подписи меню он перезаписывал бы обе строки.
-        L10n.Bind(startBest, "best_label");
+        // Локализация статичных текстов — компоненты LocalizeStringEvent на нодах
+        // (владельцы: билдеры префабов §8.1 и Setup Scene §8.2 — привязка идёт в момент
+        // создания ноды). GameUI владеет только динамикой: Arguments и рантайм-смена
+        // entry (§3.1). Заголовок-картинка локали не требует. Рекорд меню — две ноды:
+        // подпись best_label и число best_value (число обновляет RefreshHud, гард §3.4).
+        if (!_instances.Contains(this)) _instances.Add(this);
 
         // Фикс «тап по TAP TO PLAY не стартует игру»: TMP-тексты стартового экрана
         // (перекрывающие полноэкранную невидимую зону тапа) перехватывали raycast.
@@ -208,7 +216,8 @@ public class GameUI : MonoBehaviour
         var titleTmp = titleGo.AddComponent<TMPro.TextMeshProUGUI>();
         titleTmp.fontSize = 32; titleTmp.alignment = TMPro.TextAlignmentOptions.Center;
         titleTmp.color = Palette.XpBar; titleTmp.raycastTarget = false;
-        L10n.Bind(titleTmp, "unlock_tree_title");
+        // Нода создаётся здесь → владелец LSE здесь же (§8.0); роли у неё не было (§8.4).
+        AddLocalized(titleTmp, "unlock_tree_title");
 
         var listGo = new GameObject("List", typeof(RectTransform));
         listGo.transform.SetParent(_treePanel.transform, false);
@@ -268,17 +277,9 @@ public class GameUI : MonoBehaviour
         _treeText.text = sb.ToString();
     }
 
-    /// <summary>Пауза-тексты живут на панели сцены (не сериализованы) — биндинг по Find.</summary>
-    private void BindPauseTexts()
-    {
-        if (pausePanel == null) return;
-        L10n.Bind(pausePanel.transform.Find("PauseTitle")?.GetComponent<TMPro.TextMeshProUGUI>(), "pause_title");
-        L10n.Bind(pausePanel.transform.Find("Btn_Resume")?.GetComponentInChildren<TMPro.TextMeshProUGUI>(), "resume");
-        L10n.Bind(pausePanel.transform.Find("Btn_Home")?.GetComponentInChildren<TMPro.TextMeshProUGUI>(), "home");
-    }
-
     private void OnDestroy()
     {
+        _instances.Remove(this);
         if (_score != null)
         {
             _score.OnScoreChanged -= OnScoreChanged;
@@ -507,8 +508,8 @@ public class GameUI : MonoBehaviour
         if (pilot == null) return;
 
         // ТЗ v1.10: карточка уровня — префаб LevelCard.prefab. Подпись «УРОВЕНЬ ПИЛОТА»
-        // переводимая и статична (LocalizedTextUI, ключ pilot_level_label), число уровня
-        // и бар живут в LevelCardUI (тот же UiProgressBar, но с анкорной заливкой бара).
+        // переводимая и статична (LocalizeStringEvent, ключ pilot_level_label), число
+        // уровня и бар живут в LevelCardUI (тот же UiProgressBar, с анкорной заливкой).
         if (levelCard != null) levelCard.Refresh();
         else UiProgressBar.Set(Rt(xpBarFill), pilot.ProgressToNextLevel());
 
@@ -528,15 +529,12 @@ public class GameUI : MonoBehaviour
             startShieldBtn.interactable = !usedToday && adReady;
             if (usedToday)
             {
-                string cap = L10n.Get("shield_used_today");
-                if (startShieldCaption != null)
-                    startShieldCaption.text = string.IsNullOrEmpty(cap) ? "УЖЕ ИСПОЛЬЗОВАНА СЕГОДНЯ" : cap;
+                SetShieldCaption("shield_used_today");
                 if (startShieldText != null) startShieldText.color = Palette.SecondaryText;
             }
             else
             {
-                L10n.Bind(startShieldText, "shield_cta");
-                L10n.Bind(startShieldCaption, "shield_caption");
+                SetShieldCaption("shield_caption");
                 if (startShieldText != null) startShieldText.color = Palette.PickupShield;
             }
         }
@@ -583,18 +581,12 @@ public class GameUI : MonoBehaviour
         deathXp.gameObject.SetActive(true);
         if (deathLevel != null) deathLevel.gameObject.SetActive(true);
 
-        L10n.Bind(deathXp, "xp_gain", Format(pilot.LastRunXp));
+        // Холодный путь (§3.4): Arguments можно пересобирать.
+        SetLocalized(deathXp, "xp_gain", Format(pilot.LastRunXp));
         if (pilot.PilotLevel > pilot.LevelBeforeLastRun)
-        {
-            string s = L10n.GetFormatted("level_up_line", pilot.LevelBeforeLastRun, pilot.PilotLevel);
-            deathLevel.text = string.IsNullOrEmpty(s)
-                ? $"УРОВЕНЬ {pilot.LevelBeforeLastRun} → {pilot.PilotLevel}" : s;
-        }
+            SetLocalized(deathLevel, "level_up_line", Format(pilot.LevelBeforeLastRun), Format(pilot.PilotLevel));
         else
-        {
-            string s = L10n.GetFormatted("level_line", pilot.PilotLevel);
-            deathLevel.text = string.IsNullOrEmpty(s) ? $"УРОВЕНЬ {pilot.PilotLevel}" : s;
-        }
+            SetLocalized(deathLevel, "level_line", Format(pilot.PilotLevel));
         UiProgressBar.Set(Rt(deathXpBarFill), pilot.ProgressToNextLevel());
 
         // «Разблокировано» — только при росте уровня и implementedInWave1 (GDD §7/§5bis.2)
@@ -828,9 +820,9 @@ public class GameUI : MonoBehaviour
         _offerActive = false;
         _continueDeclinedLogged = false; // новая смерть — правило §2.5 начинается заново
 
-        L10n.Bind(deathScore, "score", Format(score));
-        L10n.Bind(deathBest, "best", Format(best));
-        L10n.Bind(deathNewBest, "new_best");
+        // deathNewBest — статичный компонентный текст (§8.2), здесь только видимость.
+        SetLocalized(deathScore, "score", Format(score));
+        SetLocalized(deathBest, "best", Format(best));
         deathNewBest.gameObject.SetActive(newBest);
         FillDeathMeta(); // UI v3: «+Y XP», уровень, прогресс-бар, «Разблокировано»
         if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
@@ -1138,7 +1130,82 @@ public class GameUI : MonoBehaviour
 
         // Число рекорда — отдельная нода от подписи. Ключ best («РЕКОРД {0}») остался
         // за Death-экраном: на подписи меню он перезаписывал бы обе строки.
-        if (startBestValue != null) L10n.Bind(startBestValue, "best_value", Format(_score.Best));
+        RefreshBestValue(_score.Best);
+    }
+
+    /// <summary>best_value: Arguments + RefreshString. Гард режет и аллокацию массива,
+    /// и пересборку строки на каждую смену счёта (счёт меняется чаще, чем рекорд).
+    /// Смена локали сбрасывает гард — иначе значение внутри сессии не перерисовалось бы.</summary>
+    private void RefreshBestValue(int best)
+    {
+        if (best == _lastBestShown) return;
+        var lse = GetLse(startBestValueLse, startBestValue);
+        if (lse == null) return;
+        _lastBestShown = best;
+        _bestArgs[0] = Format(best);
+        lse.StringReference.Arguments = _bestArgs;
+        lse.RefreshString();
+    }
+
+    /// <summary>Сброс гардов §3.4 при смене локали. Подписка на SelectedLocaleChanged
+    /// ровно одна и живёт в LanguageService (§3.5) — здесь только вызываемый хук.</summary>
+    public static void ResetLanguageGuards()
+    {
+        for (int i = 0; i < _instances.Count; i++)
+        {
+            var ui = _instances[i];
+            if (ui == null) continue;
+            ui._lastBestShown = -1;
+            if (ui._score != null) ui.RefreshBestValue(ui._score.Best);
+        }
+    }
+
+    /// <summary>Двухсостоятельная подпись щита: смена TableEntryReference (§8.1),
+    /// а не прямая запись .text (§3.6).</summary>
+    private void SetShieldCaption(string key)
+    {
+        if (_shieldCaptionKey == key) return; // уже это состояние — загрузку не дёргаем
+        _shieldCaptionKey = key;
+        ApplyEntry(GetLse(shieldCaptionLse, startShieldCaption), key, null);
+    }
+
+    /// <summary>Холодный путь: entry + Arguments (динамика §8.2).</summary>
+    private void SetLocalized(TextMeshProUGUI tmp, string key, params object[] args)
+        => ApplyEntry(GetLse(null, tmp), key, args);
+
+    /// <summary>Компонентный текст на ноде, которую создаёт сам GameUI (§8.0).</summary>
+    private static void AddLocalized(TextMeshProUGUI tmp, string key)
+    {
+        if (tmp == null) return;
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        ApplyEntry(lse, key, null);
+    }
+
+    /// <summary>
+    /// Присваивает таблицу/entry/аргументы и ПЕРЕЗАПУСКАЕТ загрузку.
+    /// Простой RefreshString() здесь не годится: он молча выходит, если операции загрузки
+    /// ещё нет (нода создана кодом → OnEnable отработал на пустой ссылке; либо entry
+    /// сменился после загрузки). Присваивание StringReference даёт ClearChangeHandler +
+    /// RegisterChangeHandler, а первый подписчик запускает ForceUpdate → HandleLocaleChange.
+    /// Таблица уже в памяти → строка приходит в том же кадре.
+    /// </summary>
+    private static void ApplyEntry(LocalizeStringEvent lse, string key, object[] args)
+    {
+        if (lse == null || string.IsNullOrEmpty(key)) return;
+        var ls = lse.StringReference;
+        if (ls == null) return;
+        ls.TableReference = "GameTexts";
+        ls.TableEntryReference = key;
+        ls.Arguments = args;
+        lse.StringReference = ls;
+    }
+
+    /// <summary>LSE с ноды: сериализованная ссылка (если задана), иначе компонент рядом
+    /// с существующей TMP-ссылкой.</summary>
+    private static LocalizeStringEvent GetLse(LocalizeStringEvent cached, TextMeshProUGUI tmp)
+    {
+        if (cached != null) return cached;
+        return tmp != null ? tmp.GetComponent<LocalizeStringEvent>() : null;
     }
 
     private void PulseCombo()

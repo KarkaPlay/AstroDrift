@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Карточка уровня пилота (ТЗ v1.10): число уровня справа + заливка прогресс-бара.
-/// Подпись «УРОВЕНЬ ПИЛОТА» живёт отдельным нодом с LocalizedTextUI (ключ pilot_level_label).
+/// Подпись «УРОВЕНЬ ПИЛОТА» живёт отдельным нодом с LocalizeStringEvent (ключ pilot_level_label).
 /// Поля необязательные: отсутствующий нод просто не обновляется.
 /// </summary>
 public class LevelCardUI : MonoBehaviour

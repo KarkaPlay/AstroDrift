@@ -11,7 +11,7 @@ PrefabInstance:
     - target: {fileID: 435918592940346520, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: -130748179, guid: 38f2f22e8da914a58a1589046e06c6a5, type: 3}
+      objectReference: {fileID: 5130829821354636663, guid: 7e6ef627ea21d45389f3d90fa208bbe7, type: 3}
     - target: {fileID: 1324812768912679317, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_Name
       value: MenuButton_Shop
@@ -39,6 +39,14 @@ PrefabInstance:
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_AnchorMin.y
       value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 232
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 120
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.x
@@ -98,14 +106,17 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2741249174825356673}
+      addedObject: {fileID: 8041439120390421994}
+    - targetCorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2321560337220809735}
   m_SourcePrefab: {fileID: 100100000, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
 --- !u!1 &345485800161787589 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
   m_PrefabInstance: {fileID: 8853731672832965449}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2741249174825356673
+--- !u!114 &8041439120390421994
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -114,8 +125,58 @@ MonoBehaviour:
   m_GameObject: {fileID: 345485800161787589}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b154993d9d7484e5caaacbf280f41f01, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedTextUI
-  key: menu_shop
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Components.LocalizeStringEvent
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: menu_shop
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1738827616399200211}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &2321560337220809735
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345485800161787589}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
   role: 2
+--- !u!114 &1738827616399200211 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7133500106259068058, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+  m_PrefabInstance: {fileID: 8853731672832965449}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345485800161787589}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
