@@ -1168,6 +1168,18 @@ Localization_yg
 3. **P3 (3 нечитаемых ключа) — подтверждён как пост-милстоун, мерж НЕ блокирует.** Состав уточнённый ратифицирован: `pilot_level` — из `Entries`, `title_main`/`title_sub` — только из Shared Data; `orphans=3` в §14 явной строкой — корректно. Решение продукта: **удалить пост-милстоуном** (низкий приоритет, бэкап есть); если дизайн захочет — назначить в UI и добавить в источники валидатора. Итоговый статус валидатора: «зелёный с квалификацией P3».
 4. **ИТОГ МИЛСТОУНА — ПРИНЯТ.** Теги: `baseline-loc-migration`, `task1-accepted`…`task8-accepted`, `milestone-loc-accepted`. Разрешён мерж `feature/localization-migration` → `main` после п.2, тег **`loc-migration-done`**. Пост-милстоун список: **P1** `menuUpgradeBtn: {fileID: 0}`, **P2** `Sheet.png`, **P3** 3 ключа.
 
+### Пост-милстоун фикс инструмента приёмки §11.2 (коммит `7694ab7`, проверено Team Lead)
+
+Дефект обнаружил продюсер при работе с меню валидатора. **Не игра — инструмент приёмки.**
+
+- **Симптом:** после `AstroDrift → Validate Localization (Missing translations report)` Unity показывала блокирующее модальное окно `Opening scene in read-only package!` / `It is not allowed to open a scene in a read-only package.`
+- **Корень:** [`AssetDatabase.FindAssets("t:Scene")`](Assets/Scripts/Editor/LocalizationValidator.cs:155) (и `"t:Prefab"`) возвращает ассеты **внутри read-only UPM-пакетов**; Unity логирует ошибку **до** исключения, поэтому существующий `catch { continue; }` её не подавлял. Дополнительно `scene.GetRootGameObjects()` вызывался вне try/catch — неоткрываемая сцена могла оборвать `Run()` до записи отчёта.
+- **Замер по проекту:** сцен 26 (16 — в `Packages/**`), префабов 51 (31 — в `Packages/**`). Проектные 10 сцен и 20 префабов остаются покрытыми.
+- **Фикс:** фильтр [`IsReadOnlyPackageAsset()`](Assets/Scripts/Editor/LocalizationValidator.cs:353) (`StartsWith("Packages/")`) до `OpenScene`/`LoadPrefabContents`; обход сцен обёрнут так, что неоткрываемая сцена не роняет `Run()`; добавлена **честная** строка в `Sources`: `пропущено read-only пакетных ассетов: сцен 16, префабов 31` (молчаливый пропуск запрещён — инструмент приёмки обязан отчитываться о покрытии).
+- **Проверено Team Lead пофайлово (diff):** 1 файл, +26/−7; изменения только в перечислении/устойчивости. Состав 6 источников ключей §11.2 (`CollectLocalizedStringData`, `CollectRuntimeUnlockKeys`, `SyncKeysWhitelist`, `SceneSetupKeys`, рантайм-список §8.1/§8.2, `CountLse`) **не тронут**; формат существующих строк отчёта не изменён.
+- **Числа до/после совпадают** (доказательство, что фильтр не съел реальные ключи): `tableKeys=75 used=72`, `lseCount=46`, `missing=0 orphans=3 uncovered=0`, `unionFonts=4`, сироты те же (`pilot_level`, `title_main`, `title_sub`). Отчёт по-прежнему пишется в `Temp/LocalizationReport.txt`.
+- **Урок:** `try/catch` не подавляет логи Unity, которые пишутся до исключения (модальные сообщения о read-only пакетах). Отсекать такие ассеты нужно **до** вызова API, а не ловить ошибку после.
+
 ---
 
 ## Приложение A. Финальное состояние настроек проекта (заполнено по факту задач 2–3)
