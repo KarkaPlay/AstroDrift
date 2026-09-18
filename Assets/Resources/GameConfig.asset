@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameConfig
   shipSpeed: 5
   shipAngularSpeed: 180
-  shipRadius: 0.25
+  shipRadius: 0.55
   shipInvulnerableTime: 0.5
   fireInterval: 0.3
   bulletSpeed: 18
@@ -63,6 +63,9 @@ MonoBehaviour:
   smallAsteroidScore: 10
   mediumAsteroidScore: 25
   largeAsteroidScore: 50
+  levelUpScoreThresholds: e8030000c409000088130000401f0000e02e000068420000d859000030750000
+  startShieldDailyRewarded: 1
+  startShieldUnlockPilotLevel: 8
   deathSlowmoScale: 0.3
   deathSlowmoDuration: 0.9
   menuZoomDivisor: 2.25
