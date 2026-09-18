@@ -407,9 +407,9 @@ zh-Hans/zh-Hant → zh → ru* · pt-BR → pt → ru* · <пусто> → ru
 
 ### 7.2. Критерии приёмки
 
-- [ ] Смена локали переключает шрифты тегированных нод (проверка: временный оверрайд на тестовом шрифте, затем откат);
-- [ ] Нетегированные ноды (HUD и др.) не меняются; пустые оверрайды → базовые слоты; пустые слоты → LiberationSans;
-- [ ] Ноль ссылок на YG2, `LanguageChanged`, `NotifyLanguageChanged` в UI-слое.
+- [x] Смена локали переключает шрифты тегированных нод (проверка: временный оверрайд на тестовом шрифте, затем откат);
+- [x] Нетегированные ноды (HUD и др.) не меняются; пустые оверрайды → базовые слоты; пустые слоты → LiberationSans;
+- [x] Ноль ссылок на YG2, `LanguageChanged`, `NotifyLanguageChanged` в UI-слое.
 
 ---
 
@@ -840,6 +840,31 @@ Localization_yg
 
 **Подтверждение допущения §7.1 п.1 (языковые оверрайды) — санкция продюсера, п.5:** [`TypographyConfig.asset:19`](Assets/Resources/TypographyConfig.asset:19) — `languageOverrides: []`, массив **пуст**. Слоты заполнены: `headingLight`/`bodyRegular`/`ctaSemiBold` = `20fb9121a3c3043a4ad672971d76f0c0` (`Montserrat-SemiBold SDF`), [`titleBold`](Assets/Resources/TypographyConfig.asset:16) = `2ebd00df0d84c41bc99f37ca0fbb92c2` (`Montserrat-Bold SDF`). Абзац §7.1 п.1 («существующий ассет (оверрайды пусты) продолжает работать») **подтверждён** — обработку оверрайдов в задачу 4 добавлять не нужно, §7.1 не меняется, эскалация не требуется. Замечание: наблюдение «RU `Title`=SemiBold / EN `Title`=Bold» из отчёта задачи 3 **из этого конфига следовать не может** — при пустом `languageOverrides` [`GetFonts()`](Assets/Scripts/Core/TypographyConfig.cs:41) возвращает одинаковые слоты для любого языка. Принято как ошибка наблюдения (не проверялось разрешение шрифта по ноде); на объект задачи 4 не влияет, к приёмке задачи 4 нода-факт `StartPanel` подлежит перепроверке.
 
+### Результат задачи 4 (коммит `a8cc489`, проверено Team Lead)
+
+| Пункт §7.1 / §7.2 | Факт | Статус |
+|---|---|---|
+| п.1 `langCode` → `localeCode` | [`TypographyConfig.GetFonts(string localeCode)`](Assets/Scripts/Core/TypographyConfig.cs:41) + поле [`TypographyLanguageFonts.localeCode`](Assets/Scripts/Core/TypographyConfig.cs:72) (тег тултипа — код локали). Слоты и фолбэк-цепочка не тронуты. Ассет [`TypographyConfig.asset`](Assets/Resources/TypographyConfig.asset:19) **не менялся**: `git diff task3-accepted..a8cc489` по нему пуст — пустой массив оверрайдов продолжает работать | ✅ |
+| п.2 источник языка | [`Typography.CurrentLang`](Assets/Scripts/UI/Typography.cs:38) → `LocalizationSettings.SelectedLocale?.Identifier.Code`; собственной реакции на смену локали у `Typography` нет | ✅ |
+| п.3 удаление цепочки `LanguageChanged` | Событие + `NotifyLanguageChanged()` удалены из [`Typography.cs`](Assets/Scripts/UI/Typography.cs:19); [`GameUI.ApplyTypography()`](Assets/Scripts/UI/GameUI.cs:460) и подписчик `OnEnable`/`OnDisable` удалены — 5 ручных применений переезжают на теги в §8.1 (задача 5). Ин-движок: `LanguageChanged=0`, `NotifyLanguageChanged=0`, `ApplyTypography=0`, `langCode=0`, `YG2` в `Scripts/UI` = 0 | ✅ |
+| п.4 `TypeRoleTag` + `TypeRoleApplier` | [`TypeRoleTag.cs:17`](Assets/Scripts/UI/TypeRoleTag.cs:17) — имя поля `role` зафиксировано комментарием (контракт с билдерами §8.1); [`Apply():19`](Assets/Scripts/UI/TypeRoleTag.cs:19) → `Typography.ApplyFontOnly`; [`OnEnable():24`](Assets/Scripts/UI/TypeRoleTag.cs:24) — self-apply (N2, карты перков рантаймовые); [`TypeRoleApplier.ApplyAll():33`](Assets/Scripts/UI/TypeRoleTag.cs:33) — `FindObjectsByType(FindObjectsInactive.Include, FindObjectsSortMode.None)`, opt-in | ✅ |
+| п.5 точка подписки | [`LanguageService.cs:53`](Assets/Scripts/Core/LanguageService.cs:53) — **единственная** подписка `SelectedLocaleChanged` в проекте (идемпотентна через `_started`); [`OnSelectedLocaleChanged()`:72](Assets/Scripts/Core/LanguageService.cs:72) → `TypeRoleApplier.ApplyAll()`. Сброс гардов §3.4 живёт у владельца поля (`GameUI.RefreshBestValue`) и приезжает вместе с ним в задаче 5 — фиктивных полей/нод не создано (`_lastBestShown`/`_bestArgs` = 0) | ✅ |
+| п.6 TMP Fallbacks | `m_FallbackFontAssetTable` базовых шрифтов → [`LiberationSans SDF - Fallback`](Assets/TextMesh%20Pro/Resources/Fonts%20&%20Materials/LiberationSans%20SDF%20-%20Fallback.asset) (`guid 2e498d1c…`): ровно по 1 записи в [`Montserrat-Bold SDF.asset`](Assets/Fonts/Montserrat-Bold%20SDF.asset) и [`Montserrat-SemiBold SDF.asset`](Assets/Fonts/Montserrat-SemiBold%20SDF.asset), обе цели — `type: 2` + `fileID 11400000` (корректный `TMP_FontAsset`). Дифф шрифтов не содержит больше ничего — атлас/глифы задачи 1 не задеты | ✅ |
+| §7.2 смена локали на тегированных нодах | Ин-движок: временный `TypeRoleTag(Cta)` на `Hud/ComboChip`, `SelectedLocale ru→en` + временный оверрайд `en.cta` → шрифт стал `Montserrat-Bold SDF` по реальному событию `SelectedLocaleChanged`; тег и оверрайд откачены (сцена и ассет конфига в коммит не попали — `*.unity`/`*.prefab` в коммите = 0) | ✅ |
+| §7.2 нетегированные ноды | `Hud/Btn_Pause/Text` = `LiberationSans SDF` до и после смены локали; `StartPanel/CtaText` = запечённый SemiBold. `grep TypeRoleTag` по `Assets/Scenes/` + `Assets/Prefabs/` = 0 (теги — задача 5, §8.0) | ✅ |
+| §7.2 пустые оверрайды / пустые слоты | [`GetFonts()`](Assets/Scripts/Core/TypographyConfig.cs:41) при пустом массиве возвращает базовые слоты; [`ApplyFont():70`](Assets/Scripts/UI/Typography.cs:70) при `null` берёт `TMP_Settings.defaultFontAsset` (LiberationSans SDF) — ни Missing, ни Null | ✅ |
+| R10 / R11 | `git status --porcelain` по `Assets/Settings/Build Profiles/` пусто; `Localization_yg` в `ProjectSettings.asset` = 0 | ✅ |
+
+**Отклонение (принято):** подписчиков `LanguageChanged` в проекте было больше одного — [`LocalizedTextUI.OnEnable`](Assets/Scripts/UI/LocalizedTextUI.cs:21) тоже подписывался. Цепочка §7.1 п.3 удалена целиком (мёртвая подписка снята); `ApplyFont()`/`L10n.Bind` не тронуты, удаление файла остаётся за задачей 5 (§8.3, единая отсечка).
+
+**Отложено в задачу 5 (не пробел):** `startBestValue` + гард §3.4 `_lastBestShown`/кэш `Arguments` — по §8.1 приезжают вместе с нодой `StartBestValue`; 5 ручных `Typography.Apply` переносятся на теги билдерами §8.1/§8.2; нода-факт «запечённый шрифт карт перков (`Title`/`Description`) == ролевой» проверяется критерием §8.3.
+
+### Клоузаут задачи 4
+
+- Тег **`task4-accepted`** (коммит `a8cc489`) — рядом с `task1-accepted`…`task3-accepted`, `baseline-loc-migration`.
+- Остаточные риски: **R10** (снапшоты профилей — сверка после каждого переключения) и **R11** (ручной импорт модулей через окно YG2 вернёт `Localization_yg`) остаются действующими для задач 5–8.
+- 9 диагностических логов задачи 3 + логи задачи 4 остаются до приёмки задачи 7–8 (крайний срок — приёмка 8, п.8 протокола).
+
 ---
 
 ## Приложение A. Финальное состояние настроек проекта (заполнено по факту задач 2–3)
@@ -851,7 +876,8 @@ Localization_yg
 - [x] **`Basic.autoDefineSymbols: 1 → 0`** в [`SettingsYG2.asset:55`](Assets/PluginYourGames/Resources/SettingsYG2.asset:55) — санкция продюсера (вариант B, F7). **Следствие:** defines модулей YG2 больше не синхронизируются автоматически, включая `PLUGIN_YG_2`, `TMP_YG2`, `NJSON_YG2` и платформенные `*Platform_yg`; при добавлении/удалении модуля через окно YG2 их нужно править **вручную**. **Обратимость:** одна строка; возврат `1` + refresh восстановит авто-режим (и вернёт `Localization_yg`, пока существует папка модуля). Условие возврата к `1` — удаление папки `Modules/Localization`, что невозможно без правки плагина;
 - [x] `setLanguageMod` = **2 (`DoNotChangeLanguageStartup`)** в [`SettingsYG2.asset:33`](Assets/PluginYourGames/Resources/SettingsYG2.asset:33). Язык теперь применяет **`LanguageService`** (задача 3) — на переходный период язык на старте не применяет никто (санкционировано продюсером).
 - [x] **Гейт G1:** вариант **A** — источник = язык аккаунта ЯИ. Перенос выполнен: [`YandexLanguage.jslib`](Assets/_Platform/YandexGames/YandexLanguage.jslib:3) (`AstroDriftLangRequest_js`, тело `ysdk.environment.i18n.lang`) + [`YandexLanguageSource.GetAccountLanguage()`](Assets/_Platform/YandexGames/YandexLanguageSource.cs:19). Проверено ин-движком: `.meta` (WebGL only), компиляция профилей, отсутствие дубля символа. Ограничение: `YandexGamesPlatform_yg` не определён → модульный `LangRequest_js` мёртв; на реальном ЯИ **не проверено** — проверка отложена (F5) до первой сборки ЯИ после милстоуна. `GeneralLanguage_js` (язык браузера) в проекте остаётся без читателя — использовался только как запасной вариант B, отклонён продюсером.
-- [ ] Решение D1 (`unsupported → ru`) известно команде; триггер пересмотра — локаль `tr`. Проверяется в задаче 3 (§6.3).
+- [x] **TMP Fallbacks** (задача 4, §7.1 п.6): `m_FallbackFontAssetTable` обоих базовых шрифтов → `LiberationSans SDF - Fallback` (Dynamic, 25 глифов, `hasCyrillic=True`, `hasCJK_Han=False`). Это инфраструктура под будущие CJK-строки; сам CJK-шрифт — вне скоупа милстоуна;
+- [x] Решение D1 (`unsupported → ru`) известно команде; триггер пересмотра — локаль `tr`. Проверено в задаче 3 (§6.3).
 
 ## Приложение B. Связанные файлы (карта изменений)
 
@@ -866,9 +892,10 @@ Localization_yg
 | `Assets/Scripts/Core/LanguageService.cs` | **Создано**: маппинг §6.1 + D1, C1–C3, заглушка `TryApplyPlayerOverride()` | 3 ✅ |
 | `Assets/Scripts/Core/Bootstrap.cs` | **Сделано**: C2 — `Build` по «И» (`PlatformBoot.Ready && StartupApplied`) | 3 ✅ |
 | `Assets/PluginYourGames/Resources/SettingsYG2.asset` | **Сделано** (F7, вариант B): `autoDefineSymbols: 1 → 0` | 3 ✅ |
-| `Assets/Scripts/UI/Typography.cs` + `Core/TypographyConfig.cs` | Коды локалей, подписка на `SelectedLocaleChanged` | 4 |
-| `Assets/Scripts/UI/TypeRoleTag.cs` | **Создать** (`TypeRoleTag` + `TypeRoleApplier`) | 4 |
-| `Assets/Scripts/UI/GameUI.cs` | Удалить `ApplyTypography`, подписчика `LanguageChanged`, `BindPauseTexts`; `Arguments` + гарды; рантайм-смены entry (щит, `DeathLevel`) | 4–5 |
+| `Assets/Scripts/UI/Typography.cs` + `Core/TypographyConfig.cs` | **Сделано**: `langCode → localeCode`; событие `LanguageChanged` снято, подписка на `SelectedLocaleChanged` — у `LanguageService` | 4 ✅ |
+| `Assets/Scripts/UI/TypeRoleTag.cs` | **Создано**: `TypeRoleTag` (поле `role`, self-apply в `OnEnable`) + `TypeRoleApplier.ApplyAll()` | 4 ✅ |
+| `Assets/Fonts/Montserrat-Bold SDF.asset`, `Assets/Fonts/Montserrat-SemiBold SDF.asset` | **Сделано**: `m_FallbackFontAssetTable` → `LiberationSans SDF - Fallback` (§7.1 п.6) | 4 ✅ |
+| `Assets/Scripts/UI/GameUI.cs` | **Сделано** (4): `ApplyTypography` + подписчик `LanguageChanged` удалены. Остаётся (5): `BindPauseTexts`, `Arguments` + гарды §3.4, рантайм-смены entry (щит, `DeathLevel`) | 4–5 |
 | `Assets/Scripts/Editor/MenuPrefabBuilder.cs` | LSE + теги: варианты кнопок, LevelCard, **блок StartPanel** (B4) | 5 |
 | `Assets/Scripts/Editor/LevelUpPrefabBuilder.cs` | LSE + теги: панель, бейдж, реролл, пустые LSE + теги на картах | 5 |
 | `Assets/Scripts/Core/AstroDriftSceneSetup.cs` | LSE (+ теги где была роль) при создании текстов Death/Pause | 5 |
@@ -879,7 +906,7 @@ Localization_yg
 | `Assets/Scripts/Spawners/PickupManager.cs` | Чтение из дефа, удалить `PickupNameKey` | 6 |
 | `Assets/Scripts/UI/PerkChoiceUI.cs` | `FillCard` — вариант А; `PerkTitle` — `GetLocalizedString()` | 6 |
 | `Assets/Scripts/UI/LocalizedText.cs` (`L10n`) | Ужать до `Get`/`GetFormatted` | 7 |
-| `Assets/Scripts/UI/LocalizedTextUI.cs` | **Удалить** в задаче 5 (единая отсечка) | 5 |
+| `Assets/Scripts/UI/LocalizedTextUI.cs` | Подписка `LanguageChanged` снята (4); **удалить** файл в задаче 5 (единая отсечка) | 4–5 |
 | `Assets/Localizations/GameTexts_{ru,en}.asset` | Удалить сироту «ДЕРЕВО» | 8 |
 | Новый editor-скрипт валидатора | **Создать** (ключи + coverage чарсета) | 8 |
 | `ProjectSettings/ProjectSettings.asset` | **Сделано**: defines `AutoTranslateLangs_yg` (задача 2) и `Localization_yg` (задача 3, вариант B) удалены со всех платформ | 2–3 ✅ |
