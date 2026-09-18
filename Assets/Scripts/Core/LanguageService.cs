@@ -16,7 +16,7 @@ using UnityEngine.Localization.Settings;
 ///  C3 — watchdog 5 с: init не завершился → дефолт + StartupApplied, старт не висит.
 ///
 /// Фолбэк unsupported/tr/zh/pt/пусто → ru — решение продукта D1 (§6.3), осознанное
-/// отклонение от поведения удалённого моста/CorrectLang. При добавлении локали
+/// отклонение от поведения удалённого моста. При добавлении локали
 /// (например tr) правится одна строка таблицы Map, не логика.
 /// </summary>
 public static class LanguageService
