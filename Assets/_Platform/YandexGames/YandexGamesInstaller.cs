@@ -32,7 +32,7 @@ public static class YandexGamesInstaller
     {
         YG2.onGetSDKData -= OnSdkReady;
         PlatformBoot.MarkReady();
-        Debug.Log($"[Platform] Yandex Games ready. lang={YG2.lang}, mobile={YG2.envir.isMobile}");
+        Debug.Log($"[Platform] Yandex Games ready. mobile={YG2.envir.isMobile}");
     }
 }
 #endif

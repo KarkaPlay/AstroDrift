@@ -30,7 +30,7 @@ MonoBehaviour:
     postponeCallTimer: 10
     labelAdvSimLabel: 0
   Localization:
-    setLanguageMod: 1
+    setLanguageMod: 2
   Metrica:
     enable: 1
     metricaCounterID: 0
