@@ -136,15 +136,22 @@ public static class LocalizationValidator
         // поэтому префабы обходим через PrefabUtility.LoadPrefabContents, сцены — аддитивным открытием.
         int lseCount = 0;
 
+        // FindAssets возвращает и ассеты внутри read-only UPM-пакетов (Packages/**).
+        // Их открытие/загрузка даёт блокирующее модальное окно Unity
+        // "Opening scene in read-only package!" ДО исключения, поэтому отсеиваем такие пути заранее.
+        int skippedScenes = 0, skippedPrefabs = 0;
+
         foreach (var guid in AssetDatabase.FindAssets("t:Prefab"))
         {
             var path = AssetDatabase.GUIDToAssetPath(guid);
             if (string.IsNullOrEmpty(path)) continue;
 
+            if (IsReadOnlyPackageAsset(path)) { skippedPrefabs++; continue; }
+
             GameObject root = null;
             try { root = PrefabUtility.LoadPrefabContents(path); }
             catch { root = null; }
-            if (root == null) continue;
+            if (root == null) { skippedPrefabs++; continue; }
 
             foreach (var lse in root.GetComponentsInChildren<LocalizeStringEvent>(true))
                 CountLse(lse, report.UsedKeys, ref lseCount);
@@ -157,22 +164,29 @@ public static class LocalizationValidator
             var path = AssetDatabase.GUIDToAssetPath(guid);
             if (string.IsNullOrEmpty(path)) continue;
 
+            if (IsReadOnlyPackageAsset(path)) { skippedScenes++; continue; }
+
             var scene = SceneManager.GetSceneByPath(path);
             bool opened = false;
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 try { scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive); opened = true; }
-                catch { continue; }
+                catch { skippedScenes++; continue; }
             }
 
-            foreach (var root in scene.GetRootGameObjects())
-                foreach (var lse in root.GetComponentsInChildren<LocalizeStringEvent>(true))
-                    CountLse(lse, report.UsedKeys, ref lseCount);
-
-            if (opened) EditorSceneManager.CloseScene(scene, true);
+            // Любая неоткрываемая/невалидная сцена не должна ронять Run() до записи отчёта.
+            try
+            {
+                foreach (var root in scene.GetRootGameObjects())
+                    foreach (var lse in root.GetComponentsInChildren<LocalizeStringEvent>(true))
+                        CountLse(lse, report.UsedKeys, ref lseCount);
+            }
+            catch { skippedScenes++; }
+            finally { if (opened) EditorSceneManager.CloseScene(scene, true); }
         }
 
         report.Sources.Add($"LocalizeStringEvent (префабы+сцены): компонентов {lseCount}");
+        report.Sources.Add($"пропущено read-only пакетных ассетов: сцен {skippedScenes}, префабов {skippedPrefabs}");
 
         // Рантайм-смены entry (§8.1/§8.2) — статическим списком
         foreach (var k in new[] { "shield_used_today", "shield_caption", "level_up_line", "level_line", "xp_gain" })
@@ -332,6 +346,11 @@ public static class LocalizationValidator
     // --- Вывод ------------------------------------------------------------------------------------
 
     private static string CollectionPath => $"Assets/Localizations/{CollectionName}.asset";
+
+    // Ассеты внутри read-only UPM-пакетов (Packages/**) открывать и грузить нельзя: Unity логирует
+    // ошибку ("Opening scene in read-only package!") до исключения, поэтому их надо отсеивать заранее,
+    // а не полагаться на try/catch. Замер по проекту: 16/26 сцен и 31/51 префаба лежат в Packages/**.
+    private static bool IsReadOnlyPackageAsset(string assetPath) => assetPath.StartsWith("Packages/");
 
     private static void CountLse(LocalizeStringEvent lse, HashSet<string> used, ref int counter)
     {
