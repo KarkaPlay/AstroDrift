@@ -4865,7 +4865,6 @@ MonoBehaviour:
   startShieldText: {fileID: 850898419}
   startShieldCaption: {fileID: 850898418}
   startBestValueLse: {fileID: 0}
-  shieldTextLse: {fileID: 0}
   shieldCaptionLse: {fileID: 0}
   deathXp: {fileID: 522717806}
   deathLevel: {fileID: 851406696}

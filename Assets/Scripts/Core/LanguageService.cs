@@ -46,7 +46,6 @@ public static class LanguageService
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Init()
     {
-        Debug.Log($"[Lang] Init (BeforeSceneLoad) на кадре {Time.frameCount}, {Time.realtimeSinceStartup:F3} с; init.IsDone={LocalizationSettings.InitializationOperation.IsDone}, available={LocalizationSettings.AvailableLocales?.Locales.Count ?? 0}");
         if (_started) return;
         _started = true;
 
@@ -92,7 +91,6 @@ public static class LanguageService
 
         string raw = ReadPlatformCode();
         string code = MapToLocaleCode(raw);
-        Debug.Log($"[Lang] источник: platformSystem={Application.systemLanguage} raw='{raw}' → locale='{code}' | init.IsDone={LocalizationSettings.InitializationOperation.IsDone}");
         Apply(code);
     }
 
@@ -136,19 +134,11 @@ public static class LanguageService
     {
         var locales = LocalizationSettings.AvailableLocales;
         Locale locale = locales != null ? locales.GetLocale(code) : null;
-        string before = LocalizationSettings.SelectedLocale?.Identifier.Code;
 
-        if (locale == null)
-        {
-            // Локали нет — остаёмся на текущей, без исключений (контракт удалённого моста).
-            Debug.LogWarning($"[Lang] локаль '{code}' недоступна (available={locales?.Locales.Count ?? 0}) — остаёмся на '{before}'.");
-        }
-        else if (LocalizationSettings.SelectedLocale != locale)
-        {
+        // Локали нет — остаёмся на текущей, без исключений (контракт удалённого моста).
+        if (locale != null && LocalizationSettings.SelectedLocale != locale)
             LocalizationSettings.SelectedLocale = locale; // L10n перечитает строки сам
-        }
 
-        Debug.Log($"[Lang] применено: до='{before}' после='{LocalizationSettings.SelectedLocale?.Identifier.Code}' (available={locales?.Locales.Count ?? 0}, init.IsDone={LocalizationSettings.InitializationOperation.IsDone})");
         MarkApplied();
     }
 
@@ -168,7 +158,6 @@ public static class LanguageService
         go.hideFlags = HideFlags.HideAndDontSave;
         UnityEngine.Object.DontDestroyOnLoad(go);
         _watchdog = go.AddComponent<WatchdogRunner>();
-        Debug.Log($"[Lang] watchdog вооружён ({WatchdogSeconds} с): init не завершён на момент Init {Time.realtimeSinceStartup:F2} с.");
     }
 
     private static void DisarmWatchdog()
@@ -176,7 +165,6 @@ public static class LanguageService
         if (_watchdog == null) return;
         UnityEngine.Object.Destroy(_watchdog.gameObject);
         _watchdog = null;
-        Debug.Log($"[Lang] watchdog снят: init завершён на {Time.realtimeSinceStartup:F2} с.");
     }
 
     /// <summary>C3: init не завершился за WatchdogSeconds — не держим старт игры.</summary>
@@ -184,8 +172,7 @@ public static class LanguageService
     {
         if (StartupApplied || _watchdog == null) return;
 
-        Debug.LogWarning($"[Lang] watchdog {WatchdogSeconds} с: LocalizationSettings init не завершён — применяю дефолт '{DefaultCode}' и продолжаю старт.");
-        DisarmWatchdog();
+        DisarmWatchdog(); // init не завершился за WatchdogSeconds — применяем дефолт и продолжаем старт
 
         if (LocalizationSettings.InitializationOperation.IsDone) Apply(DefaultCode); // C1 соблюдён: init завершился
         else MarkApplied();                                                          // C1: локаль не трогаем, AvailableLocales пуст

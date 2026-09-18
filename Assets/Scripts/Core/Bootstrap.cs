@@ -22,7 +22,6 @@ public class Bootstrap : MonoBehaviour
         // позднем применении (на WebGL PlatformBoot.Ready приходит позже BeforeSceneLoad).
         if (PlatformBoot.IsReady && LanguageService.StartupApplied)
         {
-            Debug.Log($"[Boot] C2: оба готовы сразу (PlatformBoot.IsReady={PlatformBoot.IsReady}, LangApplied={LanguageService.StartupApplied}) → Build на кадре {Time.frameCount}, {Time.realtimeSinceStartup:F3} с.");
             Build();
             return;
         }
@@ -33,7 +32,6 @@ public class Bootstrap : MonoBehaviour
 
     private void TryBuild()
     {
-        Debug.Log($"[Boot] C2: TryBuild (PlatformBoot.IsReady={PlatformBoot.IsReady}, LangApplied={LanguageService.StartupApplied}) на кадре {Time.frameCount}, {Time.realtimeSinceStartup:F3} с.");
         if (PlatformBoot.IsReady && LanguageService.StartupApplied) Build();
     }
 

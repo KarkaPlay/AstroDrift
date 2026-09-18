@@ -230,10 +230,6 @@ MonoBehaviour:
     m_Localized: 'Pickup: Rapid Fire'
     m_Metadata:
       m_Items: []
-  - m_Id: 1584525502046248
-    m_Localized: TREE
-    m_Metadata:
-      m_Items: []
   - m_Id: 1584525502046249
     m_Localized: PILOT UNLOCKS
     m_Metadata:
