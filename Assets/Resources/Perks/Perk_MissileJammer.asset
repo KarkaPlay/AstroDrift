@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05fd1fcf483c445128b5c0bf5a7336c6, type: 3}
+  m_Name: Perk_MissileJammer
+  m_EditorClassIdentifier: Assembly-CSharp::PerkDefinition
+  id: 6
+  title:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_missile_jammer_title
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  desc:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: perk_missile_jammer_desc
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  icon: {fileID: 21300000, guid: df287794f3be349819d61cfd5b647e01, type: 3}
+  rarity: 0
+  maxStacks: 2
+  unlockedByDefault: 0
+  unlockPilotLevel: 9
+  valuePerStack: -0.4
+  references:
+    version: 2
+    RefIds: []

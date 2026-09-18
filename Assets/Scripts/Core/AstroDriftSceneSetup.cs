@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
@@ -23,6 +24,9 @@ public static class AstroDriftSceneSetup
 {
     /// <summary>ТЗ v1.10: папка префабов меню (MenuLogo (child StartPanel), LevelCard, MenuButton*, StartPanel).</summary>
     private const string MenuPrefabFolder = "Assets/Prefabs/Menu";
+
+    /// <summary>Префабы оверлея перк-левелапа (AstroDrift → Build LevelUp Prefabs).</summary>
+    private const string LevelUpPrefabFolder = "Assets/Prefabs/LevelUp";
 
     [MenuItem("AstroDrift/Setup Scene UI")]
     public static void SetupSceneUI()
@@ -322,17 +326,26 @@ public static class AstroDriftSceneSetup
         deathScrimImg.color = new Color(0f, 0f, 0f, 0.7f);
         deathScrimImg.raycastTarget = false;
 
+        // §8.2: динамика через Arguments (ставит GameUI.PlayDeathIn), теги ролей 1:1.
         var deathScoreT = NewText(deathGo.transform, "DeathScore", "SCORE 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 300), 88, scoreTextCol, TextAlignmentOptions.Center);
+        AddLocalize(deathScoreT, "score");
+        AddRole(deathScoreT, TypeRole.DeathScore);
         var deathBestT = NewText(deathGo.transform, "DeathBest", "BEST 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 180), 34, secondaryCol, TextAlignmentOptions.Center);
+        AddLocalize(deathBestT, "best");
+        AddRole(deathBestT, TypeRole.Secondary);
         var newBestT = NewText(deathGo.transform, "DeathNewBest", "NEW BEST!", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 110), 34, Palette.Gold, TextAlignmentOptions.Center);
         newBestT.gameObject.SetActive(false);
+        AddLocalize(newBestT, "new_best");
+        AddRole(newBestT, TypeRole.Secondary);
 
         // Death v2 (GDD_DeathScreen_Continue §4): предложение ПРОДОЛЖИТЬ (текст + подпись +
         // линия-таймер + невидимая тап-зона ≥720×160) ВЫШЕ «Домой»; RETRY удалён.
         var continueT = NewText(deathGo.transform, "ContinueText", "ПРОДОЛЖИТЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), 40, scoreTextCol, TextAlignmentOptions.Center);
         continueT.rectTransform.sizeDelta = new Vector2(600, 60);
+        AddLocalize(continueT, "continue_cta");
         var continueCapT = NewText(deathGo.transform, "ContinueCaption", "ЗА ПРОСМОТР РЕКЛАМЫ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -120), 24, secondaryCol, TextAlignmentOptions.Center);
         continueCapT.rectTransform.sizeDelta = new Vector2(600, 40);
+        AddLocalize(continueCapT, "continue_caption");
         // ux5-6 [ВИДИМОСТЬ]: линия-таймер утолщена 2→4 px (плохо читалась на фоне);
         // ширина 600 не трогается, OfferTimerRoutine меняет только sizeDelta.x,
         // _offerLineRestWidth хранит ширину — высота на фикс восстановления не влияет.
@@ -345,14 +358,18 @@ public static class AstroDriftSceneSetup
         var continueBtn = continueGo.AddComponent<Button>();
         continueBtn.targetGraphic = continueGo.GetComponent<Image>();
 
-        var homeBtn = NewTextButton(deathGo.transform, "Btn_Home", "ДОМОЙ", new Vector2(0, -280), 420);
+        var homeBtn = NewTextButton(deathGo.transform, "Btn_Home", "ДОМОЙ", new Vector2(0, -280), 420, "home");
         // Разделитель между предложением и «Домой» — тонкая линия UiLine (§3)
         var sepGo = NewPanel(deathGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -220), new Vector2(420, 2));
         sepGo.GetComponent<Image>().color = Palette.UiLine;
 
         // ——— UI v3: Death-экран мета-блок (GDD §7): +XP / Level / бар / Разблокировано ———
+        // роли не было → без тегов (§8.4); DeathLevel — двухсостоятельный
+        // (level_up_line ↔ level_line, рантайм-смена entry в GameUI.FillDeathMeta)
         var deathXpT = NewText(deathGo.transform, "DeathXp", "+0 XP", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 120), 34, Palette.XpBar, TextAlignmentOptions.Center);
+        AddLocalize(deathXpT, "xp_gain");
         var deathLevelT = NewText(deathGo.transform, "DeathLevel", "LEVEL 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 430), 30, scoreTextCol, TextAlignmentOptions.Center);
+        AddLocalize(deathLevelT, "level_line");
         var deathXpBg = NewPanel(deathGo.transform, "DeathXpBarBg", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 80), new Vector2(360, 10));
         deathXpBg.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
         var deathXpFillImg = MakeFill(deathXpBg.transform, "DeathXpBarFill", Palette.XpBar);
@@ -369,41 +386,57 @@ public static class AstroDriftSceneSetup
         pauseGo.GetComponent<Image>().color = Palette.UiOverlay;
 
         var pauseTitle = NewText(pauseGo.transform, "PauseTitle", "PAUSE", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), 48, scoreTextCol, TextAlignmentOptions.Center);
-        var resumeBtn = NewTextButton(pauseGo.transform, "Btn_Resume", "RESUME", new Vector2(0, 20), 420);
-        var quitBtn = NewTextButton(pauseGo.transform, "Btn_Home", "HOME", new Vector2(0, -100), 420);
+        AddLocalize(pauseTitle, "pause_title");
+        var resumeBtn = NewTextButton(pauseGo.transform, "Btn_Resume", "RESUME", new Vector2(0, 20), 420, "resume");
+        var quitBtn = NewTextButton(pauseGo.transform, "Btn_Home", "HOME", new Vector2(0, -100), 420, "home");
         var sep2Go = NewPanel(pauseGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), new Vector2(420, 2));
         sep2Go.GetComponent<Image>().color = Palette.UiLine;
 
-        // ——— PerkPanel (Волна 1, GDD §15.3): оверлей выбора перка, строится кодом ———
+        // ——— PerkPanel (GDD §15.3): инстанс LevelUpPanel.prefab, правится инспектором ———
+        var levelUpPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/LevelUpPanel.prefab");
+        if (levelUpPrefab == null)
+        {
+            Debug.LogError("AstroDrift SceneSetup: не найден " + LevelUpPrefabFolder + "/LevelUpPanel.prefab — оверлей перка не собран (AstroDrift → Build LevelUp Prefabs).");
+            log.Append("LevelUpPanel.prefab MISSING; ");
+        }
         var perkGo = GameObject.Find("PerkPanel");
-        if (perkGo == null) perkGo = NewPanel(canvas.transform, "PerkPanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
-        ClearChildren(perkGo.transform);
-        perkGo.transform.SetAsLastSibling(); // поверх всех панелей
-        perkGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // затемнение делает PerkChoiceUI (0.6)
+        bool perkIsPrefabInstance = perkGo != null && PrefabUtility.IsPartOfPrefabInstance(perkGo);
+        if (levelUpPrefab != null && !perkIsPrefabInstance)
+        {
+            if (perkGo != null) Object.DestroyImmediate(perkGo); // распакованная/старая панель — заменяем инстансом
+            perkGo = (GameObject)PrefabUtility.InstantiatePrefab(levelUpPrefab, canvas.transform);
+            perkGo.name = "PerkPanel";
+        }
+        if (perkGo != null)
+        {
+            var perkRt = perkGo.GetComponent<RectTransform>();
+            perkRt.anchorMin = perkRt.anchorMax = perkRt.pivot = new Vector2(0.5f, 0.5f);
+            perkRt.anchoredPosition = Vector2.zero;
+            perkRt.sizeDelta = new Vector2(1080, 1920);
+            perkGo.transform.SetAsLastSibling(); // поверх всех панелей
+            EnsureCanvasGroup(perkGo, visible: false);
+        }
 
-        var perkTitle = NewText(perkGo.transform, "PerkTitle", "LEVEL UP!", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 640), 64, scoreTextCol, TextAlignmentOptions.Center);
-        var perkCards = new GameObject("PerkCards");
-        perkCards.transform.SetParent(perkGo.transform, false);
-        var perkCardsRt = perkCards.AddComponent<RectTransform>();
-        perkCardsRt.anchorMin = perkCardsRt.anchorMax = perkCardsRt.pivot = new Vector2(0.5f, 0.5f);
-        perkCardsRt.anchoredPosition = Vector2.zero;
-        perkCardsRt.sizeDelta = new Vector2(1080, 400);
-        // Реролл — ниже карт, discreet (мелкий текст + невидимая зона ≥ 88 pt, §3)
-        var rerollGo = NewPanel(perkGo.transform, "Btn_Reroll", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -420), new Vector2(500, 110));
-        rerollGo.GetComponent<Image>().color = new Color(0, 0, 0, 0);
-        var rerollBtn = rerollGo.AddComponent<Button>();
-        rerollBtn.targetGraphic = rerollGo.GetComponent<Image>();
-        var rerollText = NewText(rerollGo.transform, "RerollText", "РЕРОЛЛ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 28, secondaryCol, TextAlignmentOptions.Center);
-        var rerollCap = NewText(rerollGo.transform, "RerollCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ЗАБЕГ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -40), 20, secondaryCol, TextAlignmentOptions.Center);
-        rerollCap.rectTransform.sizeDelta = new Vector2(500, 30);
+        // Компонент живёт на самой панели (её и показывает/скрывает), а не на отдельном объекте.
+        var strayUi = GameObject.Find("PerkChoiceUI");
+        if (strayUi != null && (perkGo == null || strayUi != perkGo)) Object.DestroyImmediate(strayUi);
+        var perkUi = perkGo != null ? perkGo.GetComponent<PerkChoiceUI>() : null;
+        if (perkGo != null && perkUi == null) perkUi = perkGo.AddComponent<PerkChoiceUI>();
 
-        EnsureCanvasGroup(perkGo, visible: false);
-        var perkUiGo = GameObject.Find("PerkChoiceUI");
-        if (perkUiGo == null) perkUiGo = new GameObject("PerkChoiceUI");
-        perkUiGo.transform.SetParent(canvas.transform, false);
-        var perkUi = perkUiGo.GetComponent<PerkChoiceUI>();
-        if (perkUi == null) perkUi = perkUiGo.AddComponent<PerkChoiceUI>();
-        perkUi.Init(perkGo, perkCardsRt, perkTitle, rerollBtn, rerollText.GetComponent<TextMeshProUGUI>(), rerollCap);
+        var cardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/UpgradeCard.prefab");
+        var cardNewPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabFolder + "/UpgradeCard_New.prefab");
+        if (cardPrefab == null || cardNewPrefab == null) log.Append("UpgradeCard*.prefab MISSING; ");
+        if (perkGo != null)
+        {
+            var cardsRt = perkGo.transform.Find("CardsRoot") as RectTransform;
+            var perkTitle = perkGo.transform.Find("LevelUpTitle")?.GetComponent<TextMeshProUGUI>();
+            var rerollGo = perkGo.transform.Find("Btn_Reroll");
+            perkUi.Init(perkGo, cardsRt, perkTitle,
+                rerollGo != null ? rerollGo.GetComponent<Button>() : null,
+                rerollGo != null ? rerollGo.Find("RerollText")?.GetComponent<TextMeshProUGUI>() : null,
+                rerollGo != null ? rerollGo.Find("RerollCaption")?.GetComponent<TextMeshProUGUI>() : null,
+                cardPrefab, cardNewPrefab);
+        }
 
         // ——— GameUI с сериализованными ссылками ———
         var uiGo = GameObject.Find("GameUI");
@@ -514,8 +547,9 @@ public static class AstroDriftSceneSetup
             Object.DestroyImmediate(t.GetChild(i).gameObject);
     }
 
-    /// <summary>Кнопка = текст + невидимая кликабельная зона (≥ 88 pt) — §3.</summary>
-    private static Button NewTextButton(Transform parent, string name, string label, Vector2 pos, float width)
+    /// <summary>Кнопка = текст + невидимая кликабельная зона (≥ 88 pt) — §3.
+    /// key — LSE на ноде Text (без тега роли: шрифт остаётся текущим дефолтом, §8.4).</summary>
+    private static Button NewTextButton(Transform parent, string name, string label, Vector2 pos, float width, string key)
     {
         var go = NewPanel(parent, name, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(width, 88));
         go.GetComponent<Image>().color = new Color(0, 0, 0, 0);
@@ -523,7 +557,40 @@ public static class AstroDriftSceneSetup
         btn.targetGraphic = go.GetComponent<Image>();
         var txt = NewText(go.transform, "Text", label, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 40, Color.white, TextAlignmentOptions.Center);
         txt.rectTransform.sizeDelta = new Vector2(width, 80);
+        AddLocalize(txt, key);
         return btn;
+    }
+
+    // ————————————— локализация (§8.2): LSE + тег роли —————————————
+    // Владелец ноды вешает компоненты сам (§8.0).
+
+    /// <summary>LocalizeStringEvent на ноде + persistent-listener TMP.text
+    /// (та же схема, что LocalizeComponent_TMP.SetupForLocalization).</summary>
+    private static LocalizeStringEvent AddLocalize(TextMeshProUGUI tmp, string key)
+    {
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        lse.StringReference.TableReference = "GameTexts";
+        lse.StringReference.TableEntryReference = key;
+        BindTmpText(lse, tmp);
+        return lse;
+    }
+
+    private static void BindTmpText(LocalizeStringEvent lse, TextMeshProUGUI tmp)
+    {
+        var setter = tmp.GetType().GetProperty("text").GetSetMethod();
+        var handler = System.Delegate.CreateDelegate(typeof(UnityEngine.Events.UnityAction<string>), tmp, setter)
+            as UnityEngine.Events.UnityAction<string>;
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(lse.OnUpdateString, handler);
+        lse.OnUpdateString.SetPersistentListenerState(0, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
+    }
+
+    /// <summary>Тег шрифтовой роли. Имя поля 'role' зафиксировано ТЗ §3.5.</summary>
+    private static void AddRole(TextMeshProUGUI tmp, TypeRole role)
+    {
+        var tag = tmp.gameObject.AddComponent<TypeRoleTag>();
+        var so = new SerializedObject(tag);
+        so.FindProperty("role").enumValueIndex = (int)role;
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>Панель всегда активна; видимость — CanvasGroup (никаких SetActive-миганий §8).</summary>

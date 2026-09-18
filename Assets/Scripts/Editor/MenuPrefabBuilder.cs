@@ -2,11 +2,15 @@
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
 /// Редакторная утилита (ТЗ v1.10): собирает префабы главного меню, чтобы владелец
 /// правил меню в инспекторе без кода.
+/// Внешние спрайты берутся ТОЛЬКО из контейнера Assets/Resources/PrefabBuilderSprites.asset
+/// (поля logo/levelIcon/settingsIcon/shopIcon/upgradeIcon/buttonBg/barSprite). Поиска по имени
+/// слайса здесь нет: пустое поле — ошибка со списком всех пустых полей до записи префабов.
 ///   Assets/Prefabs/Menu/MenuLogo.prefab        — логотип-картинка (New UI/Logo.png)
 ///   Assets/Prefabs/Menu/LevelCard.prefab       — карточка уровня 610×128 + бар 364×24
 ///   Assets/Prefabs/Menu/MenuButton.prefab      — база нижней кнопки
@@ -37,37 +41,38 @@ public static class MenuPrefabBuilder
     public static void BuildAll()
     {
         var log = new System.Text.StringBuilder();
-        EnsureFolders();
 
-        var cfg = AssetDatabase.LoadAssetAtPath<TypographyConfig>("Assets/Resources/TypographyConfig.asset");
-        if (cfg == null) { Debug.LogError("MenuPrefabBuilder: нет Assets/Resources/TypographyConfig.asset"); return; }
+        var cfg = PrefabBuilderAssets.LoadContainer<TypographyConfig>("Assets/Resources/TypographyConfig.asset", "MenuPrefabBuilder");
+        if (cfg == null) return;
         if (cfg.bodyRegular == null) log.Append("ВНИМАНИЕ: TypographyConfig пуст (шрифт — fallback); ");
 
-        var logoSprite = LoadSprite("Assets/New UI/Logo.png", "Logo");
-        var levelIcon = LoadSprite("Assets/New UI/Sheet.png", "Level_Icon");
-        var settingsIcon = LoadSprite("Assets/New UI/Sheet.png", "Settings_Icon");
-        var shopIcon = LoadSprite("Assets/New UI/Sheet.png", "Shop_Icon");
-        var btnBg = LoadSprite("Assets/New UI/MenuButtonBG.png", "MenuButtonBG_0");
-        var barSprite = LoadSprite("Assets/New UI/Generated/RoundedBar.png", "RoundedBar");
+        var src = PrefabBuilderAssets.LoadContainer<PrefabBuilderSprites>(PrefabBuilderAssets.SpritesContainerPath, "MenuPrefabBuilder",
+            "Создайте: ПКМ в Project → Create → AstroDrift → Prefab Builder Sprites (см. поля контейнера).");
+        if (src == null) return;
 
-        if (logoSprite == null || levelIcon == null || settingsIcon == null || shopIcon == null || btnBg == null || barSprite == null)
-        {
-            Debug.LogError("MenuPrefabBuilder: не найдены спрайты. logo=" + (logoSprite != null) + " levelIcon=" + (levelIcon != null)
-                + " settings=" + (settingsIcon != null) + " shop=" + (shopIcon != null) + " bg=" + (btnBg != null) + " bar=" + (barSprite != null));
-            return;
-        }
+        // Внешние ассеты приходят ТОЛЬКО отсюда; проверка до первой записи префаба.
+        if (!PrefabBuilderAssets.RequireAll(src, "MenuPrefabBuilder",
+                PrefabBuilderAssets.Field(src.logo, nameof(src.logo)),
+                PrefabBuilderAssets.Field(src.levelIcon, nameof(src.levelIcon)),
+                PrefabBuilderAssets.Field(src.settingsIcon, nameof(src.settingsIcon)),
+                PrefabBuilderAssets.Field(src.shopIcon, nameof(src.shopIcon)),
+                PrefabBuilderAssets.Field(src.upgradeIcon, nameof(src.upgradeIcon)),
+                PrefabBuilderAssets.Field(src.buttonBg, nameof(src.buttonBg)),
+                PrefabBuilderAssets.Field(src.barSprite, nameof(src.barSprite)))) return;
 
-        BuildMenuLogo(logoSprite);
+        EnsureFolders();
+
+        BuildMenuLogo(src.logo);
         log.Append("MenuLogo OK; ");
-        BuildLevelCard(cfg, levelIcon, barSprite);
+        BuildLevelCard(cfg, src.levelIcon, src.barSprite);
         log.Append("LevelCard OK; ");
-        BuildMenuButtonBase(cfg, btnBg, settingsIcon);
+        BuildMenuButtonBase(cfg, src.buttonBg, src.settingsIcon);
         log.Append("MenuButton OK; ");
-        BuildVariant("MenuButton_Settings.prefab", settingsIcon, "menu_settings", "settings", cfg);
-        BuildVariant("MenuButton_Upgrade.prefab", levelIcon, "menu_upgrade", "upgrade", cfg);
-        BuildVariant("MenuButton_Shop.prefab", shopIcon, "menu_shop", "shop", cfg);
+        BuildVariant("MenuButton_Settings.prefab", src.settingsIcon, "menu_settings", "settings", cfg);
+        BuildVariant("MenuButton_Upgrade.prefab", src.upgradeIcon, "menu_upgrade", "upgrade", cfg);
+        BuildVariant("MenuButton_Shop.prefab", src.shopIcon, "menu_shop", "shop", cfg);
         log.Append("3 варианта OK; ");
-        BuildStartPanel(cfg, logoSprite);
+        BuildStartPanel(cfg, src.logo);
         log.Append("StartPanel OK");
 
         AssetDatabase.SaveAssets();
@@ -117,14 +122,11 @@ public static class MenuPrefabBuilder
         iconImg.preserveAspect = true;
         iconImg.raycastTarget = false;
 
-        // Подпись «УРОВЕНЬ ПИЛОТА» — переводимая (ключ pilot_level_label)
+        // Подпись «УРОВЕНЬ ПИЛОТА» — переводимая (ключ pilot_level_label, §8.1)
         var label = NewTmp(root.transform, "LevelLabel", "УРОВЕНЬ ПИЛОТА", cfg.bodyRegular, 27f, Palette.SecondaryText, TextAlignmentOptions.Left);
         SetRect(label.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(130f, 22f), new Vector2(300f, 38f));
-        var loc = label.gameObject.AddComponent<LocalizedTextUI>();
-        var locSo = new SerializedObject(loc);
-        locSo.FindProperty("key").stringValue = "pilot_level_label";
-        locSo.FindProperty("role").enumValueIndex = (int)TypeRole.Button;
-        locSo.ApplyModifiedPropertiesWithoutUndo();
+        AddLocalize(label, "pilot_level_label");
+        AddRole(label, TypeRole.Button);
 
         // Крупное число уровня — выравнивание по правому краю
         var value = NewTmp(root.transform, "LevelValue", "0", cfg.ctaSemiBold, 52f, Palette.XpBar, TextAlignmentOptions.Right);
@@ -229,11 +231,8 @@ public static class MenuPrefabBuilder
             var tmp = labelTr.GetComponent<TextMeshProUGUI>();
             tmp.text = "";
             tmp.font = cfg.ctaSemiBold;
-            var loc = labelTr.gameObject.AddComponent<LocalizedTextUI>();
-            var so = new SerializedObject(loc);
-            so.FindProperty("key").stringValue = locKey;
-            so.FindProperty("role").enumValueIndex = (int)TypeRole.Cta;
-            so.ApplyModifiedPropertiesWithoutUndo();
+            AddLocalize(tmp, locKey);
+            AddRole(tmp, TypeRole.Cta);
         }
 
         var mb = inst.GetComponent<MenuButtonUI>();
@@ -281,14 +280,19 @@ public static class MenuPrefabBuilder
 
         // 3. Рекорд: ДВЕ ноды — подпись (ключ best_label) + число (ключ best_value).
         // Один текст «РЕКОРД 24 500» перезаписывался бы биндом ключа best (для Death-экрана).
+        // best_value — динамика с числом: Arguments + RefreshString ставит GameUI (§3.4, гард).
         var best = NewTmp(panel.transform, "StartBest", "РЕКОРД", cfg.bodyRegular, 34f, Palette.SecondaryText, TextAlignmentOptions.Center);
         SetRect(best.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 438f), new Vector2(600f, 80f));
         best.characterSpacing = 8f;
         best.raycastTarget = false;
+        AddLocalize(best, "best_label");
+        AddRole(best, TypeRole.Secondary);
 
         var bestValue = NewTmp(panel.transform, "StartBestValue", "0", cfg.bodyRegular, 34f, Palette.SecondaryText, TextAlignmentOptions.Center);
         SetRect(bestValue.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 378.1f), new Vector2(600f, 64.3f));
         bestValue.raycastTarget = false;
+        AddLocalize(bestValue, "best_value");
+        AddRole(bestValue, TypeRole.Secondary);
 
         // 4. Карточка уровня
         var card = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(LevelCardPath), panel.transform);
@@ -328,8 +332,14 @@ public static class MenuPrefabBuilder
         shieldBtn.targetGraphic = shieldImg;
         var shieldTxt = NewTmp(shield, "ShieldText", "СТАРТОВЫЙ ЩИТ", cfg.ctaSemiBold, 28f, Palette.PickupShield, TextAlignmentOptions.Center);
         SetRect(shieldTxt.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(560f, 40f));
+        AddLocalize(shieldTxt, "shield_cta");
+        AddRole(shieldTxt, TypeRole.Cta);
+        // Двухсостоятельная подпись: shield_caption ↔ shield_used_today — рантайм-смена
+        // TableEntryReference + RefreshString в GameUI.RefreshPilotBlock (§8.1).
         var shieldCap = NewTmp(shield, "ShieldCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", cfg.bodyRegular, 20f, Palette.SecondaryText, TextAlignmentOptions.Center);
         SetRect(shieldCap.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -36f), new Vector2(560f, 30f));
+        AddLocalize(shieldCap, "shield_caption");
+        AddRole(shieldCap, TypeRole.Secondary);
         // Скрыта по умолчанию — включается GameUI.RefreshPilotBlock при выполнении гейта
         shield.gameObject.AddComponent<CanvasGroup>().alpha = 0f;
         shield.GetComponent<CanvasGroup>().blocksRaycasts = false;
@@ -340,6 +350,8 @@ public static class MenuPrefabBuilder
         var cta = NewTmp(panel.transform, "CtaText", "TAP TO PLAY", cfg.ctaSemiBold, 44f, Palette.ScoreText, TextAlignmentOptions.Center);
         SetRect(cta.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -480f), new Vector2(600f, 80f));
         cta.characterSpacing = 16f;
+        AddLocalize(cta, "tap_to_play");
+        AddRole(cta, TypeRole.Cta);
 
         PrefabUtility.SaveAsPrefabAsset(panel, StartPanelPath);
         Object.DestroyImmediate(panel);
@@ -357,23 +369,44 @@ public static class MenuPrefabBuilder
         rt.anchoredPosition = pos;
     }
 
+    // ————————————— локализация (§8.1): LSE + тег роли —————————————
+    // Владелец ноды вешает компоненты сам (§8.0): навешивание на чужие ноды запрещено.
+
+    /// <summary>LocalizeStringEvent на ноде + persistent-listener TMP.text
+    /// (та же схема, что LocalizeComponent_TMP.SetupForLocalization).</summary>
+    private static LocalizeStringEvent AddLocalize(TextMeshProUGUI tmp, string key)
+    {
+        var lse = tmp.gameObject.AddComponent<LocalizeStringEvent>();
+        lse.StringReference.TableReference = "GameTexts";
+        lse.StringReference.TableEntryReference = key;
+        BindTmpText(lse, tmp);
+        return lse;
+    }
+
+    private static void BindTmpText(LocalizeStringEvent lse, TextMeshProUGUI tmp)
+    {
+        var setter = tmp.GetType().GetProperty("text").GetSetMethod();
+        var handler = System.Delegate.CreateDelegate(typeof(UnityEngine.Events.UnityAction<string>), tmp, setter)
+            as UnityEngine.Events.UnityAction<string>;
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(lse.OnUpdateString, handler);
+        lse.OnUpdateString.SetPersistentListenerState(0, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
+    }
+
+    /// <summary>Тег шрифтовой роли. Имя поля 'role' зафиксировано ТЗ §3.5.</summary>
+    private static void AddRole(TextMeshProUGUI tmp, TypeRole role)
+    {
+        var tag = tmp.gameObject.AddComponent<TypeRoleTag>();
+        var so = new SerializedObject(tag);
+        so.FindProperty("role").enumValueIndex = (int)role;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
     // ————————————— хелперы —————————————
 
     private static void EnsureFolders()
     {
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs")) AssetDatabase.CreateFolder("Assets", "Prefabs");
         if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Prefabs", "Menu");
-    }
-
-    private static Sprite LoadSprite(string assetPath, string spriteName)
-    {
-        var all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-        foreach (var o in all)
-        {
-            var s = o as Sprite;
-            if (s != null && s.name == spriteName) return s;
-        }
-        return null;
     }
 
     private static RectTransform NewRect(Transform parent, string name)

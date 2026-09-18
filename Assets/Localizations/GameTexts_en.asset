@@ -71,11 +71,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1543249381548032
-    m_Localized: REROLL
+    m_Localized: REFRESH CHOICES
     m_Metadata:
       m_Items: []
   - m_Id: 1543249381548033
-    m_Localized: "WATCH AD \xB7 1/RUN"
+    m_Localized: WATCH AD
     m_Metadata:
       m_Items: []
   - m_Id: 1543249381548034
@@ -230,10 +230,6 @@ MonoBehaviour:
     m_Localized: 'Pickup: Rapid Fire'
     m_Metadata:
       m_Items: []
-  - m_Id: 1584525502046248
-    m_Localized: TREE
-    m_Metadata:
-      m_Items: []
   - m_Id: 1584525502046249
     m_Localized: PILOT UNLOCKS
     m_Metadata:
@@ -312,6 +308,14 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 4273617960427520
     m_Localized: '{0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4669794807701504
+    m_Localized: CHOOSE AN UPGRADE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4669794912559104
+    m_Localized: NEW
     m_Metadata:
       m_Items: []
   references:

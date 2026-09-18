@@ -14,13 +14,19 @@ public static class AstroDriftLocalizationSetup
 {
     private const string CollectionPath = "Assets/Localizations/GameTexts.asset";
 
+    /// <summary>Ключи, чей текст в таблице ПРИНУДИТЕЛЬНО приводится к Entries при каждом
+    /// прогоне (переименование строк ТЗ). Остальные ключи правки владельца сохраняют.</summary>
+    private static readonly string[] ForceKeys = { "reroll_cta", "reroll_caption" };
+
     // (ключ, RU, EN)
     private static readonly (string key, string ru, string en)[] Entries =
     {
         // Перк-левелап оверлей (GDD §15.3)
         ("levelup_title", "УРОВЕНЬ ПОВЫШЕН!", "LEVEL UP!"),
-        ("reroll_cta", "РЕРОЛЛ", "REROLL"),
-        ("reroll_caption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ЗАБЕГ", "WATCH AD · 1/RUN"),
+        ("levelup_choose", "ВЫБЕРИ УЛУЧШЕНИЕ", "CHOOSE AN UPGRADE"),
+        ("levelup_new", "НОВОЕ", "NEW"),
+        ("reroll_cta", "ОБНОВИТЬ ВЫБОР", "REFRESH CHOICES"),
+        ("reroll_caption", "ПОСМОТРЕТЬ РЕКЛАМУ", "WATCH AD"),
 
         // Стартовый экран (GDD §11)
         // Рекорд меню разбит на две ноды: подпись (best_label) и число (best_value).
@@ -135,6 +141,11 @@ public static class AstroDriftLocalizationSetup
                 var entry = st.GetEntry(id);
                 if (entry == null) { st.AddEntry(id, value); addedValues++; }
                 else if (string.IsNullOrEmpty(entry.LocalizedValue)) { entry.Value = value; addedValues++; }
+                else if (System.Array.IndexOf(ForceKeys, key) >= 0 && entry.LocalizedValue != value)
+                {
+                    entry.Value = value; // переименование строки из ТЗ — приводим к канону
+                    addedValues++;
+                }
             }
             EditorUtility.SetDirty(st);
         }

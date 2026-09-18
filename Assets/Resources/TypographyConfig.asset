@@ -13,15 +13,7 @@ MonoBehaviour:
   m_Name: TypographyConfig
   m_EditorClassIdentifier: Assembly-CSharp::TypographyConfig
   headingLight: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
+  titleBold: {fileID: 11400000, guid: 2ebd00df0d84c41bc99f37ca0fbb92c2, type: 2}
   bodyRegular: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
   ctaSemiBold: {fileID: 11400000, guid: 20fb9121a3c3043a4ad672971d76f0c0, type: 2}
-  titleSize: 96
-  titleTracking: 12
-  secondarySize: 34
-  secondaryTracking: 8
-  ctaSize: 44
-  ctaTracking: 16
-  deathScoreSize: 88
-  deathScoreTracking: 4
-  buttonSize: 40
-  buttonTracking: 16
+  languageOverrides: []

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Localization;
 
 /// <summary>
 /// Пикапы (GDD §4.6): Rapid Fire, Spread Shot, Shield.
@@ -21,6 +22,7 @@ public class PickupConfig : ScriptableObject
 public class PickupDef
 {
     public PickupType type;               // RapidFire, SpreadShot, Shield (+ будущие)
+    public LocalizedString name;          // Table: GameTexts, Entry: pickup_* (§9.3)
     public float duration = 5f;           // для Shield игнорируется (до использования)
     public float dropChanceAsteroid = 0f; // из среднего/крупного (0..1)
     public float dropChanceMissile = 0f;  // из ракеты (0..1)

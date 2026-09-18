@@ -1,13 +1,20 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
 
-public enum TypeRole { Title, Secondary, Cta, DeathScore, Button, Body }
+public enum TypeRole { Title, Secondary, Cta, DeathScore, Button, Body, LevelUpTitle }
 
 /// <summary>
-/// Единая точка доступа к типографике «Menu & Transitions v2» (§3, поправка владельца).
-/// Весь UI ссылается на шрифты ТОЛЬКО через TypographyConfig (Assets/Resources/TypographyConfig.asset).
-/// Пока владелец не подставил шрифты — корректный fallback на TMP Settings default
+/// Единая точка доступа к типографике. Весь UI берёт шрифты ТОЛЬКО отсюда
+/// (Assets/Resources/TypographyConfig.asset). Размеры и трекинг — авторские,
+/// из префабов/сцены: Typography их не трогает.
+/// Шрифт выбирается по текущей локали Unity (переопределения локали в конфиге);
+/// пока владелец не подставил шрифты — fallback на TMP Settings default
 /// (LiberationSans SDF): ни Missing, ни Null, сцена работает с пустым конфигом.
+///
+/// Реакции на смену локали у Typography НЕТ (ТЗ §3.5): единственная точка подписки на
+/// SelectedLocaleChanged — LanguageService, он же вызывает TypeRoleApplier.ApplyAll()
+/// и сброс гардов §3.4. Носитель роли — TypeRoleTag (self-apply в OnEnable).
 /// </summary>
 public static class Typography
 {
@@ -27,80 +34,55 @@ public static class Typography
         }
     }
 
-    /// <summary>Применить роль (шрифт + вес + размер + трекинг) к TMP-тексту.</summary>
+    /// <summary>Код текущей локали. Источник истины — Unity Localization (владелец — LanguageService).</summary>
+    private static string CurrentLang
+    {
+        get
+        {
+            var locale = LocalizationSettings.SelectedLocale;
+            return locale != null ? locale.Identifier.Code : null;
+        }
+    }
+
+    /// <summary>Шрифт для роли с учётом языка. null — вызывающий берёт TMP Settings default.</summary>
+    private static TMP_FontAsset Resolve(TypeRole role)
+    {
+        var cfg = Config;
+        if (cfg == null) return null;
+        var f = cfg.GetFonts(CurrentLang);
+        switch (role)
+        {
+            case TypeRole.LevelUpTitle:
+                return f.title != null ? f.title : f.heading;
+            case TypeRole.Title:
+            case TypeRole.DeathScore:
+                return f.heading;
+            case TypeRole.Cta:
+                return f.cta;
+            default: // Secondary / Button / Body — служебные тексты
+                return f.body;
+        }
+    }
+
+    private static void ApplyFont(TextMeshProUGUI tmp, TypeRole role)
+    {
+        var font = Resolve(role);
+        if (font == null) font = TMP_Settings.defaultFontAsset; // fallback: LiberationSans SDF
+        if (font != null) tmp.font = font;
+        tmp.fontStyle = FontStyles.Normal;
+    }
+
+    /// <summary>Применить роль (шрифт + вес) к TMP-тексту. Размер/трекинг не трогаются.</summary>
     public static void Apply(TextMeshProUGUI tmp, TypeRole role)
     {
         if (tmp == null) return;
-        var cfg = Config;
-
-        TMP_FontAsset font;
-        float size, spacing;
-        FontStyles style;
-
-        switch (role)
-        {
-            case TypeRole.Title:
-                font = cfg != null ? cfg.headingLight : null;
-                size = cfg != null ? cfg.titleSize : 96f;
-                spacing = cfg != null ? cfg.titleTracking : 12f;
-                style = FontStyles.Normal;
-                break;
-            case TypeRole.Secondary:
-                font = cfg != null ? cfg.bodyRegular : null;
-                size = cfg != null ? cfg.secondarySize : 34f;
-                spacing = cfg != null ? cfg.secondaryTracking : 8f;
-                style = FontStyles.Normal;
-                break;
-            case TypeRole.Cta:
-                font = cfg != null ? cfg.ctaSemiBold : null;
-                size = cfg != null ? cfg.ctaSize : 44f;
-                spacing = cfg != null ? cfg.ctaTracking : 16f;
-                style = FontStyles.Normal;
-                break;
-            case TypeRole.DeathScore:
-                font = cfg != null ? cfg.headingLight : null;
-                size = cfg != null ? cfg.deathScoreSize : 88f;
-                spacing = cfg != null ? cfg.deathScoreTracking : 4f;
-                style = FontStyles.Normal;
-                break;
-            case TypeRole.Button:
-                font = cfg != null ? cfg.bodyRegular : null;
-                size = cfg != null ? cfg.buttonSize : 40f;
-                spacing = cfg != null ? cfg.buttonTracking : 16f;
-                style = FontStyles.Normal;
-                break;
-            default: // Body — служебные тексты
-                font = cfg != null ? cfg.bodyRegular : null;
-                size = cfg != null ? cfg.secondarySize : 34f;
-                spacing = 0f;
-                style = FontStyles.Normal;
-                break;
-        }
-
-        if (font == null) font = TMP_Settings.defaultFontAsset; // fallback: LiberationSans SDF
-        if (font != null) tmp.font = font;
-        tmp.fontStyle = style;
-        tmp.fontSize = size;
-        tmp.characterSpacing = spacing; // TMP: значение в 1/100 em → «+12 %» = 12
+        ApplyFont(tmp, role);
     }
 
     /// <summary>Только шрифт/вес (HUD не трогаем: размеры HUD остаются сценарными).</summary>
     public static void ApplyFontOnly(TextMeshProUGUI tmp, TypeRole role)
     {
         if (tmp == null) return;
-        var cfg = Config;
-        TMP_FontAsset font;
-        switch (role)
-        {
-            case TypeRole.Title:
-            case TypeRole.DeathScore:
-                font = cfg != null ? cfg.headingLight : null; break;
-            case TypeRole.Cta:
-                font = cfg != null ? cfg.ctaSemiBold : null; break;
-            default:
-                font = cfg != null ? cfg.bodyRegular : null; break;
-        }
-        if (font == null) font = TMP_Settings.defaultFontAsset;
-        if (font != null) tmp.font = font;
+        ApplyFont(tmp, role);
     }
 }

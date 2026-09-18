@@ -16,10 +16,23 @@ public class Bootstrap : MonoBehaviour
 
     private void Awake()
     {
-        // Яндекс Игры: SDK/сейвы/язык грузятся асинхронно — сцену собираем по готовности.
-        // RuStore / редактор: IsReady = true, Build() выполняется прямо здесь, как раньше.
-        if (PlatformBoot.IsReady) Build();
-        else PlatformBoot.Ready += Build;
+        // C2 (ТЗ Localization §6.1): сцену собираем по «И» — платформенный слой готов
+        // (ЯИ: SDK/сейвы; RuStore/редактор: сразу) И LanguageService применил локаль.
+        // Иначе UI построится в дефолтной локали и будет видимая вспышка языка при
+        // позднем применении (на WebGL PlatformBoot.Ready приходит позже BeforeSceneLoad).
+        if (PlatformBoot.IsReady && LanguageService.StartupApplied)
+        {
+            Build();
+            return;
+        }
+
+        if (!PlatformBoot.IsReady) PlatformBoot.Ready += TryBuild;
+        if (!LanguageService.StartupApplied) LanguageService.StartupAppliedChanged += TryBuild;
+    }
+
+    private void TryBuild()
+    {
+        if (PlatformBoot.IsReady && LanguageService.StartupApplied) Build();
     }
 
     private void Build()

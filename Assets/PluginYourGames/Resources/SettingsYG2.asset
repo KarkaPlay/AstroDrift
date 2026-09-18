@@ -29,6 +29,8 @@ MonoBehaviour:
     postponeCallByFail: 0
     postponeCallTimer: 10
     labelAdvSimLabel: 0
+  Localization:
+    setLanguageMod: 2
   Metrica:
     enable: 1
     metricaCounterID: 0
@@ -50,7 +52,7 @@ MonoBehaviour:
     autoGRA: 0
     logInEditor: 1
     archivingBuild: 0
-    autoDefineSymbols: 1
+    autoDefineSymbols: 0
     syncInitSDK: 0
     loadSceneIfSDKLate: 0
     loadSceneIndex: 0
@@ -110,6 +112,7 @@ MonoBehaviour:
     showFirstAdv: 0
     interAdvInterval: 0
     postponeCallByFail: 0
+    setLanguageMod: 0
     useYandexMetrica: 1
     metricaCounterID: 1
     skipInterAdvAfterReward: 0

@@ -13,11 +13,71 @@ PrefabInstance:
       value: MenuButton_Settings
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 232
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 120
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2443965206664593990, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
@@ -38,14 +98,28 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6875793440434447860}
+      addedObject: {fileID: 1346652247719995862}
+    - targetCorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5647441507060049157}
   m_SourcePrefab: {fileID: 100100000, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+--- !u!114 &2334914150648519986 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7133500106259068058, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+  m_PrefabInstance: {fileID: 4798585959911811496}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4363336082397899812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1 &4363336082397899812 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 9085360844056872332, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
   m_PrefabInstance: {fileID: 4798585959911811496}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &6875793440434447860
+--- !u!114 &1346652247719995862
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -54,8 +128,47 @@ MonoBehaviour:
   m_GameObject: {fileID: 4363336082397899812}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b154993d9d7484e5caaacbf280f41f01, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedTextUI
-  key: menu_settings
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Components.LocalizeStringEvent
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GameTexts
+    m_TableEntryReference:
+      m_KeyId: 0
+      m_Key: menu_settings
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2334914150648519986}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &5647441507060049157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4363336082397899812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
   role: 2
