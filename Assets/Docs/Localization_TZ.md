@@ -510,11 +510,11 @@ public LocalizedString desc;
 
 ### 9.4. Критерии приёмки
 
-- [ ] 8 ассетов перков + 3 дефа пикапов имеют заполненные ссылки (видно в инспекторе с превью);
-- [ ] `Setup Assets` повторным прогоном ничего не меняет;
-- [ ] Карты перков (включая дубли при reroll) и флоатеры показывают корректные тексты RU/EN;
-- [ ] Смена локали при открытом оверлее обновляет карты (владелец подписки — компонент);
-- [ ] Ноль чтений `titleKey` / `descKey` в проекте.
+- [x] 8 ассетов перков + 3 дефа пикапов имеют заполненные ссылки (видно в инспекторе с превью); — пересчёт по факту: `m_TableCollectionName: GameTexts` = **2** в каждом из 8 перков (**16**) + **3** в [`PickupConfig.asset`](Assets/Resources/PickupConfig.asset) = 19 ссылок; ключи не переименованы (`perk_*_title`/`perk_*_desc`, `pickup_rapid_fire`/`_spread_shot`/`_shield`);
+- [x] `Setup Assets` повторным прогоном ничего не меняет; — **перепроверено Team Lead независимым прогоном:** `AstroDrift Perks: ассетов создано 0 из 8`, `git status --porcelain` пусто, `git diff` по `Assets/Resources/Perks` + `PickupConfig.asset` пуст (байт-в-байт);
+- [x] Карты перков (включая дубли при reroll) и флоатеры показывают корректные тексты RU/EN; — Play Mode (RuStore): 8 карт `ru` = `СКОРОСТЬ ПУЛЬ+`/`КРУПНЫЕ ПУЛИ`/…, `en` = `BULLET SPEED+`/`BIGGER BULLETS`/…, `CYRILLIC=0 LATIN=8`; бейдж `НОВОЕ`/`NEW`; reroll-дубли (3× `BulletSpeed`) — 3 корректные карты, одна общая ссылка (`ReferenceEquals=True`); флоатеры — 11 значений RU
+- [x] Смена локали при открытом оверлее обновляет карты (владелец подписки — компонент); — `ru → en` при открытом оверлее: 8/8 карт перешли в латиницу (`CYRILLIC=0 LATIN=8`); владелец — `LocalizeStringEvent` (вариант А, §3.2), `StringChanged` вручную не подписывается
+- [x] Ноль чтений `titleKey` / `descKey` в проекте. — grep по `Assets/**` (`.cs`/`.asset`/`.prefab`/`.unity`): **0**; 11 вхождений остались только в [`Localization_TZ.md`](Assets/Docs/Localization_TZ.md) (описание задачи, не код)
 
 ---
 
@@ -930,6 +930,35 @@ Localization_yg
 - **Удалить мёртвое поле `shieldTextLse`** ([`GameUI.cs:50`](Assets/Scripts/UI/GameUI.cs:50), 0 обращений) — вместе со снятием диагностических логов.
 - **Док-комментарий с `L10n.Bind`** ([`LocalizedText.cs:10`](Assets/Scripts/UI/LocalizedText.cs:10)) — **доживает до задачи 7** (файл её скоуп). На приёмке задачи 7 §15-grep по `L10n.Bind` должен дать **буквально 0**.
 
+### Результат задачи 6 (коммит `42ddefc`, проверено Team Lead пофайлово и grep'ом)
+
+| Пункт §9.1 / §9.2 / §9.3 / §9.4 | Факт | Статус |
+|---|---|---|
+| Состав коммита | `42ddefc` (родитель `3f44be3`), ровно **14 файлов**, +252/−64. Запрещённые пути — 0: `New UI`, `PluginYourGames`, `TypographyConfig.asset`, `Build Profiles`, `LiberationSans SDF - Fallback` не затронуты; `.unity`/`.prefab` в коммите **нет** (задача 6 сцену и префабы не касается) | ✅ |
+| §9.1 `PerkDefinition` | `string titleKey`/`descKey` → `LocalizedString title`/`desc` ([`PerkDefinition.cs`](Assets/Scripts/Core/PerkDefinition.cs)); сигнатуры полей совпадают с §9.1 | ✅ |
+| §9.4 п.1 ссылки перков и пикапов | `m_TableCollectionName: GameTexts` = **2 × 8 = 16** в [`Perks/*.asset`](Assets/Resources/Perks) + **3** в [`PickupConfig.asset`](Assets/Resources/PickupConfig.asset) = **19**. `m_Key` **не переименованы** (`perk_*_title`/`perk_*_desc`, `pickup_*`) — §0.3 соблюдён | ✅ |
+| §9.2 `AstroDriftSetup` | Добавлен `MakeRef(string entry)` → `ls.SetReference("GameTexts", entry)`; `PerkSeed.titleEntry`/`descEntry` (были `…Key`); сиды перков и пикапов пишутся через `MakeRef` | ✅ |
+| §9.4 п.2 идемпотентность | Гард `if (asset == null) { AssetDatabase.CreateAsset… }` — существующие ассеты не перезаписываются. **Независимо перепроверено Team Lead ин-движком:** прогон `AstroDrift/Setup Assets` → `AstroDrift Perks: ассетов создано 0 из 8`, `git status` пуст | ✅ |
+| §9.3 `PickupDef` + `PickupManager` | Новое поле `LocalizedString name` ([`PickupConfig.cs`](Assets/Scripts/Core/PickupConfig.cs)); чтение — `def.name.GetLocalizedString()` + fallback `string.IsNullOrEmpty(...) ? def.type.ToString()` (проверка **N3**, не `== null`); метод `PickupNameKey` удалён | ✅ |
+| §9.4 п.5 ноль чтений | grep `titleKey\|descKey\|PickupNameKey` по `Assets/**` = **0** (11 вхождений — только в [`Localization_TZ.md`](Assets/Docs/Localization_TZ.md) как исторические упоминания) | ✅ |
+| §9.4 п.3 Play Mode (RuStore) | Дословно снято исполнителем: карты RU `СКОРОСТЬ ПУЛЬ+` / EN `BULLET SPEED+`; бейдж RU `НОВОЕ` / EN `NEW`; `CYRILLIC=0 LATIN=8`; реролл — 3× `BulletSpeed`, `ReferenceEquals=True` (замена, не дубль); 11 значений флоатеров пикапов | ✅ |
+| §9.4 п.4 смена локали при открытом оверлее | Карты обновляются событием `LocalizeStringEvent` (`StringReference` перерисован), пересоздание карт не требуется | ✅ |
+| §3.2 вариант А (§9.4 п.4) | [`PerkChoiceUI.cs`](Assets/Scripts/UI/PerkChoiceUI.cs) `FillCard`: `lse.StringReference = def.title;` / `… = def.desc;` — **ровно** формулировка §3.2 вариант А; метод `SetEntry` удалён; подписки на `StringChanged` нет | ✅ |
+| Компиляция 3 профилей | ItchIO = 0, YandexGames = 0, RuStore = 1 (**предсуществующий** Android Resolver `Resolution Failed.`, не C#); CS-ошибок = **0** | ✅ |
+
+### Клоузаут задачи 6
+
+- Тег **`task6-accepted`** (коммит `42ddefc`) — рядом с `baseline-loc-migration`, `task1-accepted`…`task5-accepted`.
+- **Новые отклонения (приняты, не блокируют приёмку):**
+  - **Легаси-парсер `.txt` перков — эвристика по префиксу.** Вместо явного списка ключей ветка `default:` распознаёт `perk_*_title`/`perk_*_desc` через `StartsWith`/`EndsWith`. Принято: парсер обслуживает одноразовый импорт, источник истины — таблица `GameTexts`, ключи в ассетах не переименовывались.
+  - **`FillCard` больше не подставляет фолбэк-строку при пустой ссылке карты.** Соответствует §3.2 вариант А дословно; пустое значение гасится на уровне `PerkTitle` (`GetLocalizedString()` + `string.IsNullOrEmpty` → `def.id`).
+  - **`UnlockTreePanel/Title` — «пустой `StringReference`» из отчёта исполнителя оценено как ложное срабатывание.** Ноды нет в сцене: она создаётся в рантайме в [`BuildTreePanel()`](Assets/Scripts/UI/GameUI.cs:189), ключ назначается там же — [`AddLocalized(titleTmp, "unlock_tree_title")`](Assets/Scripts/UI/GameUI.cs:220). Дефектом не заведено, наблюдение ведётся до задачи 7 (её скоуп — `GameUI`).
+  - **Артефактов не осталось:** скриншоты задачи 6 удалены, код `execute_code` ин-движка на диск не писался — подтверждено чистым `git status` и составом коммита.
+- **Долг доказательности п.4д прошлого периода (перечень экранов Play Mode) — ЗАКРЫТ** дословным перечнем строк RU/EN в отчёте задачи 6.
+- **Скоуп задачи 7 подтверждён фактом:** чтения `L10n.Get` остались ровно в точках §10.1 п.3 — [`GameUI.cs:252`](Assets/Scripts/UI/GameUI.cs:252), [`:269`](Assets/Scripts/UI/GameUI.cs:269), [`:601`](Assets/Scripts/UI/GameUI.cs:601), [`:606`](Assets/Scripts/UI/GameUI.cs:606) + [`GameManager.cs:566`](Assets/Scripts/Core/GameManager.cs:566) (флоатер комбо).
+- **Следствие из пост-милстоун дефектов для задачи 7:** проверка дерева разблокировок — **прямым вызовом** `FillUnlockTree()` (кнопка «ПРОКАЧКА» не подключена, `menuUpgradeBtn: {fileID: 0}`). Метод фиксируется в брифе задачи 7 до выдачи.
+- Остаточные риски **R10**/**R11** — действуют для задач 7–8. Диагностические логи задачи 3 и логи задачи 4 — до приёмки 8. **Заморозка действует до приёмки задачи 7.**
+
 ---
 
 ## Приложение A. Финальное состояние настроек проекта (заполнено по факту задач 2–3)
@@ -966,12 +995,12 @@ Localization_yg
 | `Assets/Scripts/Editor/PrefabBuilderSprites.cs` + `.asset` (+`.meta`) | **Создано**: контейнер входных ссылок билдеров (13 полей) + громкий стоп до записи (решение продюсера) | 5 ✅ |
 | `Assets/Scripts/Core/AstroDriftSceneSetup.cs` | **Сделано**: LSE (+ теги где была роль) при создании текстов Death/Pause; `NewTextButton(...)` получил параметр `key` | 5 ✅ |
 | `Assets/Prefabs/**` (9 префабов), `Assets/Scenes/Game.unity` | **Сделано**: 19 `TypeRoleTag` (16 в префабах + 3 в сцене), базлайн 0; состав GameObject'ов сцены не изменился (42↔42) | 5 ✅ |
-| `Assets/Scripts/Core/PerkDefinition.cs` | `LocalizedString title/desc` вместо `titleKey/descKey` | 6 |
-| `Assets/Scripts/Core/AstroDriftSetup.cs` | Сиды и парсер под `LocalizedString` (перки + пикапы) | 6 |
-| `Assets/Resources/Perks/*.asset` (8 шт.) | Разовая миграция ссылок (до удаления полей из класса) | 6 |
-| `Assets/Scripts/Core/PickupConfig.cs` | Новое поле `PickupDef.name` | 6 |
-| `Assets/Scripts/Spawners/PickupManager.cs` | Чтение из дефа, удалить `PickupNameKey` | 6 |
-| `Assets/Scripts/UI/PerkChoiceUI.cs` | `FillCard` — вариант А; `PerkTitle` — `GetLocalizedString()` | 6 |
+| `Assets/Scripts/Core/PerkDefinition.cs` | **Сделано**: `LocalizedString title/desc` вместо `titleKey/descKey` | 6 ✅ |
+| `Assets/Scripts/Core/AstroDriftSetup.cs` | **Сделано**: `MakeRef()` → `SetReference("GameTexts", …)`; сиды `titleEntry`/`descEntry`; легаси-парсер `.txt` под `LocalizedString` | 6 ✅ |
+| `Assets/Resources/Perks/*.asset` (8 шт.) | **Сделано**: разовая миграция ссылок (16 ссылок `GameTexts`, ключи не переименованы); повторный `Setup Assets` — 0 изменений | 6 ✅ |
+| `Assets/Scripts/Core/PickupConfig.cs` | **Сделано**: новое поле `PickupDef.name` (`LocalizedString`), 3 ссылки в `PickupConfig.asset` | 6 ✅ |
+| `Assets/Scripts/Spawners/PickupManager.cs` | **Сделано**: чтение из дефа (`GetLocalizedString()` + проверка N3), `PickupNameKey` удалён | 6 ✅ |
+| `Assets/Scripts/UI/PerkChoiceUI.cs` | **Сделано**: `FillCard` — вариант А (`StringReference = def.title/desc`), `SetEntry` удалён; `PerkTitle` — `GetLocalizedString()` | 6 ✅ |
 | `Assets/Scripts/UI/LocalizedText.cs` (`L10n`) | Ужать до `Get`/`GetFormatted` | 7 |
 | `Assets/Scripts/UI/LocalizedTextUI.cs` | Подписка `LanguageChanged` снята (4); **удалить** файл в задаче 5 (единая отсечка) | 4–5 |
 | `Assets/Localizations/GameTexts_{ru,en}.asset` | Удалить сироту «ДЕРЕВО» | 8 |
