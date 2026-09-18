@@ -773,26 +773,58 @@ Localization_yg
 
 > Примечание к C1: на момент baseline `LocalizationSettings.SelectedLocale` = `ru`, но `AvailableLocales.Locales.Count` = **0** — список локалей пуст до `InitializationOperation.Completed`. Это подтверждает требования C1 задачи 3, а не дефект таблиц.
 
+### Результат задачи 2 (коммиты `423f587` + `eea4f4d`, проверено Team Lead ин-движком)
+
+| Пункт §5 | Факт | Статус |
+|---|---|---|
+| §5.1 п.1–2 (grep-подтверждение нуля) | `LanguageYG` / `fontsTMP` / `AutoTranslateLangs` вне папки модуля = 0; сцены и префабы = 0 | ✅ подтверждено |
+| §5.1 п.3 (модуль выключен) | `Modules/AutoTranslateLangs` удалён целиком (26 файлов + `.meta`); `AutoTranslateLangs` убран из [`PluginPrefs.json`](Assets/PluginYourGames/Editor/PluginPrefs.json:5) (`SelectModuleToggle_YG2`) и из [`ModulesListYG2.txt`](Assets/PluginYourGames/Editor/ModulesListYG2.txt:1); `Localization` в списке сохранён | ✅ **потребовалась доработка** (реестр выбранных модулей удерживал возврат модуля при `Basic.autoDefineSymbols: 1`) |
+| §5.1 п.4 (условие удаления) | Внешних ссылок нет. Ссылки [`GetPlayerYG.cs:67/69/81/83`](Assets/PluginYourGames/Modules/Authorization/Scripts/GetPlayerYG.cs:67) указывают на `UtilsLang` из `Modules/Localization` — компиляция не разорвана | ✅ проверено |
+| §5.1 п.5 (define `AutoTranslateLangs_yg`) | В `ProjectSettings.asset` = **0**; `Localization_yg` = 11 платформ сохранён (снимает задача 3) | ✅ |
+| §5.2 G1 (источник языка, вариант A) | [`YandexLanguage.jslib`](Assets/_Platform/YandexGames/YandexLanguage.jslib:3) — тело идентично [`Language.jslib:3`](Assets/PluginYourGames/Modules/Localization/Plugins/Language.jslib:3) (`ysdk.environment.i18n.lang`), символ переименован в `AstroDriftLangRequest_js`; `.meta`: единственный enabled = WebGL. [`YandexLanguageSource.cs`](Assets/_Platform/YandexGames/YandexLanguageSource.cs:19) — `GetAccountLanguage()`, вне WebGL/ЯИ безопасный `""` | ✅ |
+| §5.1 п.6 (фикс B3) | [`YandexGamesInstaller.cs:35`](Assets/_Platform/YandexGames/YandexGamesInstaller.cs:35) — `YG2.lang` из лога убран; чтений `YG2.lang` в `_Platform` = 0 | ✅ |
+| §5.1 п.7 (`setLanguageMod`) | [`SettingsYG2.asset:33`](Assets/PluginYourGames/Resources/SettingsYG2.asset:33) `1` → `2` (`DoNotChangeLanguageStartup`). Ключ в `platformToggles` ([`:115`](Assets/PluginYourGames/Resources/SettingsYG2.asset:115)) не тронут — читателя в [`Lang_yg.InitLang()`](Assets/PluginYourGames/Modules/Localization/Scripts/Lang_yg.cs:20) не имеет | ✅ |
+| Компиляция ин-движком | RuStore → ItchIO → YandexGames, новых CS-ошибок нет (предсуществующая Android Resolver игнорируется) | ✅ |
+| `Modules/Localization` не изменена | `git status --porcelain` по папке пуст | ✅ |
+
+**Находки Team Lead при приёмке (сверх отчёта Developer'а):**
+
+1. **`FreeBuffer_js` существует** в [`PluginYGCommon.jslib:3`](Assets/PluginYourGames/Scripts/Utils/Plugins/PluginYGCommon.jslib:3) (WebGL enabled) → неопределённого символа в линковке нет. Маршалинг новой копии идёт через `IntPtr` + `YGInsides.FreeBuffer`, а не через `string`-маршалинг оригинала — это **устраняет** утечку `malloc`-буфера, которую оригинал модуля оставлял. Принято как улучшение, не отклонение.
+2. **`YandexGamesPlatform_yg` не определён нигде** в `ProjectSettings.asset` и ни в одном build profile → [`Lang_yandexPlatform.cs:1`](Assets/PluginYourGames/Modules/Localization/Scripts/Lang_yandexPlatform.cs:1) не компилируется вообще, его `LangRequest_js` мёртв. Дубль символа `LangRequest_js` / `AstroDriftLangRequest_js` был **теоретическим**; переименование всё равно корректно (страховка на случай включения define).
+3. **Паритет defines сохранён:** глобальные `scriptingDefineSymbols` в [`ProjectSettings.asset:705-715`](ProjectSettings/ProjectSettings.asset:705) несут `Localization_yg` для всех платформ, а `YandexGames.asset` задаёт только `STORE_YANDEX` — то есть [`YandexLanguageSource.cs`](Assets/_Platform/YandexGames/YandexLanguageSource.cs:1) компилируется только при `UNITY_WEBGL && STORE_YANDEX` и не ломает RuStore/itch.
+4. **Риск R10 (новый, к мониторингу):** переключение build-профилей в редакторе побочно перезаписывает снапшот `m_ScriptingDefines` в `*.asset` профиля (Developer поймал на `ItchIO.asset`, откатил через `git checkout --`). На HEAD профили не изменены (`git diff` по `Assets/Settings/Build Profiles/` пуст). Правило для задач 3–8: **после каждого переключения профиля ин-движком проверять `git status` по папке профилей** и откатывать нежелательные правки defines.
+
+### Протокол решений продюсера по задачам 1–2
+
+| # | Решение | Санкция |
+|---|---|---|
+| 1 | **Задача 1 принята.** F6 ратифицирован по обоим пунктам (эффективный чарсет 443 глифа; критерий «0 missing» = среди требуемых кодпоинтов; модель ~2 Б/тексел) | Ратифицировано |
+| 2 | **Долг LiberationSans** (Death-экран и часть HUD на `LiberationSans SDF`) — принимается как есть по §0.2 + §8.4; отдельная design-задача **после** милстоуна. Регрессии нет: LiberationSans покрывает `→`. Трактовка §11.2 п.6: покрытие считается по **объединению** назначенных Static-шрифтов, пер-нода маппинг — вне скоупа | Ратифицировано |
+| 3 | **Гейт G1 = вариант A:** перенос `LangRequest_js` (язык аккаунта ЯИ). Обоснование: ноль нового кода + сохранение семантики без отклонений. B (язык браузера) — неоправданная уступка, C — лишний churn | Ратифицировано |
+| 4 | **Границы задачи 2:** `Modules/Localization` НЕ удалять и содержимое НЕ менять; удаление модуля — задача 3. Перенос `.jslib` — задача 2, использование — задача 3. Проверка на реальном ЯИ — **отложена** (F5) | Ратифицировано |
+| 5 | **Процесс:** правки ТЗ — только с санкции продюсера. Критерий недостижим → СТОП и эскалация **ДО** правки ТЗ. Постфактум-правки с доказательствами (как F6) — приняты как исключение | Действует |
+
 ---
 
-## Приложение A. Финальное состояние настроек проекта (зафиксировать после задачи 2)
+## Приложение A. Финальное состояние настроек проекта (заполнено по факту задачи 2)
 
-- [ ] Модуль Localization: **выключен** (или задокументировано, почему оставлен, + доказательство отсутствия влияния на язык);
-- [ ] Модуль AutoTranslateLangs: **выключен**, компоненты сняты, папка удалена или задокументирована;
-- [ ] Define `AutoTranslateLangs_yg` **удалён** из `ProjectSettings/ProjectSettings.asset` (все платформы) — читателей нет;
-- [ ] Define `Localization_yg` **удалён** после задачи 3 (читателей нет: мост и `Typography` переведены на `SelectedLocale`);
-- [ ] `setLanguageMod`: значение зафиксировано + комментарий, кто теперь применяет язык (`LanguageService`);
-- [ ] **Гейт G1:** источник кода языка (перенос `LangRequest_js` на `i18n.lang` / язык браузера) — что проверено **ин-движком**, то записано; проверка на реальном ЯИ **отложена** (F5, билды не собираются) до первой сборки ЯИ после милстоуна;
-- [ ] Решение D1 (`unsupported → ru`) известно команде; триггер пересмотра — локаль `tr`.
+- [x] Модуль Localization: **включён, содержимое не изменено** — осознанно (запрет продюсера на правку модуля). Влияние на язык снято функционально: [`setLanguageMod = DoNotChangeLanguageStartup`](Assets/PluginYourGames/Resources/SettingsYG2.asset:33), поэтому [`Lang_yg.InitLang()`](Assets/PluginYourGames/Modules/Localization/Scripts/Lang_yg.cs:20) выходит до `GetLanguage()`. Удаление модуля — задача 3.
+- [x] Модуль AutoTranslateLangs: **удалён** — папка `Modules/AutoTranslateLangs/` + `.meta` (26 файлов). Компоненты снимать не потребовалось: на момент удаления внешних ссылок не было (§5.1 п.1–2). Дополнительно убран из `SelectModuleToggle_YG2` в [`PluginPrefs.json`](Assets/PluginYourGames/Editor/PluginPrefs.json:5) и из [`ModulesListYG2.txt`](Assets/PluginYourGames/Editor/ModulesListYG2.txt:1) — иначе модуль восстанавливался бы при `Basic.autoDefineSymbols: 1`.
+- [x] Define `AutoTranslateLangs_yg` **удалён** из [`ProjectSettings.asset`](ProjectSettings/ProjectSettings.asset:705) (все платформы, проверено ин-движком: Android/Standalone/WebGL/iPhone) — читателей нет;
+- [ ] Define `Localization_yg` **удалён** после задачи 3 (сейчас присутствует на 11 платформах; читателей нет после перевода моста и `Typography` на `SelectedLocale`);
+- [x] `setLanguageMod` = **2 (`DoNotChangeLanguageStartup`)** в [`SettingsYG2.asset:33`](Assets/PluginYourGames/Resources/SettingsYG2.asset:33). Язык теперь применяет **`LanguageService`** (задача 3) — на переходный период язык на старте не применяет никто (санкционировано продюсером).
+- [x] **Гейт G1:** вариант **A** — источник = язык аккаунта ЯИ. Перенос выполнен: [`YandexLanguage.jslib`](Assets/_Platform/YandexGames/YandexLanguage.jslib:3) (`AstroDriftLangRequest_js`, тело `ysdk.environment.i18n.lang`) + [`YandexLanguageSource.GetAccountLanguage()`](Assets/_Platform/YandexGames/YandexLanguageSource.cs:19). Проверено ин-движком: `.meta` (WebGL only), компиляция профилей, отсутствие дубля символа. Ограничение: `YandexGamesPlatform_yg` не определён → модульный `LangRequest_js` мёртв; на реальном ЯИ **не проверено** — проверка отложена (F5) до первой сборки ЯИ после милстоуна. `GeneralLanguage_js` (язык браузера) в проекте остаётся без читателя — использовался только как запасной вариант B, отклонён продюсером.
+- [ ] Решение D1 (`unsupported → ru`) известно команде; триггер пересмотра — локаль `tr`. Проверяется в задаче 3 (§6.3).
 
 ## Приложение B. Связанные файлы (карта изменений)
 
 | Файл | Действие | Задача |
 |---|---|---|
 | `Assets/Fonts/Montserrat-SemiBold SDF.asset` | Пересобрать (Static, 1024, Padding 9, Point Size 60, SDFAA, kerning off, чарсет §4.2) | 1 |
-| `Assets/PluginYourGames/Modules/AutoTranslateLangs/` | Отключить, снять компоненты, удалить по возможности | 2 |
-| `_Platform/YandexGames/*.jslib` (перенос, опционально) | `LangRequest_js` из `Language.jslib` — по решению гейта G1 | 2 |
-| `Assets/_Platform/YandexGames/YandexGamesInstaller.cs:35` | Заменить `YG2.lang` на источник `LanguageService` (+ `:10` комментарий) | 2–3 |
+| `Assets/PluginYourGames/Modules/AutoTranslateLangs/` | **Удалено** (папка + `.meta`, 26 файлов); define снят; реестр модулей YG2 очищен | 2 ✅ |
+| `Assets/_Platform/YandexGames/YandexLanguage.jslib` (+ `.meta`) | **Создано**: перенос `LangRequest_js` → `AstroDriftLangRequest_js` (тело идентично), `.meta` WebGL-only | 2 ✅ |
+| `Assets/_Platform/YandexGames/YandexLanguageSource.cs` | **Создано**: `GetAccountLanguage()` — источник гейта G1; вне WebGL/ЯИ no-op | 2 ✅ |
+| `Assets/_Platform/YandexGames/YandexGamesInstaller.cs:35` | **Сделано**: чтение `YG2.lang` убрано из лога (B3 закрыт) | 2 ✅ |
 | `Assets/Scripts/Core/AstroDriftLanguageBridge.cs` | **Удалить** | 3 |
 | `Assets/Scripts/Core/LanguageService.cs` | **Создать** (маппинг, C1–C3, триггер апплаера, сброс гардов) | 3 |
 | `Assets/Scripts/Core/Bootstrap.cs` | C2: `Build` ждёт `LanguageService.StartupApplied` | 3 |
