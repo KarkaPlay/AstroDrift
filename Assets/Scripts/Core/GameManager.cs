@@ -40,6 +40,7 @@ public class GameManager : MonoBehaviour
     private Vector3 _lastDeathPos;   // место смерти (continue: чистка зоны + возврат корабля, GDD §10.3.2)
     private float _continueResumedAt = -1f; // _elapsed в момент continue (метрики §8)
     private bool _continueSurvivedLogged;
+    private bool? _bannerVisible;   // запрошенная видимость баннера (null = к платформе ещё не обращались)
 
     public static GameManager Instance { get; private set; }
     public GameState State { get; private set; } = GameState.Ready;
@@ -123,6 +124,9 @@ public class GameManager : MonoBehaviour
         State = GameState.Ready;
         InputEnabled = false;
         WeaponEnabled = false;
+        // §4.5/§5: меню — баннера нет. В т.ч. старт приложения (immediate): платформа получает
+        // явное «скрыто» до первого геймплея, баннер не мелькает.
+        SetBannerVisible(false);
 
         // Корабль: в меню он главный герой кадра (§2) — стоит в игровой стартовой позиции.
         // BeginRun восстанавливает рендер/коллайдер/трейл после Kill() (смерть → Home)
@@ -182,6 +186,7 @@ public class GameManager : MonoBehaviour
         TimeFreeze.Unfreeze(); // §0.5: страховка от забега с активным фризом
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
+        SetBannerVisible(true); // §5: баннер — только живой геймплей
         InputEnabled = true;  // решение владельца: управление с t = 0 — корабль уже в разгоне
         WeaponEnabled = false; // стрельба — только на t = startSystemsTime (§5)
 
@@ -236,6 +241,7 @@ public class GameManager : MonoBehaviour
         }
         State = GameState.Dead;
         PlatformServices.Lifecycle.GameplayStop();
+        SetBannerVisible(false); // §4.2: Death-экран (замороженная «картина смерти») — баннера нет
         InputEnabled = false;
 
         // ТЗ §2.3: забег как единица (death_screen_shown — про экран, они в паре 1:1).
@@ -315,6 +321,7 @@ public class GameManager : MonoBehaviour
         StopChoreo();
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
+        SetBannerVisible(true); // §5.2: возврат в геймплей — баннер снова виден
         TimeFreeze.Unfreeze(); // §0.5: снимает фриз смерти (Death → Continue)
         InputEnabled = false; // §5.2: разблокировка на t = 0.5 s
 
@@ -386,6 +393,7 @@ public class GameManager : MonoBehaviour
         TimeFreeze.Unfreeze(); // §0.5: снимает фриз смерти (Death → Retry)
         State = GameState.Playing;
         PlatformServices.Lifecycle.GameplayStart();
+        SetBannerVisible(true); // §6.1: рестарт — баннер снова виден
         InputEnabled = false;  // §6.1: разблокировка на t = 0.5 s
         WeaponEnabled = false; // §6.1: стрельба вместе с управлением, как было
 
@@ -446,8 +454,29 @@ public class GameManager : MonoBehaviour
             _ui.PlayPanelOut(); // §4.5: панели fade-out 0.25 s EaseInQuick
         else
             _ui.PlayPanelOut(); // из паузы — тот же путь
-        EnterMenu(immediate: false);
+        EnterMenu(immediate: false); // скрытие баннера — внутри EnterMenu (без дублей)
     }
+
+    /// <summary>
+    /// Единственная точка видимости баннера (§4.5): баннер виден ровно при GameState.Playing,
+    /// скрыт в меню, на Death-экране и в паузе. Идемпотентно — на YMA HideBanner = DestroyBanner,
+    /// лишний вызов уничтожает и пересоздаёт баннер. Неготовность SDK не теряет запрос:
+    /// сервис хранит желаемое состояние и применяет его сам.
+    /// </summary>
+    private void SetBannerVisible(bool visible)
+    {
+        if (_bannerVisible == visible) return; // видимость не меняется — SDK не трогаем
+        _bannerVisible = visible;
+        if (visible) PlatformServices.Ads.ShowBanner();
+        else PlatformServices.Ads.HideBanner();
+    }
+
+    /// <summary>
+    /// Пауза (GameUI.TogglePause, обе ветки): баннер виден только в живом геймплее (§0.5/§4.4).
+    /// Выход из паузы возвращает баннер лишь если State остался Playing.
+    /// </summary>
+    public void SetPausedBanner(bool paused)
+        => SetBannerVisible(!paused && State == GameState.Playing);
 
     /// <summary>Сброс мира: пулы астероидов/ракет/пуль/пикапов (§6.1 — во время полёта камеры).</summary>
     private void ResetWorld()

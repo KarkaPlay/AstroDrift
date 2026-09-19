@@ -122,6 +122,7 @@ public static class AstroDriftSetup
         perkCfg.offerCount = 3;
         perkCfg.stubScoreBonus = 500;
         perkCfg.rerollPerRun = 1;
+        perkCfg.freeRerollsPerRun = 1;
         perkCfg.perks = BuildPerkAssets();
         EditorUtility.SetDirty(perkCfg);
 

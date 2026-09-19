@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameConfig
   shipSpeed: 5
   shipAngularSpeed: 180
-  shipRadius: 0.55
+  shipRadius: 0.4
   shipInvulnerableTime: 0.5
   fireInterval: 0.3
   bulletSpeed: 18

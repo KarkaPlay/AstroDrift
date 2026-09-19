@@ -78,6 +78,10 @@ MonoBehaviour:
     m_Localized: WATCH AD
     m_Metadata:
       m_Items: []
+  - m_Id: 1543249381548040
+    m_Localized: FREE FIRST TIME THIS RUN
+    m_Metadata:
+      m_Items: []
   - m_Id: 1543249381548034
     m_Localized: PILOT LEVEL {0}
     m_Metadata:

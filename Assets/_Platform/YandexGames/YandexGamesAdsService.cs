@@ -11,7 +11,8 @@ using YG;
 /// • ShowRewarded(cb): cb ровно один раз; true — только при выданной награде.
 ///   Награда (onRewardAdv) приходит ДО закрытия — копим флаг, отдаём результат по закрытию.
 /// • У Яндекса нет «загружен ли rewarded» — показ всегда пробуется, отказ придёт ошибкой.
-/// • Баннер = Sticky площадки (плагин показывает при старте, как sticky РСЯ на RuStore).
+/// • Баннер = Sticky площадки. Показ НЕ автоматический (§4.5/§5): владелец видимости —
+///   GameManager; sticky гасится явным StickyAdActivity(false) уже на старте (меню первым).
 /// Мьют/пауза игры — НЕ здесь (AdsFlow), автопауза плагина в InfoYG выключена.
 /// </summary>
 public sealed class YandexGamesAdsService : IAdsService
@@ -27,6 +28,10 @@ public sealed class YandexGamesAdsService : IAdsService
     private Action<bool> _onRewardedResult;
     private Coroutine _watchdog;
 
+    // Баннер: запрос GameManager может прийти до готовности SDK — храним его и применяем в onGetSDKData.
+    private bool _wantVisible;
+    private bool _bannerApplied, _bannerShown;
+
     public YandexGamesAdsService()
     {
         YG2.onOpenInterAdv += OnInterOpened;
@@ -36,6 +41,17 @@ public sealed class YandexGamesAdsService : IAdsService
         YG2.onRewardAdv += OnReward;
         YG2.onCloseRewardedAdv += OnRewardedClosed;
         YG2.onErrorRewardedAdv += OnRewardedClosed;
+
+        // §4.5: начальное состояние — «скрыто»: sticky площадки активна от старта, гасим её
+        // до первого входа в геймплей (меню баннера не показывает).
+        if (YG2.isSDKEnabled) ApplyBanner();
+        else YG2.onGetSDKData += OnSdkReady;
+    }
+
+    private void OnSdkReady()
+    {
+        YG2.onGetSDKData -= OnSdkReady;
+        ApplyBanner(); // применит ровно то состояние, что успел запросить GameManager
     }
 
     // ——— Interstitial (raw-показ; частотная формула — в AdsFlow) ———
@@ -113,8 +129,32 @@ public sealed class YandexGamesAdsService : IAdsService
     }
 
     // ——— Sticky-баннер ———
+    // Видимость — только по запросу GameManager (§4.5: баннер виден ровно в геймплее).
 
-    public void ShowBanner() { if (YG2.isSDKEnabled) YG2.StickyAdActivity(true); }
-    public void HideBanner() { if (YG2.isSDKEnabled) YG2.StickyAdActivity(false); }
+    public void ShowBanner()
+    {
+        _wantVisible = true;
+        ApplyBanner();
+    }
+
+    public void HideBanner()
+    {
+        _wantVisible = false;
+        ApplyBanner();
+    }
+
+    /// <summary>
+    /// Применяет запрошенную видимость к SDK. Идемпотентно: при неизменной видимости
+    /// SDK не трогаем; запрос до готовности SDK переживает OnSdkReady.
+    /// </summary>
+    private void ApplyBanner()
+    {
+        if (!YG2.isSDKEnabled) return; // SDK не готов: _wantVisible применится в OnSdkReady
+        if (_bannerApplied && _bannerShown == _wantVisible) return; // видимость не менялась
+        _bannerApplied = true;
+        _bannerShown = _wantVisible;
+
+        YG2.StickyAdActivity(_wantVisible);
+    }
 }
 #endif

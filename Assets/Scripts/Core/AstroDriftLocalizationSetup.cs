@@ -27,6 +27,8 @@ public static class AstroDriftLocalizationSetup
         ("levelup_new", "НОВОЕ", "NEW"),
         ("reroll_cta", "ОБНОВИТЬ ВЫБОР", "REFRESH CHOICES"),
         ("reroll_caption", "ПОСМОТРЕТЬ РЕКЛАМУ", "WATCH AD"),
+        // Первый реролл за забег бесплатный — подпись кнопки переключается кодом (GDD §15.3)
+        ("reroll_caption_free", "БЕСПЛАТНО — ПЕРВЫЙ РАЗ ЗА ЗАБЕГ", "FREE — FIRST TIME THIS RUN"),
 
         // Стартовый экран (GDD §11)
         // Рекорд меню разбит на две ноды: подпись (best_label) и число (best_value).

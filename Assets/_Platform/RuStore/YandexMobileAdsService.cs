@@ -12,7 +12,9 @@ using YG;
 ///   true = показ, InterstitialClosed придёт РОВНО один раз (закрытие / ошибка / watchdog).
 /// • ShowRewarded(cb): cb ровно один раз; true — только при реально выданной награде.
 ///   Награда (onRewardAdv) приходит ДО закрытия — копим флаг, результат отдаём по закрытию/ошибке.
-/// • Баннер = модуль BannerAdv плагина (bottom, показывается при старте SDK).
+/// • Баннер = модуль BannerAdv плагина (bottom). Показ НЕ автоматический (§4.5/§5): видимостью
+///   владеет GameManager, сервис лишь применяет запрошенное состояние (wanted-флаг переживает
+///   неготовность SDK и применяется в onGetSDKData).
 /// Мьют/пауза игры — НЕ здесь (AdsFlow), автопауза плагина в InfoYG выключена (autoPauseGame: 0).
 /// Живёт на DontDestroyOnLoad-объекте, регистрируется RuStoreInstaller (BeforeSceneLoad).
 /// </summary>
@@ -33,6 +35,11 @@ public class YandexMobileAdsService : MonoBehaviour, IAdsService
     private Action<bool> _onRewardedResult;
     private Coroutine _watchdog, _rewardWatchdog;
 
+    // Баннер: запрошенная играем видимость хранится отдельно от применённой к SDK —
+    // запрос, пришедший до готовности SDK, не теряется (применяется в OnSdkReady).
+    private bool _wantVisible;
+    private bool _bannerApplied, _bannerShown;
+
     private void Awake()
     {
         YG2.onOpenInterAdv += OnInterOpened;
@@ -44,7 +51,9 @@ public class YandexMobileAdsService : MonoBehaviour, IAdsService
         YG2.onCloseRewardedAdv += OnRewardedClosed;
         YG2.onErrorRewardedAdv += OnRewardedClosed;
 
-        if (YG2.isSDKEnabled) ShowBanner();
+        // §4.5/§5: никакого автопоказа — по умолчанию баннер скрыт (меню первым),
+        // показ запрашивает GameManager при входе в геймплей. SDK не готов → запрос подождёт OnSdkReady.
+        if (YG2.isSDKEnabled) ApplyBanner();
         else YG2.onGetSDKData += OnSdkReady;
     }
 
@@ -65,7 +74,7 @@ public class YandexMobileAdsService : MonoBehaviour, IAdsService
     private void OnSdkReady()
     {
         YG2.onGetSDKData -= OnSdkReady;
-        ShowBanner();
+        ApplyBanner(); // применит ровно то состояние, что успел запросить GameManager
     }
 
     // ——— Interstitial (raw-показ; частотная формула — в AdsFlow) ———
@@ -172,27 +181,47 @@ public class YandexMobileAdsService : MonoBehaviour, IAdsService
     }
 
     // ——— Баннер (модуль BannerAdv плагина; на мобильной интеграции YMA — sticky) ———
+    // Видимость — только по запросу GameManager (§4.5: баннер виден ровно в геймплее).
 
     public void ShowBanner()
     {
-#if BannerAdv_yg
-        if (!YG2.isSDKEnabled) return;
-        YG2.SetBannerPosition(YG2.BannerPosition.Bottom);
-        YG2.ShowBanner();
-        Debug.Log("[YandexAds] Баннер: показ (bottom).");
-#else
-        Debug.Log("[YandexAds] Баннер: модуль BannerAdv не установлен — ShowBanner() no-op.");
-#endif
+        _wantVisible = true;
+        ApplyBanner();
     }
 
     public void HideBanner()
     {
+        _wantVisible = false;
+        ApplyBanner();
+    }
+
+    /// <summary>
+    /// Применяет запрошенную видимость к SDK. Идемпотентно: на YMA HideBanner = DestroyBanner,
+    /// поэтому повторный вызов без смены состояния баннер не пересоздаёт.
+    /// </summary>
+    private void ApplyBanner()
+    {
 #if BannerAdv_yg
-        if (!YG2.isSDKEnabled) return;
-        YG2.HideBanner();
-        Debug.Log("[YandexAds] Баннер: скрыт.");
+        if (!YG2.isSDKEnabled) return; // SDK не готов: _wantVisible применится в OnSdkReady
+        if (_bannerApplied && _bannerShown == _wantVisible) return; // видимость не менялась — SDK не трогаем
+        _bannerApplied = true;
+        _bannerShown = _wantVisible;
+
+        if (_wantVisible)
+        {
+            YG2.SetBannerPosition(YG2.BannerPosition.Bottom);
+            YG2.ShowBanner();
+            Debug.Log("[YandexAds] Баннер: показ (bottom).");
+        }
+        else
+        {
+            YG2.HideBanner();
+            Debug.Log("[YandexAds] Баннер: скрыт.");
+        }
 #else
-        Debug.Log("[YandexAds] Баннер: модуль BannerAdv не установлен — HideBanner() no-op.");
+        _bannerApplied = true;
+        _bannerShown = _wantVisible;
+        Debug.Log("[YandexAds] Баннер: модуль BannerAdv не установлен — вызов no-op.");
 #endif
     }
 }

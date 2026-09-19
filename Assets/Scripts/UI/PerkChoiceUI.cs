@@ -1,16 +1,18 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 
 /// <summary>
 /// Оверлей перк-левелапа (GDD §15.3): затемнение 50% чёрного, Star, «УРОВЕНЬ ПОВЫШЕН»,
-/// до 3 карт (название + описание из PerkDefinition) и кнопка реролла за рекламу.
+/// до 3 карт (название + описание из PerkDefinition) и кнопка реролла (первый за забег
+/// бесплатный, далее за рекламу — подпись переключается кодом по ключу).
 /// Внешний вид живёт в префабах (AstroDrift → Build LevelUp Prefabs), здесь только
 /// данные: иконка/ключи текстов карт, выбор префаба _New для первого стака перка.
 /// Вся анимация — unscaled time (фриз timeScale = 0). Тап по карте: перк применён,
-/// разморозка мгновенная. Лимит rerollPerRun = 1 за забег.
+/// разморозка мгновенная. Лимит рероллов за забег: freeRerollsPerRun + rerollPerRun.
 /// </summary>
 public class PerkChoiceUI : MonoBehaviour
 {
@@ -26,9 +28,15 @@ public class PerkChoiceUI : MonoBehaviour
     private PerkDefinition[] _currentOffers;
     private readonly System.Collections.Generic.List<GameObject> _cards = new System.Collections.Generic.List<GameObject>();
     private Coroutine _showRoutine;
+    private Coroutine _rerollRoutine;
+    private LocalizedString _captionAd, _captionFree;
     private bool _rerollBound;
+    private Coroutine _rerollBtnRoutine;
+    private bool _rerollCardsSettled;
 
     private const float CardW = 300f, CardH = 420f, CardGap = 30f;
+    private const string CaptionAdKey = "reroll_caption";
+    private const string CaptionFreeKey = "reroll_caption_free";
 
     private void Awake()
     {
@@ -117,9 +125,18 @@ public class PerkChoiceUI : MonoBehaviour
     private void OnRerollTapped()
     {
         var pm = PerkManager.Instance;
-        var ads = AdsFlow.Instance;
-        if (pm == null || ads == null || !pm.RerollAvailable) return;
+        if (pm == null || _rerollRoutine != null || !pm.RerollAvailable) return;
 
+        // Первый реролл за забег — бесплатно, без рекламы (GDD §15.3)
+        if (pm.RerollIsFree)
+        {
+            Analytics.Log("perk_reroll_free_used");
+            _rerollRoutine = StartCoroutine(RerollSwapRoutine(true));
+            return;
+        }
+
+        var ads = AdsFlow.Instance;
+        if (ads == null) return;
         Analytics.Log("perk_reroll_ad_started");
         ads.ShowRewarded(ok =>
         {
@@ -128,19 +145,173 @@ public class PerkChoiceUI : MonoBehaviour
                 Analytics.Log("perk_reroll_ad_aborted");
                 return; // фриз сохраняется, карты не меняются
             }
-            var offers = pm.Reroll();
-            if (offers == null || offers.Length == 0) { Hide(); return; }
-            _currentOffers = offers;
-            RebuildCards();
-            UpdateRerollVisibility();
+            if (_rerollRoutine == null) _rerollRoutine = StartCoroutine(RerollSwapRoutine(false));
         });
     }
 
-    private void UpdateRerollVisibility()
+    /// <summary>Смена карт после реролла (unscaled): каскадный уход карт И кнопки одним тактом
+    /// → перегенерация из того же пула (§15.3) → въезд новых (CardSlideIn). Тап заблокирован
+    /// до завершения свопа кнопки.</summary>
+    private IEnumerator RerollSwapRoutine(bool free)
     {
-        bool show = PerkManager.Instance != null && PerkManager.Instance.RerollAvailable
-                    && AdsFlow.Instance != null && AdsFlow.Instance.IsRewardedReady;
-        if (_rerollBtn != null) SetVisible(_rerollBtn.gameObject, show);
+        if (_rerollBtn != null) _rerollBtn.interactable = false;
+
+        // (b) уход: scale 1→0.85 + fade 1→0, 0.12 s, stagger 0.04 s; кнопка уходит тем же тактом
+        const float ExitDur = 0.12f, ExitStagger = 0.04f;
+        for (int i = 0; i < _cards.Count; i++)
+        {
+            if (_cards[i] == null) continue;
+            StartCoroutine(CardExit(_cards[i], i * ExitStagger));
+        }
+        _rerollCardsSettled = false;
+        _rerollBtnRoutine = StartCoroutine(RerollButtonSwapRoutine());
+
+        yield return new WaitForSecondsRealtime(ExitDur + Mathf.Max(0, _cards.Count - 1) * ExitStagger);
+
+        // (c) перегенерация ПОСЛЕ ухода; пул не расширяется
+        var pm = PerkManager.Instance;
+        var offers = pm != null ? pm.Reroll() : null;
+        if (offers == null || offers.Length == 0)
+        {
+            _rerollRoutine = null;
+            Hide();
+            yield break;
+        }
+        _currentOffers = offers;
+        RebuildCards();
+
+        // (d) карты легли — разрешаем вход новой кнопки (она сама решает: вход или гашение)
+        _rerollCardsSettled = true;
+        if (_rerollBtnRoutine != null) yield return _rerollBtnRoutine;
+        _rerollBtnRoutine = null;
+        _rerollRoutine = null;
+    }
+
+    /// <summary>Уход одной карты: сужение до 0.85 и fade в 0 (EaseInQuick). Карту может
+    /// уничтожить RebuildCards, пока корутина ещё крутится — защита от MissingReference.</summary>
+    private IEnumerator CardExit(GameObject card, float delay)
+    {
+        if (card == null) yield break;
+        var cg = Cg(card);
+        var rt = card.transform as RectTransform;
+        if (rt == null) yield break;
+        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
+
+        const float dur = 0.12f;
+        float t = 0f;
+        while (t < dur)
+        {
+            if (card == null) yield break;
+            t += Time.unscaledDeltaTime;
+            float k = UiAnim.EaseInQuick.Evaluate(Mathf.Clamp01(t / dur));
+            rt.localScale = Vector3.one * Mathf.Lerp(1f, 0.85f, k);
+            if (cg != null) cg.alpha = 1f - k;
+            yield return null;
+        }
+        if (card == null) yield break;
+        rt.localScale = Vector3.one * 0.85f;
+        if (cg != null) cg.alpha = 0f;
+    }
+
+    /// <summary>Мгновенный слой видимости кнопки (без анимации): Show() и восстановление
+    /// после прерывания. Анимированная смена — RerollButtonSwapRoutine.</summary>
+    private void ApplyRerollVisibilityImmediate()
+    {
+        if (_rerollBtn == null) return;
+        ResetRerollButtonPose();
+        bool show = ShouldShowReroll(out bool free);
+        SetVisible(_rerollBtn.gameObject, show);
+        if (show) SetRerollCaption(free ? CaptionFreeKey : CaptionAdKey);
+    }
+
+    /// <summary>true — кнопку показываем; free — подпись бесплатного реролла
+    /// (бесплатный реролл не требует готовности рекламы).</summary>
+    private static bool ShouldShowReroll(out bool free)
+    {
+        var pm = PerkManager.Instance;
+        var ads = AdsFlow.Instance;
+        free = pm != null && pm.RerollIsFree;
+        return pm != null && pm.RerollAvailable && (free || (ads != null && ads.IsRewardedReady));
+    }
+
+    /// <summary>Возврат кнопки в исходную позу (scale 1, alpha 1, тап разрешён), чтобы
+    /// прерванный на середине своп не оставил её в промежуточном состоянии.</summary>
+    private void ResetRerollButtonPose()
+    {
+        if (_rerollBtn == null) return;
+        _rerollBtn.interactable = true;
+        var rt = _rerollBtn.transform as RectTransform;
+        if (rt != null) rt.localScale = Vector3.one;
+        var cg = Cg(_rerollBtn);
+        if (cg != null) cg.alpha = 1f;
+    }
+
+    /// <summary>Анимированная смена кнопки реролла (unscaled): выход 1→0 / 1→0.9 (EaseInQuick)
+    /// → подмена капшена в невидимой фазе → вход 0→1 / 0.9→1 (EaseOutSoft) после того, как
+    /// карты легли. Рероллов не осталось — выход доигрывается, нода гаснет целиком.</summary>
+    private IEnumerator RerollButtonSwapRoutine()
+    {
+        var cg = _rerollBtn != null ? Cg(_rerollBtn) : null;
+        var rt = _rerollBtn != null ? _rerollBtn.transform as RectTransform : null;
+        if (cg == null || rt == null) yield break;
+
+        cg.blocksRaycasts = false;
+        const float exitDur = 0.12f;
+        float t = 0f;
+        while (t < exitDur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = UiAnim.EaseInQuick.Evaluate(Mathf.Clamp01(t / exitDur));
+            cg.alpha = 1f - k;
+            rt.localScale = Vector3.one * Mathf.Lerp(1f, 0.9f, k);
+            yield return null;
+        }
+        cg.alpha = 0f;
+        rt.localScale = Vector3.one * 0.9f;
+
+        // Ждём, пока карты лягут: только тогда счётчик рероллов финален. Подмена ключа —
+        // строго при alpha 0, поэтому старая формулировка не мигает.
+        while (!_rerollCardsSettled) yield return null;
+
+        if (!ShouldShowReroll(out bool free))
+        {
+            SetVisible(_rerollBtn.gameObject, false); // выход доигран — гасим ноду, не оставляя alpha 0 живой
+            yield break;
+        }
+        SetRerollCaption(free ? CaptionFreeKey : CaptionAdKey);
+
+        yield return new WaitForSecondsRealtime(0.15f); // вход — отдельный бит после карт
+        const float inDur = 0.18f;
+        t = 0f;
+        while (t < inDur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = UiAnim.EaseOutSoft.Evaluate(Mathf.Clamp01(t / inDur));
+            cg.alpha = k;
+            rt.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, k);
+            yield return null;
+        }
+        cg.alpha = 1f;
+        rt.localScale = Vector3.one;
+        cg.blocksRaycasts = true;
+        _rerollBtn.interactable = true;
+    }
+
+    /// <summary>Переключение подписи по ключу: присваивание StringReference —
+    /// принятый в проекте способ перезапустить загрузку (см. FillCard).</summary>
+    private void SetRerollCaption(string key)
+    {
+        if (_rerollCaption == null) return;
+        var lse = _rerollCaption.GetComponent<LocalizeStringEvent>();
+        if (lse == null) return;
+        var ls = key == CaptionFreeKey ? _captionFree : _captionAd;
+        if (ls == null)
+        {
+            ls = new LocalizedString();
+            ls.SetReference("GameTexts", key);
+            if (key == CaptionFreeKey) _captionFree = ls; else _captionAd = ls;
+        }
+        lse.StringReference = ls;
     }
 
     /// <summary>Показ оверлея с предложениями (фриз уже включён PerkManager). Анимация — unscaled.</summary>
@@ -157,7 +328,7 @@ public class PerkChoiceUI : MonoBehaviour
         cg.interactable = false;
 
         RebuildCards();          // карты создаются сразу, stagger — внутри CardSlideIn (unscaled)
-        UpdateRerollVisibility();
+        ApplyRerollVisibilityImmediate();
 
         if (_showRoutine != null) StopCoroutine(_showRoutine);
         _showRoutine = StartCoroutine(ShowRoutine());
@@ -312,6 +483,11 @@ public class PerkChoiceUI : MonoBehaviour
     public void Hide()
     {
         if (_showRoutine != null) { StopCoroutine(_showRoutine); _showRoutine = null; }
+        // Прерванный своп не должен оставить кнопку навсегда неживой или на середине scale/alpha
+        if (_rerollRoutine != null) { StopCoroutine(_rerollRoutine); _rerollRoutine = null; }
+        if (_rerollBtnRoutine != null) { StopCoroutine(_rerollBtnRoutine); _rerollBtnRoutine = null; }
+        _rerollCardsSettled = false;
+        ResetRerollButtonPose();
         HideImmediate();
     }
 

@@ -22,6 +22,7 @@ public class PerkManager : MonoBehaviour
     private int _lastThresholdValue; // порог, уже пройденный в текущем забеге (база для прогресс-бара HUD)
     private bool _offerPending;      // оверлей открыт/ожидает выбора — порог не тикает повторно
     private int _rerollsLeft;
+    private int _freeRerollsLeft;
 
     /// <summary>Порог пересечён, оверлей должен открыться (GameManager → GameUI).</summary>
     public event System.Action<PerkDefinition[]> OnLevelUpOffer;
@@ -49,6 +50,7 @@ public class PerkManager : MonoBehaviour
         _lastThresholdValue = 0;
         _offerPending = false;
         _rerollsLeft = config != null ? config.rerollPerRun : 1;
+        _freeRerollsLeft = config != null ? Mathf.Max(0, config.freeRerollsPerRun) : 1;
     }
 
     /// <summary>Порог по индексу; после конца массива — последний + (последняя разница + 1000), GDD §6.</summary>
@@ -188,14 +190,20 @@ public class PerkManager : MonoBehaviour
     };
 #endif
 
-    /// <summary>Реролл за рекламу: перегенерирует карты из ТОГО ЖЕ пула (пул не расширяется, §15.3).</summary>
+    /// <summary>Реролл: сначала бесплатный за забег, затем за рекламу. Карты — из ТОГО ЖЕ пула
+    /// (пул не расширяется, §15.3). null — рероллов не осталось.</summary>
     public PerkDefinition[] Reroll()
     {
-        if (_rerollsLeft <= 0) return null;
-        _rerollsLeft--;
+        if (_freeRerollsLeft > 0) _freeRerollsLeft--;
+        else if (_rerollsLeft > 0) _rerollsLeft--;
+        else return null;
         return GenerateOffers();
     }
-    public bool RerollAvailable => _rerollsLeft > 0;
+
+    /// <summary>true — следующий реролл бесплатный (реклама не нужна).</summary>
+    public bool RerollIsFree => _freeRerollsLeft > 0;
+
+    public bool RerollAvailable => _freeRerollsLeft > 0 || _rerollsLeft > 0;
 
     // ——— Агрегированные модификаторы (читатели: ShipWeapon/ShipController/ScoreManager/MissileSpawner) ———
 

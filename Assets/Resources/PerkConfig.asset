@@ -15,6 +15,7 @@ MonoBehaviour:
   offerCount: 3
   stubScoreBonus: 500
   rerollPerRun: 1
+  freeRerollsPerRun: 1
   perks:
   - {fileID: 11400000, guid: 056cf3e38fad348a49ad769c95e4105c, type: 2}
   - {fileID: 11400000, guid: 650c7e3636c1445389c0ade426d56196, type: 2}

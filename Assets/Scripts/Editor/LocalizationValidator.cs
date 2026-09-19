@@ -189,7 +189,7 @@ public static class LocalizationValidator
         report.Sources.Add($"пропущено read-only пакетных ассетов: сцен {skippedScenes}, префабов {skippedPrefabs}");
 
         // Рантайм-смены entry (§8.1/§8.2) — статическим списком
-        foreach (var k in new[] { "shield_used_today", "shield_caption", "level_up_line", "level_line", "xp_gain" })
+        foreach (var k in new[] { "shield_used_today", "shield_caption", "level_up_line", "level_line", "xp_gain", "reroll_caption_free" })
             report.UsedKeys.Add(k);
         report.Sources.Add("§8.1/§8.2 рантайм-смены entry (стат. список)");
 

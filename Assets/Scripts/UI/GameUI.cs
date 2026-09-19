@@ -1356,6 +1356,7 @@ public class GameUI : MonoBehaviour
             TimeFreeze.Freeze();
             PauseIn();
             PlatformServices.Lifecycle.GameplayStop();
+            GameManager.Instance.SetPausedBanner(true); // §4.5: пауза — не геймплей, баннер скрыт
             // ТЗ §2.4: один агрегат на оба ветвления — «какой % забегов прерывается паузой?»
             Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "open" } });
         }
@@ -1364,6 +1365,7 @@ public class GameUI : MonoBehaviour
             TimeFreeze.Unfreeze();
             PauseOut();
             PlatformServices.Lifecycle.GameplayStart();
+            GameManager.Instance.SetPausedBanner(false); // §4.5: баннер вернётся, если State == Playing
             Analytics.Log("pause_toggled", new Dictionary<string, object> { { "action", "close" } });
         }
     }
