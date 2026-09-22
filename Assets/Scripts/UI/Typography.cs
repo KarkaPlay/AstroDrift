@@ -2,19 +2,19 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 
-public enum TypeRole { Title, Secondary, Cta, DeathScore, Button, Body, LevelUpTitle }
-
 /// <summary>
-/// Единая точка доступа к типографике. Весь UI берёт шрифты ТОЛЬКО отсюда
-/// (Assets/Resources/TypographyConfig.asset). Размеры и трекинг — авторские,
+/// Единая точка доступа к типографике. Шрифт берётся из NamedStyle
+/// (Assets/Resources/TypographyConfig.asset → Styles). Размеры и трекинг — авторские,
 /// из префабов/сцены: Typography их не трогает.
-/// Шрифт выбирается по текущей локали Unity (переопределения локали в конфиге);
-/// пока владелец не подставил шрифты — fallback на TMP Settings default
-/// (LiberationSans SDF): ни Missing, ни Null, сцена работает с пустым конфигом.
+/// Шрифт выбирается по текущей локали Unity (localeFonts стиля); пустой шрифт —
+/// fallback на TMP Settings default (LiberationSans SDF): ни Missing, ни Null.
 ///
-/// Реакции на смену локали у Typography НЕТ (ТЗ §3.5): единственная точка подписки на
+/// fontStyle применяется ТОЛЬКО если у стиля включён Apply Font Style; иначе вес
+/// символов ноды не трогается (авторский из префаба сохраняется).
+///
+/// Реакции на смену локали у Typography НЕТ (§3.5): единственная точка подписки на
 /// SelectedLocaleChanged — LanguageService, он же вызывает TypeRoleApplier.ApplyAll()
-/// и сброс гардов §3.4. Носитель роли — TypeRoleTag (self-apply в OnEnable).
+/// и сброс гардов §3.4. Носитель стиля — TypeRoleTag (self-apply в OnEnable).
 /// </summary>
 public static class Typography
 {
@@ -44,45 +44,41 @@ public static class Typography
         }
     }
 
-    /// <summary>Шрифт для роли с учётом языка. null — вызывающий берёт TMP Settings default.</summary>
-    private static TMP_FontAsset Resolve(TypeRole role)
+    // Предупреждаем про каждый неизвестный id один раз — иначе свип по смене локали спамит консоль.
+    private static readonly System.Collections.Generic.HashSet<string> WarnedUnknownIds =
+        new System.Collections.Generic.HashSet<string>();
+
+    private static void ApplyStyle(TextMeshProUGUI tmp, string styleId)
     {
         var cfg = Config;
-        if (cfg == null) return null;
-        var f = cfg.GetFonts(CurrentLang);
-        switch (role)
-        {
-            case TypeRole.LevelUpTitle:
-                return f.title != null ? f.title : f.heading;
-            case TypeRole.Title:
-            case TypeRole.DeathScore:
-                return f.heading;
-            case TypeRole.Cta:
-                return f.cta;
-            default: // Secondary / Button / Body — служебные тексты
-                return f.body;
-        }
-    }
+        if (cfg == null) return;
 
-    private static void ApplyFont(TextMeshProUGUI tmp, TypeRole role)
-    {
-        var font = Resolve(role);
+        if (cfg.GetStyle(styleId) == null)
+        {
+            if (WarnedUnknownIds.Add(styleId))
+                Debug.LogWarning($"[Typography] Стиль '{styleId}' не найден в TypographyConfig — шрифт ноды не изменён.");
+            return;
+        }
+
+        var font = cfg.ResolveFont(styleId, CurrentLang);
         if (font == null) font = TMP_Settings.defaultFontAsset; // fallback: LiberationSans SDF
         if (font != null) tmp.font = font;
-        tmp.fontStyle = FontStyles.Normal;
+
+        // Вес трогаем только по явному разрешению стиля.
+        if (cfg.ResolveApplyFontStyle(styleId)) tmp.fontStyle = cfg.ResolveFontStyle(styleId);
     }
 
-    /// <summary>Применить роль (шрифт + вес) к TMP-тексту. Размер/трекинг не трогаются.</summary>
-    public static void Apply(TextMeshProUGUI tmp, TypeRole role)
+    /// <summary>Применить стиль (шрифт, и вес если разрешён) к TMP-тексту. Размер/трекинг не трогаются.</summary>
+    public static void Apply(TextMeshProUGUI tmp, string styleId)
     {
         if (tmp == null) return;
-        ApplyFont(tmp, role);
+        ApplyStyle(tmp, styleId);
     }
 
     /// <summary>Только шрифт/вес (HUD не трогаем: размеры HUD остаются сценарными).</summary>
-    public static void ApplyFontOnly(TextMeshProUGUI tmp, TypeRole role)
+    public static void ApplyFontOnly(TextMeshProUGUI tmp, string styleId)
     {
         if (tmp == null) return;
-        ApplyFont(tmp, role);
+        ApplyStyle(tmp, styleId);
     }
 }

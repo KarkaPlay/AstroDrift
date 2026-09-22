@@ -103,23 +103,20 @@ public static class LocalizationValidator
 
     private static readonly string[] SyncKeysWhitelist =
     {
-        "combo",           // GameManager комбо-флоатер
-        "unlocked_title",  // GameUI.DeathUnlocked
-        "unlock_soon",     // GameUI дерево
-        "unlock_tree_title",
-        "level_up_line",   // GameUI.FillDeathMeta (рантайм-смена entry)
-        "level_line",
-        "xp_gain",
-        "score",
-        "best",
+        "combo",            // GameManager комбо-флоатер
+        "best_label",       // подпись рекорда (меню + DeathScorePanel)
+        "best_value",       // чистое число рекорда (меню + DeathScorePanel)
+        "xp_gain",          // GameUI.StartXpGain (§7)
+        "level_up_line",    // GameUI — капшн LevelCard при левел-апе (§8)
+        "pilot_level_label",
     };
 
     // --- 5. Ключи, проставляемые AstroDriftSceneSetup (карта §8.2) -------------------------------
 
     private static readonly string[] SceneSetupKeys =
     {
-        "score", "best", "new_best", "continue_cta", "continue_caption",
-        "home", "xp_gain", "level_line", "pause_title", "resume",
+        "death_title", "death_subtitle", "best_label", "best_value", "score_label",
+        "continue_cta", "continue_caption", "home_to_menu", "home", "pause_title", "resume",
     };
 
     // --- Запуск -----------------------------------------------------------------------------------
@@ -189,9 +186,16 @@ public static class LocalizationValidator
         report.Sources.Add($"пропущено read-only пакетных ассетов: сцен {skippedScenes}, префабов {skippedPrefabs}");
 
         // Рантайм-смены entry (§8.1/§8.2) — статическим списком
-        foreach (var k in new[] { "shield_used_today", "shield_caption", "level_up_line", "level_line", "xp_gain", "reroll_caption_free" })
+        foreach (var k in new[] { "shield_used_today", "shield_caption", "level_up_line", "xp_gain", "reroll_caption_free" })
             report.UsedKeys.Add(k);
         report.Sources.Add("§8.1/§8.2 рантайм-смены entry (стат. список)");
+
+        // settings_reset_confirm: подпись красной кнопки на втором тапе (SettingsScreen).
+        // Оба ключа лежат на одном LSE (settings_reset_progress ↔ settings_reset_confirm),
+        // сканер видит только первый — второй добавляем статически, иначе он «сирота».
+        foreach (var k in new[] { "settings_reset_progress", "settings_reset_confirm" })
+            report.UsedKeys.Add(k);
+        report.Sources.Add("SettingsScreen двуxсостоятельная подпись сброса");
 
         CollectLocalizedStringData(report.UsedKeys, report.Sources);
         CollectRuntimeUnlockKeys(report.UsedKeys, report.Sources);
@@ -301,18 +305,14 @@ public static class LocalizationValidator
             return result;
         }
 
-        AddWithFallbacks(config.headingLight);
-        AddWithFallbacks(config.titleBold);
-        AddWithFallbacks(config.bodyRegular);
-        AddWithFallbacks(config.ctaSemiBold);
-        if (config.languageOverrides != null)
-            foreach (var o in config.languageOverrides)
+        if (config.styles != null)
+            foreach (var style in config.styles)
             {
-                if (o == null) continue;
-                AddWithFallbacks(o.heading);
-                AddWithFallbacks(o.titleBold);
-                AddWithFallbacks(o.body);
-                AddWithFallbacks(o.cta);
+                if (style == null) continue;
+                AddWithFallbacks(style.font);
+                if (style.localeFonts == null) continue;
+                foreach (var lf in style.localeFonts)
+                    if (lf != null) AddWithFallbacks(lf.font);
             }
         AddWithFallbacks(TMP_Settings.defaultFontAsset);
         return result;

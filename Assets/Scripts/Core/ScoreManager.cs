@@ -140,6 +140,20 @@ public class ScoreManager : MonoBehaviour
         OnScoreChanged?.Invoke(Score, Multiplier);
     }
 
+    /// <summary>
+    /// «Сбросить прогресс» (кнопка экрана настроек): обнуляет рекорд и счёт.
+    /// У ISaveService нет удаления ключа — пишем 0.
+    /// </summary>
+    public void ResetProgress()
+    {
+        Best = 0;
+        Score = 0;
+        NewBest = false;
+        PlatformServices.Save.SetInt(BestKey, 0);
+        PlatformServices.Save.Flush();
+        Analytics.ProfileSetNumber("best_score", 0);
+    }
+
     public void ResetRun()
     {
         Score = 0;

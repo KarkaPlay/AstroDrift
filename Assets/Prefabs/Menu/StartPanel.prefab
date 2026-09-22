@@ -446,7 +446,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 2
+  styleId: cta
 --- !u!1 &7937519273382792036
 GameObject:
   m_ObjectHideFlags: 0
@@ -800,7 +800,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 2
+  styleId: cta
 --- !u!225 &8825664240163185526
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -1004,7 +1004,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 1
+  styleId: secondary
 --- !u!1 &8263312844388371575
 GameObject:
   m_ObjectHideFlags: 0
@@ -1196,7 +1196,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 1
+  styleId: secondary
 --- !u!1 &8863676171598320975
 GameObject:
   m_ObjectHideFlags: 0
@@ -1390,7 +1390,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 1
+  styleId: secondary
 --- !u!225 &5918017336021012227
 CanvasGroup:
   m_ObjectHideFlags: 0

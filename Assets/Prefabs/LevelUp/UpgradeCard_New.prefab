@@ -191,7 +191,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 2
+  styleId: defaultText
 --- !u!1001 &2399931446343601719
 PrefabInstance:
   m_ObjectHideFlags: 0

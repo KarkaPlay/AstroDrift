@@ -34,20 +34,20 @@ MonoBehaviour:
     m_Localized: BEST {0}
     m_Metadata:
       m_Items: []
-  - m_Id: 1728500981760
-    m_Localized: SCORE {0}
+  - m_Id: 6255296727998466
+    m_Localized: MAIN MENU
     m_Metadata:
       m_Items: []
-  - m_Id: 1728500981761
-    m_Localized: NEW BEST!
+  - m_Id: 6255296727998465
+    m_Localized: RUN SCORE
     m_Metadata:
       m_Items: []
   - m_Id: 1728500981762
-    m_Localized: CONTINUE
+    m_Localized: CONTINUE FOR AD
     m_Metadata:
       m_Items: []
   - m_Id: 1728500981763
-    m_Localized: WATCH AN AD
+    m_Localized: Return to the game and keep your progress
     m_Metadata:
       m_Items: []
   - m_Id: 1728500981764
@@ -106,12 +106,12 @@ MonoBehaviour:
     m_Localized: "LEVEL {0} \u2192 {1}"
     m_Metadata:
       m_Items: []
-  - m_Id: 1543249394130944
-    m_Localized: LEVEL {0}
+  - m_Id: 6255296727998464
+    m_Localized: YOUR JOURNEY IS OVER
     m_Metadata:
       m_Items: []
-  - m_Id: 1543249394130945
-    m_Localized: 'UNLOCKED:'
+  - m_Id: 6255296665083904
+    m_Localized: YOU DIED
     m_Metadata:
       m_Items: []
   - m_Id: 1543249394130946
@@ -320,6 +320,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 4669794912559104
     m_Localized: NEW
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927878651904
+    m_Localized: SETTINGS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955072
+    m_Localized: GAME SOUND
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955073
+    m_Localized: MUSIC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955074
+    m_Localized: RESET PROGRESS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955075
+    m_Localized: TAP AGAIN TO RESET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955076
+    m_Localized: BACK
     m_Metadata:
       m_Items: []
   references:

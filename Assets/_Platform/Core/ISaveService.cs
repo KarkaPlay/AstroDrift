@@ -9,6 +9,8 @@ public interface ISaveService
     int GetInt(string key, int defaultValue = 0);
     void SetString(string key, string value);
     string GetString(string key, string defaultValue = "");
+    void SetFloat(string key, float value);
+    float GetFloat(string key, float defaultValue = 0f);
     bool HasKey(string key);
     /// <summary>Принудительная запись (для облачных сейвов Яндекс Игр).</summary>
     void Flush();

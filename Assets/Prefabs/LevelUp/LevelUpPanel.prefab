@@ -266,7 +266,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 1
+  styleId: defaultText
 --- !u!1 &1253561859020675695
 GameObject:
   m_ObjectHideFlags: 0
@@ -371,8 +371,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u0423\u0420\u041E\u0412\u0415\u041D\u042C \u041F\u041E\u0412\u042B\u0428\u0415\u041D"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 2ebd00df0d84c41bc99f37ca0fbb92c2, type: 2}
-  m_sharedMaterial: {fileID: 4248987126388846182, guid: 2ebd00df0d84c41bc99f37ca0fbb92c2, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 89f36253cd6a34af1a5ead6f7088bed4, type: 2}
+  m_sharedMaterial: {fileID: 8873542179268284861, guid: 89f36253cd6a34af1a5ead6f7088bed4, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -493,7 +493,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 6
+  styleId: title
 --- !u!1 &7257210901470441296
 GameObject:
   m_ObjectHideFlags: 0
@@ -513,7 +513,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &7540725169127229175
 RectTransform:
   m_ObjectHideFlags: 0
@@ -584,7 +584,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7257210901470441296}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
@@ -622,7 +622,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2509972142894023847, guid: 2957da365d74d40a19fc3aa6871b4cab, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6552418357338486957, guid: 2957da365d74d40a19fc3aa6871b4cab, type: 3}
       propertyPath: m_Pivot.x

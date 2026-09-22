@@ -14,11 +14,21 @@ public class AudioManager : MonoBehaviour
 
     [SerializeField] private int poolSize = 8;
 
+    // Ключи сохранения пользовательских каналов (§0.4: не переименовывать)
+    public const string SfxVolumeKey = "AstroDrift.SfxVolume";
+    public const string MusicVolumeKey = "AstroDrift.MusicVolume";
+
     /// <summary>
     /// Rewarded-показ (GDD_DeathScreen_Continue §7): приглушить/вернуть звук.
-    /// AudioListener не влияет на нативный звук рекламного SDK — гасим только игру.
+    /// Гасим не AudioListener, а внутренний фактор: при снятии mute каналы возвращаются
+    /// ровно к значениям слайдеров игрока (запись AudioListener.volume=1 их бы перетёрла
+    /// только если бы слайдеры жили в AudioListener — они живут здесь).
     /// </summary>
-    public void SetMuted(bool muted) => AudioListener.volume = muted ? 0f : 1f;
+    public void SetMuted(bool muted) => _muted = muted;
+
+    private bool _muted;
+    private float _sfxVolume = 1f;   // рантайм-канал «звуки» (единственный источник для Play)
+    private float _musicVolume = 1f; // рантайм-канал «музыка» (трека пока нет, значение хранится)
 
     private float _masterVolume = 0.35f; // fallback, если конфига нет
 
@@ -77,9 +87,14 @@ public class AudioManager : MonoBehaviour
     private void LoadConfig()
     {
         config = Resources.Load<AudioConfig>("AudioConfig");
-        if (config == null) return;
+        if (config != null) _masterVolume = config.masterVolume;
 
-        _masterVolume = config.masterVolume;
+        // Пользовательские каналы: персистентное значение, иначе дефолт конфига.
+        // config (вместе с SoundEntry.volume и masterVolume) — ТОЛЬКО чтение, слайдеры его не пишут.
+        _sfxVolume = PlatformServices.Save.GetFloat(SfxVolumeKey, config != null ? config.sfxVolume : 1f);
+        _musicVolume = PlatformServices.Save.GetFloat(MusicVolumeKey, config != null ? config.musicVolume : 1f);
+        _sfxVolume = Mathf.Clamp01(_sfxVolume);
+        _musicVolume = Mathf.Clamp01(_musicVolume);
     }
 
     /// <summary>Клип из конфига, если назначен (громкость тоже из конфига), иначе синтез с дефолтной громкостью.</summary>
@@ -101,10 +116,40 @@ public class AudioManager : MonoBehaviour
 
     private void Play(AudioClip clip, float volume)
     {
+        if (clip == null || _muted) return;
         var src = NextSource();
         src.clip = clip;
-        src.volume = _masterVolume * volume;
+        // Эффективная громкость = masterVolume (конфиг) × канал игрока × volume звука (конфиг)
+        src.volume = _masterVolume * _sfxVolume * volume;
         src.Play();
+    }
+
+    // ——— Пользовательские каналы (экран настроек) ———
+
+    public float SfxVolume => _sfxVolume;
+    public float MusicVolume => _musicVolume;
+
+    /// <summary>Слайдер «ЗВУКИ ИГРЫ». Пишет ТОЛЬКО рантайм-канал + PlayerPrefs; конфиг не трогает.</summary>
+    public void SetSfxVolume(float v)
+    {
+        _sfxVolume = Mathf.Clamp01(v);
+        PlatformServices.Save.SetFloat(SfxVolumeKey, _sfxVolume);
+        PlatformServices.Save.Flush();
+    }
+
+    /// <summary>Слайдер «МУЗЫКА». Трека в игре нет (§вне скоупа) — значение хранится и переживает перезапуск.</summary>
+    public void SetMusicVolume(float v)
+    {
+        _musicVolume = Mathf.Clamp01(v);
+        PlatformServices.Save.SetFloat(MusicVolumeKey, _musicVolume);
+        PlatformServices.Save.Flush();
+    }
+
+    /// <summary>Вернуть каналы к дефолтам конфига (без записи в сам конфиг).</summary>
+    public void ResetVolumesToConfig()
+    {
+        SetSfxVolume(config != null ? config.sfxVolume : 1f);
+        SetMusicVolume(config != null ? config.musicVolume : 1f);
     }
 
     public void PlayShot() => Play(_shot, _volShot);

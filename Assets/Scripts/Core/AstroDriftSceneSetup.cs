@@ -28,7 +28,13 @@ public static class AstroDriftSceneSetup
     /// <summary>Префабы оверлея перк-левелапа (AstroDrift → Build LevelUp Prefabs).</summary>
     private const string LevelUpPrefabFolder = "Assets/Prefabs/LevelUp";
 
-    [MenuItem("AstroDrift/Setup Scene UI")]
+    /// <summary>Префаб экрана смерти (AstroDrift → Build Death Prefab, GDD_DeathScreen_v3 §2).</summary>
+    private const string DeathPrefabFolder = "Assets/Prefabs/Death";
+
+    // ОТКЛЮЧЕНО (инцидент 2026-09-22): перестраивает иерархию Canvas по кодовому шаблону и в конце
+    // вызывает EditorSceneManager.SaveScene — молча затирает ручную раскладку меню владельца.
+    // Метод оставлен для вызова из кода (карта локализационных ключей §8.2 ссылается на него).
+    // [MenuItem("AstroDrift/Setup Scene UI")]
     public static void SetupSceneUI()
     {
         var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
@@ -290,6 +296,79 @@ public static class AstroDriftSceneSetup
             var cap = NewText(shieldGo.transform, "ShieldCaption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -36), 20, secondaryCol, TextAlignmentOptions.Center);
             cap.rectTransform.sizeDelta = new Vector2(560, 30);
         }
+        // §8 (GDD_DeathScreen_v3): «+N XP» главного экрана — над LevelCard (0, 372), не в таблице смерти.
+        // Нода живёт в СЦЕНЕ (find-or-create), а не в StartPanel.prefab: префаб меню не трогаем,
+        // а повторный прогон сетапа восстановит ноду после пересборки меню.
+        var xpGainGo = FindInHierarchy(startGo.transform, "StartXpGain");
+        if (xpGainGo == null)
+        {
+            var xpGainT = NewText(startGo.transform, "StartXpGain", "+0 XP", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 372), 34, Palette.XpBar, TextAlignmentOptions.Center);
+            xpGainT.rectTransform.sizeDelta = new Vector2(400, 50);
+            xpGainT.raycastTarget = false; // тап обязан доходить до Btn_TapToPlay
+            AddLocalize(xpGainT, "xp_gain");
+            AddRole(xpGainT, TypographyStyles.Secondary);
+            xpGainGo = xpGainT.gameObject;
+        }
+        // Стартовое состояние §8: скрытое — неактивно (GameUI показывает его тиком анимации §8.3).
+        EnsureCanvasGroup(xpGainGo, visible: false);
+
+        // ——— SettingsPanel (экран настроек): инстанс SettingsPanel.prefab внутри StartPanel ———
+        // Внутри StartPanel, а не в корне Canvas: логотип и меню остаются видны ПОД экраном
+        // (затемнение — Image цвета UiOverlay), логотип никуда не переезжает.
+        // Последний sibling → выше «Menu Buttons» в порядке raycast (кнопки меню недоступны,
+        // пока экран открыт) и выше Btn_TapToPlay.
+        var settingsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/SettingsPanel.prefab");
+        GameObject settingsGo = FindInHierarchy(startGo.transform, "SettingsPanel");
+        if (settingsPrefab == null)
+        {
+            Debug.LogError("AstroDrift SceneSetup: не найден " + MenuPrefabFolder + "/SettingsPanel.prefab — экран настроек не собран (AstroDrift → Build Settings Prefab).");
+            log.Append("SettingsPanel.prefab MISSING; ");
+        }
+        else if (settingsGo == null || PrefabUtility.GetPrefabInstanceHandle(settingsGo) == null)
+        {
+            if (settingsGo != null) Object.DestroyImmediate(settingsGo); // распакованная/старая — заменяем инстансом
+            settingsGo = (GameObject)PrefabUtility.InstantiatePrefab(settingsPrefab, startGo.transform);
+            settingsGo.name = "SettingsPanel";
+            log.Append("SettingsPanel: инстанс префаба создан; ");
+        }
+        else log.Append("SettingsPanel: инстанс уже есть; ");
+
+        SettingsScreen settingsScreen = null;
+        if (settingsGo != null)
+        {
+            var srt = settingsGo.GetComponent<RectTransform>();
+            srt.anchorMin = srt.anchorMax = srt.pivot = new Vector2(0.5f, 0.5f);
+            srt.anchoredPosition = Vector2.zero;
+            srt.sizeDelta = new Vector2(1080f, 1920f);
+            settingsGo.transform.SetAsLastSibling(); // topmost среди детей StartPanel
+            settingsScreen = settingsGo.GetComponent<SettingsScreen>();
+            if (settingsScreen == null) settingsScreen = settingsGo.AddComponent<SettingsScreen>();
+            // menuRoot — сценовая ссылка (в префабе её быть не может)
+            var settingsSo = new SerializedObject(settingsScreen);
+            var menuRootProp = settingsSo.FindProperty("menuRoot");
+            if (menuRootProp != null) menuRootProp.objectReferenceValue = startGo;
+            settingsSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(settingsScreen);
+            // §8: сохранённый экран настроек неактивен (GameUI/SettingsScreen покажут его каскадом)
+            EnsureCanvasGroup(settingsGo, visible: false);
+        }
+
+        // Кнопка «НАСТРОЙКИ» должна знать, ЧТО открывать: typed action + ссылка на экран.
+        var settingsBtnUi = (FindInHierarchy(rowParent, "MenuButton_Settings")
+                             ?? FindInHierarchy(rowParent, "Btn_MenuSettings"))?.GetComponent<MenuButtonUI>();
+        if (settingsBtnUi != null && settingsScreen != null)
+        {
+            var mbSo = new SerializedObject(settingsBtnUi);
+            var actProp = mbSo.FindProperty("action");
+            if (actProp != null) actProp.enumValueIndex = 1; // MenuAction.OpenSettings
+            var tgtProp = mbSo.FindProperty("targetScreen");
+            if (tgtProp != null) tgtProp.objectReferenceValue = settingsScreen;
+            mbSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(settingsBtnUi);
+        }
+        else if (settingsBtnUi == null)
+            Debug.LogWarning("AstroDrift SceneSetup: не найдена кнопка «НАСТРОЙКИ» (MenuButton_Settings) — экран настроек не откроется.");
+
         var shieldRt = shieldGo.GetComponent<RectTransform>();
         shieldRt.anchoredPosition = new Vector2(0f, -34f); // ниже ряда кнопок (низ меню)
         var shieldBtn = shieldGo.GetComponent<Button>();
@@ -308,81 +387,59 @@ public static class AstroDriftSceneSetup
             g.GetComponent<CanvasGroup>().alpha = 0f;
         }
 
-        // ——— DeathPanel (§3: кнопка = текст; NEW BEST — единственное золото) ———
+        // ——— DeathPanel (GDD_DeathScreen_v3 §2): связанный инстанс префаба ———
+        // Дом-паттерн StartPanel выше: содержимое правится в Assets/Prefabs/Death/DeathPanel.prefab
+        // (AstroDrift → Build Death Prefab). Утилита НЕ собирает узлы руками — иначе повторный
+        // прогон воскрешал бы удалённые §3 ноды (DeathNewBest/DeathXp/DeathLevel/DeathUnlocked/
+        // SepLine/ContinueTimerLine) и сносил префаб-инстанс.
+        var deathPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DeathPrefabFolder + "/DeathPanel.prefab");
         var deathGo = FindSceneObject("DeathPanel");
-        if (deathGo == null) deathGo = NewPanel(canvas.transform, "DeathPanel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1920));
-        ClearChildren(deathGo.transform);
-        deathGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // прозрачный фон — плашку убрали
+        if (deathPrefab == null)
+        {
+            Debug.LogError("AstroDrift SceneSetup: не найден " + DeathPrefabFolder + "/DeathPanel.prefab — Death-экран не собран (AstroDrift → Build Death Prefab).");
+            log.Append("DeathPanel.prefab MISSING; ");
+        }
+        else if (deathGo == null || PrefabUtility.GetPrefabInstanceHandle(deathGo) == null)
+        {
+            if (deathGo != null) Object.DestroyImmediate(deathGo); // распакованная/старая панель — заменяем инстансом
+            deathGo = (GameObject)PrefabUtility.InstantiatePrefab(deathPrefab, canvas.transform);
+            deathGo.name = "DeathPanel";
+            log.Append("DeathPanel: инстанс префаба создан; ");
+        }
+        else
+        {
+            log.Append("DeathPanel: инстанс уже есть; ");
+        }
+        if (deathGo == null)
+        {
+            deathGo = new GameObject("DeathPanel");
+            deathGo.transform.SetParent(canvas.transform, false);
+            var drtFallback = deathGo.AddComponent<RectTransform>();
+            drtFallback.anchorMin = drtFallback.anchorMax = drtFallback.pivot = new Vector2(0.5f, 0.5f);
+            drtFallback.sizeDelta = new Vector2(1080, 1920);
+        }
+        // Раскладку и содержимое держит префаб; сцена только ставит панель по центру 1080×1920.
+        var deathRt = deathGo.GetComponent<RectTransform>();
+        deathRt.anchorMin = deathRt.anchorMax = deathRt.pivot = new Vector2(0.5f, 0.5f);
+        deathRt.anchoredPosition = Vector2.zero;
+        deathRt.sizeDelta = new Vector2(1080, 1920);
 
-        // ux5-6 [ЧИТАЕМОСТЬ]: чёрная полупрозрачная подложка ЗА содержимым Death-панели.
-        // Первый ребёнок → нижний слой рисования (под всем контентом панели, поверх мира).
-        // Фейдится вместе с панелью через CanvasGroup родителя — отдельной анимации не нужно.
-        // raycastTarget=false: подложка не ловит тапы (урок ux4-3 со стартовым экраном);
-        // тапы на Death-экране обрабатывают только Btn_Continue/Btn_Home.
-        // Запас ±300 px за края панели — как у Btn_TapToPlay (нестандартные аспекты).
-        var deathScrimGo = NewPanel(deathGo.transform, "DeathScrim", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1680, 2520));
-        var deathScrimImg = deathScrimGo.GetComponent<Image>();
-        // ux5-6 r2: 0.55 → 0.7. Bloom «пробивал» alpha-подложку: яркие HDR-объекты
-        // (красная ракета, вспышка взрыва, белые осколки) после пост-процесса дают
-        // итоговую яркость выше исходной, и при 0.55 остаток ~0.45×(1+bloom) был
-        // читаем прямо под текстом «ЗА ПРОСМОТР РЕКЛАМЫ». 0.7 глушит вспышку,
-        // но мир/звёзды по краям всё ещё слегка видны (не «чёрный лист»).
-        // Один scrim на весь экран → нет «двух чернот» разной силы.
-        deathScrimImg.color = new Color(0f, 0f, 0f, 0.7f);
-        deathScrimImg.raycastTarget = false;
-
-        // §8.2: динамика через Arguments (ставит GameUI.PlayDeathIn), теги ролей 1:1.
-        var deathScoreT = NewText(deathGo.transform, "DeathScore", "SCORE 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 300), 88, scoreTextCol, TextAlignmentOptions.Center);
-        AddLocalize(deathScoreT, "score");
-        AddRole(deathScoreT, TypeRole.DeathScore);
-        var deathBestT = NewText(deathGo.transform, "DeathBest", "BEST 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 180), 34, secondaryCol, TextAlignmentOptions.Center);
-        AddLocalize(deathBestT, "best");
-        AddRole(deathBestT, TypeRole.Secondary);
-        var newBestT = NewText(deathGo.transform, "DeathNewBest", "NEW BEST!", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 110), 34, Palette.Gold, TextAlignmentOptions.Center);
-        newBestT.gameObject.SetActive(false);
-        AddLocalize(newBestT, "new_best");
-        AddRole(newBestT, TypeRole.Secondary);
-
-        // Death v2 (GDD_DeathScreen_Continue §4): предложение ПРОДОЛЖИТЬ (текст + подпись +
-        // линия-таймер + невидимая тап-зона ≥720×160) ВЫШЕ «Домой»; RETRY удалён.
-        var continueT = NewText(deathGo.transform, "ContinueText", "ПРОДОЛЖИТЬ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -60), 40, scoreTextCol, TextAlignmentOptions.Center);
-        continueT.rectTransform.sizeDelta = new Vector2(600, 60);
-        AddLocalize(continueT, "continue_cta");
-        var continueCapT = NewText(deathGo.transform, "ContinueCaption", "ЗА ПРОСМОТР РЕКЛАМЫ", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -120), 24, secondaryCol, TextAlignmentOptions.Center);
-        continueCapT.rectTransform.sizeDelta = new Vector2(600, 40);
-        AddLocalize(continueCapT, "continue_caption");
-        // ux5-6 [ВИДИМОСТЬ]: линия-таймер утолщена 2→4 px (плохо читалась на фоне);
-        // ширина 600 не трогается, OfferTimerRoutine меняет только sizeDelta.x,
-        // _offerLineRestWidth хранит ширину — высота на фикс восстановления не влияет.
-        var timerLineGo = NewPanel(deathGo.transform, "ContinueTimerLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -155), new Vector2(600, 4));
-        timerLineGo.GetComponent<Image>().color = scoreTextCol;
-
-        // Невидимая тап-зона ≥ 720×160 (правило §3 арт-дирекшна) вокруг предложения
-        var continueGo = NewPanel(deathGo.transform, "Btn_Continue", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -110), new Vector2(760, 190));
-        continueGo.GetComponent<Image>().color = new Color(0, 0, 0, 0);
-        var continueBtn = continueGo.AddComponent<Button>();
-        continueBtn.targetGraphic = continueGo.GetComponent<Image>();
-
-        var homeBtn = NewTextButton(deathGo.transform, "Btn_Home", "ДОМОЙ", new Vector2(0, -280), 420, "home");
-        // Разделитель между предложением и «Домой» — тонкая линия UiLine (§3)
-        var sepGo = NewPanel(deathGo.transform, "SepLine", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -220), new Vector2(420, 2));
-        sepGo.GetComponent<Image>().color = Palette.UiLine;
-
-        // ——— UI v3: Death-экран мета-блок (GDD §7): +XP / Level / бар / Разблокировано ———
-        // роли не было → без тегов (§8.4); DeathLevel — двухсостоятельный
-        // (level_up_line ↔ level_line, рантайм-смена entry в GameUI.FillDeathMeta)
-        var deathXpT = NewText(deathGo.transform, "DeathXp", "+0 XP", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 120), 34, Palette.XpBar, TextAlignmentOptions.Center);
-        AddLocalize(deathXpT, "xp_gain");
-        var deathLevelT = NewText(deathGo.transform, "DeathLevel", "LEVEL 0", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 430), 30, scoreTextCol, TextAlignmentOptions.Center);
-        AddLocalize(deathLevelT, "level_line");
-        var deathXpBg = NewPanel(deathGo.transform, "DeathXpBarBg", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 80), new Vector2(360, 10));
-        deathXpBg.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
-        var deathXpFillImg = MakeFill(deathXpBg.transform, "DeathXpBarFill", Palette.XpBar);
-        var deathUnlockT = NewText(deathGo.transform, "DeathUnlocked", "РАЗБЛОКИРОВАНО", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 470), 26, Palette.XpBar, TextAlignmentOptions.Center);
-        deathUnlockT.rectTransform.sizeDelta = new Vector2(900, 70);
-        deathUnlockT.gameObject.SetActive(false);
-        deathXpT.gameObject.SetActive(false);
-        deathLevelT.gameObject.SetActive(false);
+        // Ссылки GameUI — из инстанса по именам нод префаба (§2). Динамика (числа рекорда/
+        // счёта) подаётся Arguments'ами из GameUI.PlayDeathIn; подписи — статичные LSE префаба.
+        var deathSkullRt = FindInHierarchy(deathGo.transform, "DeathSkull")?.GetComponent<RectTransform>();
+        var deathTitleRt = FindInHierarchy(deathGo.transform, "DeathTitle")?.GetComponent<RectTransform>();
+        var deathSubtitleRt = FindInHierarchy(deathGo.transform, "DeathSubtitle")?.GetComponent<RectTransform>();
+        var deathScorePanelRt = FindInHierarchy(deathGo.transform, "DeathScorePanel")?.GetComponent<RectTransform>();
+        var deathScoreT = FindInHierarchy(deathGo.transform, "DeathScore")?.GetComponent<TextMeshProUGUI>();
+        var deathBestT = FindInHierarchy(deathGo.transform, "DeathBest")?.GetComponent<TextMeshProUGUI>();
+        var continueBtn = FindInHierarchy(deathGo.transform, "Btn_Continue")?.GetComponent<Button>();
+        var continueT = FindInHierarchy(deathGo.transform, "ContinueText")?.GetComponent<TextMeshProUGUI>();
+        var continueCapT = FindInHierarchy(deathGo.transform, "ContinueCaption")?.GetComponent<TextMeshProUGUI>();
+        var timerFillRt = FindInHierarchy(deathGo.transform, "ContinueTimerFill")?.GetComponent<RectTransform>();
+        var homeBtn = FindInHierarchy(deathGo.transform, "Btn_Home")?.GetComponent<Button>();
+        if (deathSkullRt == null || deathTitleRt == null || deathSubtitleRt == null || deathScorePanelRt == null
+            || deathScoreT == null || deathBestT == null || continueBtn == null || homeBtn == null || timerFillRt == null)
+            Debug.LogError("AstroDrift SceneSetup: в DeathPanel.prefab не хватает нод/компонентов (§2) — часть ссылок GameUI останется пустой. Пересоберите префаб: AstroDrift → Build Death Prefab.");
 
         // ——— PausePanel (§4.4: оверлей + текстовый список, каскад) ———
         var pauseGo = FindSceneObject("PausePanel");
@@ -460,17 +517,21 @@ public static class AstroDriftSceneSetup
         SetRef(so, "startBestValue", bestValueT, log);
         SetRef(so, "menuButtonsRow", menuRowRt, log);
         SetRef(so, "menuUpgradeBtn", menuUpgradeBtn, log);
+        SetRef(so, "settingsPanel", settingsScreen, log);
         SetRef(so, "ctaText", ctaT, log);
         SetRef(so, "tapToPlayBtn", tapBtn, log);
         SetRef(so, "scoreText", scoreT, log);
         SetRef(so, "comboChip", comboChipT, log);
         SetRef(so, "deathScore", deathScoreT, log);
         SetRef(so, "deathBest", deathBestT, log);
-        SetRef(so, "deathNewBest", newBestT, log);
         SetRef(so, "continueBtn", continueBtn, log);
         SetRef(so, "continueText", continueT, log);
         SetRef(so, "continueCaption", continueCapT, log);
-        SetRef(so, "continueTimerLine", timerLineGo.GetComponent<RectTransform>(), log);
+        SetRef(so, "continueTimerFill", timerFillRt, log);
+        SetRef(so, "deathSkull", deathSkullRt, log);
+        SetRef(so, "deathTitle", deathTitleRt, log);
+        SetRef(so, "deathSubtitle", deathSubtitleRt, log);
+        SetRef(so, "deathScorePanel", deathScorePanelRt, log);
         SetRef(so, "homeBtn", homeBtn, log);
         SetRef(so, "pauseToggleBtn", pauseBtnGo.GetComponent<Button>(), log);
         SetRef(so, "resumeBtn", resumeBtn, log);
@@ -481,11 +542,8 @@ public static class AstroDriftSceneSetup
         SetRef(so, "startShieldBtn", shieldBtn, log);
         SetRef(so, "startShieldText", shieldText, log);
         SetRef(so, "startShieldCaption", shieldCap, log);
-        SetRef(so, "deathXp", deathXpT, log);
-        SetRef(so, "deathLevel", deathLevelT, log);
-        SetRef(so, "deathXpBarFill", deathXpFillImg, log);
         SetRef(so, "perkProgressBarFill", perkFillImg, log);
-        SetRef(so, "deathUnlocked", deathUnlockT, log);
+        SetRef(so, "startXpGain", FindInHierarchy(startGo.transform, "StartXpGain")?.GetComponent<TextMeshProUGUI>(), log);
         so.ApplyModifiedPropertiesWithoutUndo();
 
         // Начальные состояния (§8): скрытые панели в сохранённой сцене — НЕАКТИВНЫ.
@@ -606,12 +664,12 @@ public static class AstroDriftSceneSetup
         lse.OnUpdateString.SetPersistentListenerState(0, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
     }
 
-    /// <summary>Тег шрифтовой роли. Имя поля 'role' зафиксировано ТЗ §3.5.</summary>
-    private static void AddRole(TextMeshProUGUI tmp, TypeRole role)
+    /// <summary>Тег шрифтового стиля. Пустой id = тег бездействует (шрифт ноды сохраняется).</summary>
+    private static void AddRole(TextMeshProUGUI tmp, string styleId)
     {
         var tag = tmp.gameObject.AddComponent<TypeRoleTag>();
         var so = new SerializedObject(tag);
-        so.FindProperty("role").enumValueIndex = (int)role;
+        so.FindProperty("styleId").stringValue = styleId;
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 

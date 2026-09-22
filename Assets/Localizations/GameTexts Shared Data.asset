@@ -31,14 +31,6 @@ MonoBehaviour:
     m_Key: best
     m_Metadata:
       m_Items: []
-  - m_Id: 1728500981760
-    m_Key: score
-    m_Metadata:
-      m_Items: []
-  - m_Id: 1728500981761
-    m_Key: new_best
-    m_Metadata:
-      m_Items: []
   - m_Id: 1728500981762
     m_Key: continue_cta
     m_Metadata:
@@ -101,14 +93,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 1543249381548039
     m_Key: level_up_line
-    m_Metadata:
-      m_Items: []
-  - m_Id: 1543249394130944
-    m_Key: level_line
-    m_Metadata:
-      m_Items: []
-  - m_Id: 1543249394130945
-    m_Key: unlocked_title
     m_Metadata:
       m_Items: []
   - m_Id: 1543249394130946
@@ -317,6 +301,46 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 4669794912559104
     m_Key: levelup_new
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6255296665083904
+    m_Key: death_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6255296727998464
+    m_Key: death_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6255296727998465
+    m_Key: score_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6255296727998466
+    m_Key: home_to_menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927878651904
+    m_Key: settings_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955072
+    m_Key: settings_sfx
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955073
+    m_Key: settings_music
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955074
+    m_Key: settings_reset_progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955075
+    m_Key: settings_reset_confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6324927949955076
+    m_Key: settings_back
     m_Metadata:
       m_Items: []
   m_Metadata:

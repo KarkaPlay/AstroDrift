@@ -2,21 +2,26 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Носитель шрифтовой роли ноды (ТЗ §3.5, B5). Роли носят ТОЛЬКО теги: таблиц
-/// «роль-по-имени» нет (хрупки при переименованиях), а нетегированные ноды не
-/// трогаются (opt-in, §8.4 — гарантия нулевого визуального диффа).
+/// Носитель ШТИЛЯ типографики ноды. Стиль выбирается из TypographyConfig по styleId
+/// (список — в кастомном инспекторе, рядом кнопка-ссылка на конфиг).
 ///
-/// Владелец тега — тот, кто создаёт ноду (§8.0): билдеры префабов и код сцены.
+/// Пустой styleId = тег ничего не делает (opt-in/opt-out): шрифт ноды из префаба
+/// сохраняется — это же гарантирует нулевой визуальный дифф для нетегированных нод.
+/// Неизвестный id = одно предупреждение в консоль и никаких изменений.
+///
 /// Смена локали идёт через LanguageService → TypeRoleApplier.ApplyAll();
 /// стартовое и рантайм-применение — self-apply в OnEnable.
 /// </summary>
 public class TypeRoleTag : MonoBehaviour
 {
-    // ВНИМАНИЕ: имя поля 'role' зафиксировано ТЗ §3.5 — билдеры задачи 5 пишут роль
-    // через SerializedObject.FindProperty("role"). Переименование сломает их молча.
-    public TypeRole role;
+    [Tooltip("Стиль из TypographyConfig. Пусто — тег ничего не делает (шрифт префаба сохраняется).")]
+    public string styleId;
 
-    public void Apply() => Typography.ApplyFontOnly(GetComponent<TextMeshProUGUI>(), role);
+    public void Apply()
+    {
+        if (string.IsNullOrEmpty(styleId)) return;
+        Typography.ApplyFontOnly(GetComponent<TextMeshProUGUI>(), styleId);
+    }
 
     // Self-apply (N2): карты перков создаются/уничтожаются в рантайме — одноразовый
     // свип при старте их не увидит. Шрифт не зависит от текста, поэтому порядок

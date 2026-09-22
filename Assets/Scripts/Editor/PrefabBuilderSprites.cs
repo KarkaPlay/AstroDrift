@@ -53,6 +53,16 @@ public class PrefabBuilderSprites : ScriptableObject
 
     [Tooltip("Фон кнопки реролла: Sheet.png → Sheet_4 «Update Perks» (576×206)")]
     public Sprite rerollBg;
+
+    [Header("Настройки — Build Settings Prefab (необязательные: пусто → берётся settingsIcon)")]
+    [Tooltip("Иконка строки «ЗВУКИ ИГРЫ». Пусто — используется settingsIcon (билдер НЕ падает)")]
+    public Sprite sfxIcon;
+
+    [Tooltip("Иконка строки «МУЗЫКА». Пусто — используется settingsIcon (билдер НЕ падает)")]
+    public Sprite musicIcon;
+
+    [Tooltip("Иконка на красной кнопке сброса прогресса. Пусто — используется settingsIcon")]
+    public Sprite resetIcon;
 }
 
 /// <summary>

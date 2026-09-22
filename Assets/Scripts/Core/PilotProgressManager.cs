@@ -100,6 +100,30 @@ public class PilotProgressManager : MonoBehaviour
     /// <summary>Сброс конвертации забега (новый забег — вызывается из GameManager.BeginRun).</summary>
     public void ResetRunGrant() => _grantedRunXp = 0;
 
+    /// <summary>
+    /// «Сбросить прогресс» (кнопка экрана настроек): обнуляет ТОЛЬКО пилотский XP.
+    /// У ISaveService нет удаления ключа — пишем 0 (миграционный гейт читает 0 как «новичок»).
+    /// Рекорд чистит ScoreManager.ResetProgress, сохранённые громкости не затрагиваются.
+    /// </summary>
+    public void ResetProgress()
+    {
+        Xp = 0;
+        PilotLevel = 0;
+        _grantedRunXp = 0;
+        LastRunXp = 0;
+        LevelBeforeLastRun = 0;
+        PlatformServices.Save.SetInt(XpKey, 0);
+        PlatformServices.Save.Flush();
+        ApplyResetToConsumers();
+    }
+
+    /// <summary>Вернуть зависимые системы к состоянию «уровень 0» (перки/пикапы читают отсюда).</summary>
+    private void ApplyResetToConsumers()
+    {
+        var perks = PerkManager.Instance;
+        if (perks != null) perks.ResetRun();
+    }
+
     /// <summary>Гейт доступности (GDD §15.4): PerkManager/PickupManager/UI читают отсюда.</summary>
     public bool IsUnlocked(string id)
     {
@@ -139,6 +163,19 @@ public class PilotProgressManager : MonoBehaviour
         long next = XpForLevel(PilotLevel + 1);
         if (next <= cur) return 1f;
         return Mathf.Clamp01((float)((Xp - cur) / (float)(next - cur)));
+    }
+
+    /// <summary>Прогресс бара на СОСТОЯНИЕ ДО последнего забега (GDD_DeathScreen_v3 §8a):
+    /// стартовая точка твина old → new. Уровень берётся из LevelBeforeLastRun, иначе при
+    /// level-up знаменатель был бы уже новым и бар стартовал бы не с того места.</summary>
+    public float ProgressToNextLevelBeforeLastRun()
+    {
+        long baseXp = System.Math.Max(0, Xp - LastRunXp);
+        int lvl = LevelBeforeLastRun > 0 ? LevelBeforeLastRun : LevelFromXp(baseXp);
+        long cur = XpForLevel(lvl);
+        long next = XpForLevel(lvl + 1);
+        if (next <= cur) return 1f;
+        return Mathf.Clamp01((float)((baseXp - cur) / (float)(next - cur)));
     }
 
     /// <summary>XP, недостающий до следующего уровня (UI).</summary>

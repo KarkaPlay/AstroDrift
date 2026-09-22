@@ -131,4 +131,26 @@ public static class UiAnim
         // Уход завершён → скрытое неактивно (§8). Внутри анимации деактивация запрещена.
         if (!comingIn && deactivateWhenHidden) SetVisible(cg, false);
     }
+
+    /// <summary>Пульс масштаба (GDD_DeathScreen_v3 §8b): 1 → peak → 1 за dur, пик на 40 %
+    /// времени, кривая возврата — EaseOutSoft. Unscaled, без внешних твинеров.</summary>
+    public static IEnumerator Pulse(RectTransform rt, float peak, float dur)
+    {
+        if (rt == null || dur <= 0f) yield break;
+        Vector3 baseScale = rt.localScale;
+        float t = 0f;
+        const float peakAt = 0.4f;
+        while (t < dur)
+        {
+            if (rt == null) yield break;
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / dur);
+            float s = k < peakAt
+                ? Mathf.Lerp(1f, peak, EaseOutSoft.Evaluate(k / peakAt))
+                : Mathf.Lerp(peak, 1f, EaseOutSoft.Evaluate((k - peakAt) / (1f - peakAt)));
+            rt.localScale = baseScale * s;
+            yield return null;
+        }
+        rt.localScale = baseScale;
+    }
 }

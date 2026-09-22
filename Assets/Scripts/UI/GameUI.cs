@@ -35,12 +35,14 @@ public class GameUI : MonoBehaviour
     [SerializeField] private Image logoImage;         // «Astro Drift» — картинка вместо текста (любая локаль)
 
     [Header("UI v3: мета-прогрессия (GDD §11, Волна 1)")]
-    [SerializeField] private TextMeshProUGUI pilotLevelText; // подпись карточки «Уровень пилота» (LevelCard.prefab)
+    [SerializeField] private TextMeshProUGUI pilotLevelText; // капшн карточки: pilot_level_label ↔ level_up_line (GDD_v3 §7)
     [SerializeField] private LevelCardUI levelCard;          // карточка уровня: число + бар 364×24 (UiProgressBar)
     [SerializeField] private RectTransform xpBarFill;        // заливка бара карточки (Filled, UiProgressBar)
+    [SerializeField] private TextMeshProUGUI startXpGain;    // «+N XP» над карточкой при возврате с XP (GDD_v3 §8)
     [SerializeField] private Image perkProgressBarFill;      // HUD: прогресс до следующего перка (GDD §15.3)
     [SerializeField] private RectTransform menuButtonsRow;   // ряд нижних кнопок меню (SlideFade выхода/входа)
     [SerializeField] private Button menuUpgradeBtn;          // «ПРОКАЧКА» в ряду меню — открывает дерево разблокировок
+    [SerializeField] private SettingsScreen settingsPanel;   // экран настроек (закрывается при смене Screen)
     [SerializeField] private Button startShieldBtn;          // «Стартовый щит за рекламу»
     [SerializeField] private TextMeshProUGUI startShieldText;
     [SerializeField] private TextMeshProUGUI startShieldCaption;
@@ -57,24 +59,21 @@ public class GameUI : MonoBehaviour
     private string _shieldCaptionKey; // текущее состояние двухсостоятельной подписи щита
     private static readonly List<GameUI> _instances = new List<GameUI>();
 
-    [Header("UI v3: Death-экран (GDD §7)")]
-    [SerializeField] private TextMeshProUGUI deathXp;        // «+Y XP»
-    [SerializeField] private TextMeshProUGUI deathLevel;     // «Level N → N+1» / «Level N»
-    [SerializeField] private Image deathXpBarFill;           // прогресс нового уровня
-    [SerializeField] private TextMeshProUGUI deathUnlocked;  // «Разблокировано: …» (только lvl-up, Wave1)
-
     [Header("Тексты")]
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI comboChip;
 
-    [Header("Death (§4.2, GDD_DeathScreen_Continue)")]
-    [SerializeField] private TextMeshProUGUI deathScore;
-    [SerializeField] private TextMeshProUGUI deathBest;
-    [SerializeField] private TextMeshProUGUI deathNewBest; // единственный золотой элемент (§7)
-    [SerializeField] private Button continueBtn;            // невидимая тап-зона ≥ 720×160
-    [SerializeField] private TextMeshProUGUI continueText;  // «ПРОДОЛЖИТЬ» (CTA 40 px)
-    [SerializeField] private TextMeshProUGUI continueCaption; // «ЗА ПРОСМОТР РЕКЛАМЫ» (24 px)
-    [SerializeField] private RectTransform continueTimerLine; // линия-таймер 2 px, убывает 5 с
+    [Header("Death (GDD_DeathScreen_v3 §2/§7)")]
+    [SerializeField] private TextMeshProUGUI deathScore;      // только ЧИСЛО результата (ключ best_value)
+    [SerializeField] private TextMeshProUGUI deathBest;       // только ЧИСЛО рекорда (ключ best_value)
+    [SerializeField] private Button continueBtn;              // корень спрайт-кнопки: CanvasGroup + дети (бар/подписи)
+    [SerializeField] private TextMeshProUGUI continueText;    // CTA 40 px (continue_cta)
+    [SerializeField] private TextMeshProUGUI continueCaption; // подпись 22 px (continue_caption)
+    [SerializeField] private RectTransform continueTimerFill; // заливка бара таймера оффера (UiProgressBar)
+    [SerializeField] private RectTransform deathSkull;        // каскад §3
+    [SerializeField] private RectTransform deathTitle;
+    [SerializeField] private RectTransform deathSubtitle;
+    [SerializeField] private RectTransform deathScorePanel;
     [SerializeField] private Button homeBtn;
 
     [Header("Кнопки")]
@@ -100,8 +99,9 @@ public class GameUI : MonoBehaviour
     private bool _offerPausedByFocus;      // приложение ушло в фон при OfferRunning (§9)
     private float _offerRemaining;         // остаток таймера для продолжения после фокуса
     private float _offerFullDuration;
-    private float _offerLineFullWidth;
-    private float _offerLineRestWidth;     // ux5: исходная ширина линии-таймера (сцена), восстанавливается при каждом показе
+    // §8: XP, полученный за последний забег (флаг для анимации возврата в меню). 0 = анимации нет.
+    private int _pendingXpGain;
+    private Coroutine _menuProgressAnim;   // единая корутина «бар + +XP + пульс уровня» (GDD_v3 §8)
     private bool _deathContinueAvailable;  // на этой смерти continue ещё доступен (1 за забег)
     private bool _continueUsedThisRun;     // флаг «continue уже был» для GameManager
     private bool _continueDeclinedLogged;  // ТЗ §2.5: continue_declined уже отправлен в этой смерти (антидубль exit_to_home)
@@ -120,8 +120,15 @@ public class GameUI : MonoBehaviour
         if (startPanel != null) _canvasRt = startPanel.transform.parent as RectTransform;
         ApplyAdaptiveStartLayout();
 
-        // Поведение кнопок (структура — в сцене, обработчики — здесь)
-        if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() => GameManager.Instance.BeginRun());
+        // Поведение кнопок (структура — в сцене, обработчики — здесь).
+        // Открытый экран настроек блокирует старт забега — и гардом здесь, и блокировкой
+        // raycast на самом StartPanel (SettingsScreen.BlockMenu): одного гарда мало,
+        // тап по пустому месту ловил бы невидимую зону Btn_TapToPlay.
+        if (tapToPlayBtn != null) tapToPlayBtn.onClick.AddListener(() =>
+        {
+            if (settingsPanel != null && settingsPanel.IsOpen) return;
+            GameManager.Instance.BeginRun();
+        });
 
         // Локализация статичных текстов — компоненты LocalizeStringEvent на нодах
         // (владельцы: билдеры префабов §8.1 и Setup Scene §8.2 — привязка идёт в момент
@@ -139,6 +146,10 @@ public class GameUI : MonoBehaviour
         if (continueBtn != null) continueBtn.onClick.AddListener(OnContinueTapped);
         if (homeBtn != null) homeBtn.onClick.AddListener(HomeWithInterstitial);
         if (startShieldBtn != null) startShieldBtn.onClick.AddListener(OnStartShieldTapped);
+        // §8: XP приходит событием на каждой смерти (GrantRunXp) — подписка живёт весь рантайм,
+        // флаг читает ShowStartCascade при возврате в меню.
+        if (PilotProgressManager.Instance != null)
+            PilotProgressManager.Instance.OnRunXpGranted += OnRunXpGranted;
         RefreshPilotBlock();
         if (pauseToggleBtn != null) pauseToggleBtn.onClick.AddListener(TogglePause);
         if (resumeBtn != null) resumeBtn.onClick.AddListener(TogglePause);
@@ -146,12 +157,6 @@ public class GameUI : MonoBehaviour
 
         _score.OnScoreChanged += OnScoreChanged;
         _score.OnComboReset += ShrinkCombo;
-
-        // ux5: запоминаем ширину линии-таймера из сцены ДО первого показа —
-        // после истечения таймера sizeDelta.x уезжает в ~0 и без этого
-        // не восстанавливается при повторной смерти (после Домой → новый забег).
-        if (continueTimerLine != null)
-            _offerLineRestWidth = continueTimerLine.sizeDelta.x;
 
         RefreshPilotBlock();
         ShowStartImmediate();
@@ -172,6 +177,14 @@ public class GameUI : MonoBehaviour
         if (startBestValue == null) Debug.LogError("GameUI: startBestValue не назначен — число рекорда не обновится (StartPanel/StartBestValue).", this);
         if (menuUpgradeBtn == null) Debug.LogError("GameUI: menuUpgradeBtn не назначен — кнопка «ПРОКАЧКА» не откроет дерево разблокировок (StartPanel/Menu Buttons/MenuButton_Upgrade).", this);
         if (comboChip == null) Debug.LogWarning("GameUI: comboChip не назначен — чип комбо не покажется.", this);
+        if (settingsPanel == null) Debug.LogWarning("GameUI: settingsPanel не назначен — «НАСТРОЙКИ» не откроют экран (StartPanel/SettingsPanel).", this);
+    }
+
+    /// <summary>Дашборд/старт забега при открытом экране настроек: экран обязан вернуться
+    /// в меню сам, иначе Screen уехал бы в Hud, а поверх висел бы экран настроек.</summary>
+    private void CloseSettingsIfOpen()
+    {
+        if (settingsPanel != null && settingsPanel.IsOpen) settingsPanel.Close();
     }
 
     // ——— Панель дерева разблокировок (плейтест Волны 1) ———
@@ -302,12 +315,18 @@ public class GameUI : MonoBehaviour
     {
         _instances.Remove(this);
         SubscribeTreeLocale(false);
+        if (PilotProgressManager.Instance != null)
+            PilotProgressManager.Instance.OnRunXpGranted -= OnRunXpGranted;
         if (_score != null)
         {
             _score.OnScoreChanged -= OnScoreChanged;
             _score.OnComboReset -= ShrinkCombo;
         }
     }
+
+    /// <summary>§8: запоминаем XP последнего забега — анимацию проиграет ShowStartCascade.
+    /// Ноль — валидное «гранта не было»: тогда ни бара, ни лейбла, ни пульса.</summary>
+    private void OnRunXpGranted(int delta) => _pendingXpGain = delta;
 
     private void OnScoreChanged(int s, int m) { RefreshHud(); PulseScore(); }
 
@@ -414,16 +433,16 @@ public class GameUI : MonoBehaviour
         panelCg.blocksRaycasts = true;
         panelCg.interactable = true;
 
+        SetVisible(deathSkull, true);
+        SetVisible(deathTitle, true);
+        SetVisible(deathSubtitle, true);
+        SetVisible(deathScorePanel, true);
         SetVisible(deathScore, true);
         SetVisible(deathBest, true);
-        if (deathNewBest.gameObject.activeSelf) SetVisible(deathNewBest, true);
+        // §5: Continue-блок скрыт ЦЕЛИКОМ (одним fade гасился — оживляем корень), бар сброшен в 1.
         SetVisible(continueBtn, false);
-        SetVisible(continueText, false);
-        SetVisible(continueCaption, false);
-        if (continueTimerLine != null) SetVisible(continueTimerLine, false);
+        UiProgressBar.Set(continueTimerFill, 1f);
         SetVisible(homeBtn, true);
-        ResetRest(deathScore); ResetRest(deathBest);
-        if (deathNewBest.gameObject.activeSelf) ResetRest(deathNewBest);
         ResetRest(homeBtn);
     }
 
@@ -436,7 +455,7 @@ public class GameUI : MonoBehaviour
             ? GameManager.Instance.Config.continueOfferDuration : 5f;
         _offerFullDuration = dur;
         _offerRemaining = dur;
-        _offerLineFullWidth = continueTimerLine != null ? continueTimerLine.sizeDelta.x : 0f;
+        UiProgressBar.Set(continueTimerFill, 1f); // §5: таймер всегда стартует с полного бара
         _offerActive = true;
         _offerTimer = StartCoroutine(OfferTimerRoutine());
     }
@@ -448,33 +467,29 @@ public class GameUI : MonoBehaviour
 
     private IEnumerator OfferTimerRoutine()
     {
-        // Линия: sizeDelta.x от полной ширины до 0 линейно; unscaled (мир заморожен)
+        // §5: бар Continue убывает 1 → 0 линейно, unscaled (мир заморожен), пауза при потере фокуса.
         while (_offerRemaining > 0f)
         {
             if (!_offerPausedByFocus)
             {
                 _offerRemaining -= Time.unscaledDeltaTime;
-                if (continueTimerLine != null)
-                {
-                    float k = Mathf.Clamp01(_offerRemaining / _offerFullDuration);
-                    continueTimerLine.sizeDelta = new Vector2(_offerLineFullWidth * k, continueTimerLine.sizeDelta.y);
-                }
+                UiProgressBar.Set(continueTimerFill, _offerRemaining / _offerFullDuration);
             }
             yield return null;
         }
-        // OfferExpired: fade-out предложения/подписи/линии 0.25 s EaseInQuick
+        // OfferExpired (§5): interactable = false НЕМЕДЛЕННО, затем ОДИН fade CanvasGroup
+        // корня Btn_Continue — гаснет весь блок (подпись + бар), Btn_Home остаётся.
         _offerActive = false;
-        SetVisible(continueBtn, false);
+        if (continueBtn != null) continueBtn.interactable = false;
         Analytics.Log("continue_timer_expired", new Dictionary<string, object>
         {
             { "score", _score != null ? _score.Score : 0 },
         });
-        if (continueText != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueText), Cg(continueText).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
-        if (continueCaption != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueCaption), Cg(continueCaption).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
-        if (continueTimerLine != null)
-            _transitions.Add(StartCoroutine(UiAnim.Fade(Cg(continueTimerLine.gameObject), Cg(continueTimerLine.gameObject).alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
+        if (continueBtn != null)
+        {
+            var contCg = Cg(continueBtn);
+            _transitions.Add(StartCoroutine(UiAnim.Fade(contCg, contCg.alpha, 0f, 0.25f, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true)));
+        }
     }
 
     private void OnApplicationFocus(bool hasFocus)
@@ -608,52 +623,6 @@ public class GameUI : MonoBehaviour
         return v;
     }
 
-    /// <summary>
-    /// Death-экран: блок мета-прогрессии («+Y XP», «Level N → N+1», прогресс-бар,
-    /// «Разблокировано: …» — только при lvl-up и только Wave1-строки, GDD §7).
-    /// </summary>
-    private void FillDeathMeta()
-    {
-        var pilot = PilotProgressManager.Instance;
-        if (pilot == null || deathXp == null) return;
-
-        // Фикс плейтеста: в сцене DeathXp/DeathLevel создаются SetActive(false) и
-        // нигде не включались — «+Y XP» и уровень не были видны на Death-экране.
-        // §8: их возвращает тот же помощник, что и прячет (SetActive + alpha).
-        SetVisible(deathXp, true);
-        if (deathLevel != null) SetVisible(deathLevel, true);
-
-        // Холодный путь (§3.4): Arguments можно пересобирать.
-        SetLocalized(deathXp, "xp_gain", Format(pilot.LastRunXp));
-        if (pilot.PilotLevel > pilot.LevelBeforeLastRun)
-            SetLocalized(deathLevel, "level_up_line", Format(pilot.LevelBeforeLastRun), Format(pilot.PilotLevel));
-        else
-            SetLocalized(deathLevel, "level_line", Format(pilot.PilotLevel));
-        UiProgressBar.Set(Rt(deathXpBarFill), pilot.ProgressToNextLevel());
-
-        // «Разблокировано» — только при росте уровня и implementedInWave1 (GDD §7/§5bis.2)
-        bool leveled = pilot.PilotLevel > pilot.LevelBeforeLastRun;
-        if (leveled)
-        {
-            var unlocks = pilot.GetUnlocksForRange(pilot.LevelBeforeLastRun + 1, pilot.PilotLevel);
-            var names = new List<string>();
-            foreach (var u in unlocks)
-            {
-                if (!u.implementedInWave1) continue;
-                string n = L10n.Get("unlock_" + u.id);
-                names.Add(string.IsNullOrEmpty(n) ? u.id : n);
-            }
-            if (names.Count > 0)
-            {
-                string title = L10n.Get("unlocked_title");
-                deathUnlocked.text = (string.IsNullOrEmpty(title) ? "РАЗБЛОКИРОВАНО: " : title + " ") + string.Join(", ", names);
-                deathUnlocked.gameObject.SetActive(true);
-            }
-            else deathUnlocked.gameObject.SetActive(false);
-        }
-        else deathUnlocked.gameObject.SetActive(false);
-    }
-
     /// <summary>Мгновенный вход в стартовый экран (только при инициализации сцены).</summary>
     public void ShowStartImmediate()
     {
@@ -668,10 +637,13 @@ public class GameUI : MonoBehaviour
         // Элементы — в позиции покоя
         ResetRest(startBest);
         ResetRest(logoImage);
-        ResetRest(deathScore); ResetRest(deathBest);
         // Фикс плейтеста: XP/уровень пилота перечитываются при каждом показе меню
         // (после забега бар и текст показывали значения с момента Init).
         RefreshPilotBlock();
+        // §8.4: мгновенный показ меню анимацию НЕ переигрывает — флаг сбрасывается.
+        _pendingXpGain = 0;
+        if (_menuProgressAnim != null) { StopCoroutine(_menuProgressAnim); _menuProgressAnim = null; }
+        SetVisible(startXpGain, false); // нода «+N XP» не должна пережить прерванную анимацию
         _lastBestShown = -1; // §8: ноды меню могли быть неактивны — число рекорда пишем заново
         StartCtaPulse();
     }
@@ -797,6 +769,7 @@ public class GameUI : MonoBehaviour
     /// </summary>
     public void PlayStartToGame()
     {
+        CloseSettingsIfOpen(); // забег вперёд экрана настроек — экран уходит сам
         _screen = Screen.Hud;
         StopCtaPulse();
         StopTransitions();
@@ -873,66 +846,59 @@ public class GameUI : MonoBehaviour
         panelCg.blocksRaycasts = true;
         panelCg.interactable = true;
 
-        // deathNewBest — статичный компонентный текст (§8.2), здесь только видимость.
-        SetLocalized(deathScore, "score", Format(score));
-        SetLocalized(deathBest, "best", Format(best));
-        FillDeathMeta(); // UI v3: «+Y XP», уровень, прогресс-бар, «Разблокировано»
+        // §2/§7: DeathScore и DeathBest — только ЧИСЛА (ключ best_value), подписи — статичные LSE префаба.
+        // §10: при пустых Arguments TMP показал бы литерал {0} — поэтому Arguments ставим здесь же.
+        SetLocalized(deathScore, "best_value", Format(score));
+        SetLocalized(deathBest, "best_value", Format(best));
         if (newBest && AudioManager.Instance != null) AudioManager.Instance.PlayRecord();
 
-        // Реклама не готова → предложение скрыто целиком (§9: не disabled-серое),
+        // Реклама не готова → блок скрыт целиком (§5: не disabled-серое),
         // каскад без него, таймер не запускается. 1 continue за забег (§3).
         bool adReady = AdsFlow.Instance != null && AdsFlow.Instance.IsRewardedReady;
         bool offerVisible = adReady && !_continueUsedThisRun;
 
-        // §7: не более одного золотого элемента — NEW BEST золото → предложение белое;
-        // NEW BEST нет → золото получает предложение (Palette.UiAccent, §4 GDD)
+        // §1: «одно золото в кадре». NEW BEST нет → золото получает CTA Continue;
+        // есть → CTA белый (золотым становится число рекорда DeathBest).
         if (continueText != null)
             continueText.color = newBest ? Color.white : Palette.UiAccent;
+        if (deathBest != null)
+            deathBest.color = newBest ? Palette.Gold : Palette.ScoreText;
 
-        // Каскад входит сразу после: узлы-участники держим ЖИВЫМИ с alpha 0 (PrepareForShow),
-        // а не SetVisible — тот погасил бы их вместе с будущей анимацией.
-        PrepareForShow(deathScore);
-        PrepareForShow(deathBest);
-        if (newBest) PrepareForShow(deathNewBest); else SetVisible(deathNewBest, false);
+        // Каскад §3: бар ВСЕГДА стартует полным (страховка к StartOfferTimer).
+        UiProgressBar.Set(continueTimerFill, 1f);
+
+        // Узлы-участники держим ЖИВЫМИ с alpha 0 (PrepareForShow), а не SetVisible —
+        // тот погасил бы их вместе с будущей анимацией.
+        PrepareForShow(deathSkull);
+        PrepareForShow(deathTitle);
+        PrepareForShow(deathSubtitle);
+        PrepareForShow(deathScorePanel);
+        // Заголовок входит с задержкой 0.07 с, поэтому его узел (как и скулл) стартует заранее
+        // и остаётся живым до конца каскада.
+        deathSkull.gameObject.SetActive(true);
         if (offerVisible)
         {
+            // §2: гасится/показывается весь блок ОДНИМ CanvasGroup корня Btn_Continue
             PrepareForShow(continueBtn);
-            PrepareForShow(continueText);
-            PrepareForShow(continueCaption);
-            if (continueTimerLine != null) PrepareForShow(continueTimerLine);
+            if (continueBtn != null) continueBtn.interactable = true;
         }
         else
         {
             SetVisible(continueBtn, false);
-            SetVisible(continueText, false);
-            SetVisible(continueCaption, false);
-            if (continueTimerLine != null) SetVisible(continueTimerLine, false);
         }
         PrepareForShow(homeBtn);
 
-        // Каскад §5.1: Score 0 мс → Best/NEW BEST 70 мс → предложение (+подпись+линия) 140 мс → Домой 210 мс
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathScore), deathScore.rectTransform, SlideScore, true, 0.40f, 0f, UiAnim.EaseOutSoft)));
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathBest), deathBest.rectTransform, SlideBest, true, 0.35f, 0.07f, UiAnim.EaseOutSoft)));
-        if (newBest)
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathNewBest), deathNewBest.rectTransform, SlideBest, true, 0.35f, 0.07f, UiAnim.EaseOutSoft)));
+        // Каскад §3: Skull 0.00 → Title 0.07 → Subtitle 0.12 → ScorePanel 0.19 → Continue 0.26 → Home 0.33
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathSkull.gameObject), deathSkull, SlideTitle, true, 0.35f, 0.00f, UiAnim.EaseOutSoft)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathTitle.gameObject), deathTitle, SlideTitle, true, 0.35f, 0.07f, UiAnim.EaseOutSoft)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathSubtitle.gameObject), deathSubtitle, SlideBest, true, 0.35f, 0.12f, UiAnim.EaseOutSoft)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(deathScorePanel.gameObject), deathScorePanel, SlideScore, true, 0.40f, 0.19f, UiAnim.EaseOutSoft)));
         if (offerVisible)
         {
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(continueBtn), Rt(continueBtn), SlideButton, true, 0.30f, 0.14f, UiAnim.EaseOutSoft)));
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(continueText), continueText.rectTransform, SlideButton, true, 0.30f, 0.14f, UiAnim.EaseOutSoft)));
-            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(continueCaption), continueCaption.rectTransform, SlideButton, true, 0.30f, 0.14f, UiAnim.EaseOutSoft)));
-            // Линия-таймер входит одним слайдом с предложением (§5.1).
-            // ux5: после истечения таймера линия осталась с sizeDelta.x→0 и alpha=0 —
-            // восстанавливаем исходную ширину (альфу поднимет SlideFade входа).
-            if (continueTimerLine != null)
-            {
-                if (_offerLineRestWidth > 0f)
-                    continueTimerLine.sizeDelta = new Vector2(_offerLineRestWidth, continueTimerLine.sizeDelta.y);
-                _offerLineFullWidth = continueTimerLine.sizeDelta.x;
-                _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(continueTimerLine.gameObject), continueTimerLine, SlideButton, true, 0.30f, 0.14f, UiAnim.EaseOutSoft)));
-            }
+            _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(continueBtn), Rt(continueBtn), SlideButton, true, 0.30f, 0.26f, UiAnim.EaseOutSoft)));
             _transitions.Add(StartCoroutine(StartOfferAfterCascade()));
         }
-        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(homeBtn), Rt(homeBtn), SlideButton, true, 0.30f, 0.21f, UiAnim.EaseOutSoft)));
+        _transitions.Add(StartCoroutine(UiAnim.SlideFade(Cg(homeBtn), Rt(homeBtn), SlideButton, true, 0.30f, 0.33f, UiAnim.EaseOutSoft)));
 
         Analytics.Log("death_screen_shown", new Dictionary<string, object>
         {
@@ -943,10 +909,11 @@ public class GameUI : MonoBehaviour
         _deathContinueAvailable = offerVisible;
     }
 
-    /// <summary>Таймер стартует через 0.78 s после входа панели — после каскада (§10.2.3).</summary>
+    /// <summary>Таймер стартует через 0.56 s после входа панели — после каскада §3
+    /// (последний слайд: Home 0.33 + 0.30 длительность).</summary>
     private IEnumerator StartOfferAfterCascade()
     {
-        yield return new WaitForSecondsRealtime(0.78f);
+        yield return new WaitForSecondsRealtime(0.56f);
         StartOfferTimer();
     }
 
@@ -996,6 +963,7 @@ public class GameUI : MonoBehaviour
     /// §8: вход начинается с активации — HUD гасится целиком на Death/в меню.</summary>
     public void HudIn(float delay, float dur)
     {
+        CloseSettingsIfOpen(); // EnterMenu/новый забег: экран настроек не переживает смену состояния
         var cg = Cg(hudRoot);
         SetVisible(hudRoot, true); // SetActive(true): HUD мог быть погашен уходом
         cg.alpha = 0f;
@@ -1009,6 +977,7 @@ public class GameUI : MonoBehaviour
 
     public void PauseIn()
     {
+        CloseSettingsIfOpen();
         _screen = Screen.Pause;
         StopTransitions();
         // ux4-R2 (фикс №2): на Pause-экране кнопка паузы гасится (за оверлеем
@@ -1087,6 +1056,7 @@ public class GameUI : MonoBehaviour
     /// </summary>
     public void ShowStartCascade()
     {
+        CloseSettingsIfOpen();
         _screen = Screen.Start;
         StopTransitions();
         ApplyAdaptiveStartLayout(force: true); // rest-позиции под текущий кадр ДО старта каскада
@@ -1113,6 +1083,10 @@ public class GameUI : MonoBehaviour
         if (IsShieldVisible) SlideInEl(Rt(startShieldBtn), SlideButton, 0.35f, 0.36f);
         SlideInEl(Rt(ctaText), SlideCta, 0.35f, 0.36f);
         StartCtaPulse();
+
+        // §8: анимация мета-прогрессии — только если в забеге реально был грант XP.
+        if (_menuProgressAnim != null) { StopCoroutine(_menuProgressAnim); _menuProgressAnim = null; }
+        if (_pendingXpGain > 0) _menuProgressAnim = StartCoroutine(MenuProgressGainRoutine());
     }
 
     private IEnumerator FadeIn(GameObject go, float dur, float delay)
@@ -1125,6 +1099,82 @@ public class GameUI : MonoBehaviour
     private IEnumerator FadeOut(GameObject go, float dur, float delay)
     {
         yield return UiAnim.Fade(Cg(go), Cg(go).alpha, 0f, dur, UiAnim.EaseInQuick, delay, deactivateWhenHidden: true);
+    }
+
+    // ——— §8 (GDD_DeathScreen_v3): заглушечная мета-прогрессия на главном экране ———
+
+    // Карточка уровня приходит на 0.29 s за 0.35 s → бар стартует на 0.64 s (§8a.2).
+    private const float XpBarAnimStart = 0.64f;
+    private const float XpBarAnimDur = 0.80f;
+    private const float LevelCaptionHold = 1.6f;   // §8b.1: капшн level_up_line держится ~1.6 s
+    private const float LevelPulseDur = 0.45f;
+    private const float XpGainFadeIn = 0.15f;
+    private const float XpGainHold = 0.60f;
+    private const float XpGainFadeOut = 0.25f;
+
+    /// <summary>
+    /// §8: бар LevelCard принудительно встаёт на СТАРОЕ значение (RefreshPilotBlock уже показал
+    /// новое) и доезжает old → new за 0.80 s EaseOutSoft; одновременно «+N XP» (fade in 0.15,
+    /// hold 0.60, fade out 0.25 EaseInQuick, затем нода гасится). При level-up — после прохода
+    /// бара капшн level_up_line с диапазоном уровней и пульс числа. Флаг гасится в начале:
+    /// повторный показ меню анимацию не переигрывает.
+    /// </summary>
+    private IEnumerator MenuProgressGainRoutine()
+    {
+        var pilot = PilotProgressManager.Instance;
+        int gain = _pendingXpGain;
+        _pendingXpGain = 0;
+        if (pilot == null || gain <= 0) yield break;
+
+        bool leveled = pilot.PilotLevel > pilot.LevelBeforeLastRun;
+        RectTransform fill = levelCard != null ? levelCard.BarFill : Rt(xpBarFill);
+        float oldT = pilot.ProgressToNextLevelBeforeLastRun();
+        float newT = pilot.ProgressToNextLevel();
+        UiProgressBar.Set(fill, oldT);
+
+        var gainCg = Cg(startXpGain);
+        if (gainCg != null)
+        {
+            SetLocalized(startXpGain, "xp_gain", gain);
+            UiAnim.SetVisible(gainCg, true);
+            gainCg.alpha = 0f;
+            _transitions.Add(StartCoroutine(UiAnim.Fade(gainCg, 0f, 1f, XpGainFadeIn, UiAnim.EaseOutSoft, XpBarAnimStart)));
+            _transitions.Add(StartCoroutine(FadeXpGainOut()));
+        }
+
+        yield return new WaitForSecondsRealtime(XpBarAnimStart);
+        float t = 0f;
+        while (t < XpBarAnimDur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = UiAnim.EaseOutSoft.Evaluate(Mathf.Clamp01(t / XpBarAnimDur));
+            UiProgressBar.Set(fill, Mathf.Lerp(oldT, newT, k));
+            yield return null;
+        }
+        UiProgressBar.Set(fill, newT);
+
+        if (!leveled)
+        {
+            _menuProgressAnim = null;
+            yield break;
+        }
+
+        // §8b.3: капшн и пульс стартуют ПОСЛЕ заливки бара (0.64 + 0.80 = 1.44 s от начала),
+        // FIFO — после завершения твина. Отдельной константы нет: бар физически заканчивается
+        // позже 0.85 s из §8b.2, поэтому отсчёт ведём от конца бара.
+        SetLocalized(pilotLevelText, "level_up_line", pilot.LevelBeforeLastRun, pilot.PilotLevel);
+        if (levelCard != null) levelCard.PulseLevelNumber(LevelPulseDur);
+        yield return new WaitForSecondsRealtime(LevelCaptionHold);
+        SetLocalized(pilotLevelText, "pilot_level_label");
+        _menuProgressAnim = null;
+    }
+
+    /// <summary>§8a.3: «+N XP» — fade in уже запущен, здесь hold 0.60 s и уход 0.25 s с гашением ноды.</summary>
+    private IEnumerator FadeXpGainOut()
+    {
+        yield return new WaitForSecondsRealtime(XpBarAnimStart + XpGainFadeIn + XpGainHold);
+        var cg = Cg(startXpGain);
+        if (cg != null) yield return UiAnim.Fade(cg, 1f, 0f, XpGainFadeOut, UiAnim.EaseInQuick, 0f, deactivateWhenHidden: true);
     }
 
     // ——— Пульс CTA (§3): alpha текста 1→0.72→1, период 1.8 s, синхронно с линией ———

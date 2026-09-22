@@ -84,6 +84,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5089259485384180862, guid: 925f169c4dcf247b3b8cdf7dbfb1270c, type: 3}
+      propertyPath: action
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -163,4 +167,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5556b55fef774c2fb87adf351d6f704, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TypeRoleTag
-  role: 2
+  styleId: cta

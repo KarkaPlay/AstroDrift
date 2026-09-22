@@ -15,8 +15,13 @@ public static class AstroDriftLocalizationSetup
     private const string CollectionPath = "Assets/Localizations/GameTexts.asset";
 
     /// <summary>Ключи, чей текст в таблице ПРИНУДИТЕЛЬНО приводится к Entries при каждом
-    /// прогоне (переименование строк ТЗ). Остальные ключи правки владельца сохраняют.</summary>
-    private static readonly string[] ForceKeys = { "reroll_cta", "reroll_caption" };
+    /// прогоне (переименование строк ТЗ). Остальные ключи правки владельца сохраняют.
+    /// continue_cta/continue_caption — значения изменены редизайном смерти (GDD_DeathScreen_v3 §4).</summary>
+    private static readonly string[] ForceKeys = { "reroll_cta", "reroll_caption", "continue_cta", "continue_caption" };
+
+    /// <summary>Ключи, удалённые редизайном смерти (§4): потребителей не осталось.
+    /// Вычищаются из таблицы (Shared Data + обе локали) — иначе валидатор видит их сиротами.</summary>
+    private static readonly string[] RetiredKeys = { "score", "new_best", "level_line", "unlocked_title" };
 
     // (ключ, RU, EN)
     private static readonly (string key, string ru, string en)[] Entries =
@@ -32,7 +37,9 @@ public static class AstroDriftLocalizationSetup
 
         // Стартовый экран (GDD §11)
         // Рекорд меню разбит на две ноды: подпись (best_label) и число (best_value).
-        // Ключ best («РЕКОРД {0}» / «BEST {0}») НЕ трогаем — его биндит Death-экран.
+        // Ключ best («РЕКОРД {0}» / «BEST {0}») редизайном смерти потерял единственного
+        // потребителя (Death-экран теперь берёт два числа через best_value), но в список
+        // удаляемых §4 не входит — ключ остаётся как есть.
         ("best_label", "РЕКОРД", "BEST"),
         ("best_value", "{0}", "{0}"),
         ("pilot_level", "УРОВЕНЬ ПИЛОТА {0}", "PILOT LEVEL {0}"),
@@ -42,11 +49,17 @@ public static class AstroDriftLocalizationSetup
         ("shield_caption", "ЗА ПРОСМОТР РЕКЛАМЫ · 1/ДЕНЬ", "WATCH AD · 1/DAY"),
         ("shield_used_today", "УЖЕ ИСПОЛЬЗОВАНА СЕГОДНЯ", "ALREADY USED TODAY"),
 
-        // Death-экран (GDD §7)
+        // Death-экран (GDD_DeathScreen_v3 §2/§4)
+        ("death_title", "ВЫ ПОГИБЛИ", "YOU DIED"),
+        ("death_subtitle", "ВАШ ПУТЬ ЗАКОНЧЕН", "YOUR JOURNEY IS OVER"),
+        ("score_label", "ТЕКУЩИЙ РЕЗУЛЬТАТ", "RUN SCORE"),
+        ("home_to_menu", "В МЕНЮ", "MAIN MENU"),
+        // Значения изменены редизайном (§4): только экран смерти. Ключ home НЕ трогаем — он шарится с PausePanel.
+        ("continue_cta", "ПРОДОЛЖИТЬ ЗА РЕКЛАМУ", "CONTINUE FOR AD"),
+        ("continue_caption", "Вернитесь в игру и сохраните свой прогресс", "Return to the game and keep your progress"),
+        // Переезд на главный экран (§7): «+Y XP» над LevelCard, капшн уровня в LevelCard.
         ("xp_gain", "+{0} XP", "+{0} XP"),
         ("level_up_line", "УРОВЕНЬ {0} → {1}", "LEVEL {0} → {1}"),
-        ("level_line", "УРОВЕНЬ {0}", "LEVEL {0}"),
-        ("unlocked_title", "РАЗБЛОКИРОВАНО:", "UNLOCKED:"),
 
         // Названия перков (GDD §15.2)
         ("perk_bullet_speed_title", "СКОРОСТЬ ПУЛЬ+", "BULLET SPEED+"),
@@ -90,10 +103,20 @@ public static class AstroDriftLocalizationSetup
         ("unlock_tree_title", "РАЗБЛОКИРОВКИ ПИЛОТА", "PILOT UNLOCKS"),
         ("unlock_soon", "скоро", "soon"),
 
-        // v1.10: нижние кнопки меню (экраны вне скоупа — кнопки только нажимаются)
+        // v1.10: нижние кнопки меню. «НАСТРОЙКИ» открывает экран настроек,
+        // «ПРОКАЧКА» — дерево разблокировок; «МАГАЗИН» пока только логирует.
         ("menu_settings", "НАСТРОЙКИ", "SETTINGS"),
         ("menu_upgrade", "ПРОКАЧКА", "UPGRADE"),
         ("menu_shop", "МАГАЗИН", "SHOP"),
+
+        // Экран настроек (SettingsPanel.prefab)
+        ("settings_title", "НАСТРОЙКИ", "SETTINGS"),
+        ("settings_sfx", "ЗВУКИ ИГРЫ", "GAME SOUND"),
+        ("settings_music", "МУЗЫКА", "MUSIC"),
+        ("settings_reset_progress", "СБРОСИТЬ ПРОГРЕСС", "RESET PROGRESS"),
+        // Второй тап по красной кнопке (двухшаговое подтверждение в SettingsScreen)
+        ("settings_reset_confirm", "ТОЧНО СБРОСИТЬ?", "TAP AGAIN TO RESET"),
+        ("settings_back", "НАЗАД", "BACK"),
 
         // Нереализованные в Волне 1 награды дерева (§5bis.2) — для списка уровней 0–20
         ("unlock_Skin_Ship_Diamond", "Скин корабля «Ромб»", "Ship skin: Diamond"),
@@ -110,7 +133,10 @@ public static class AstroDriftLocalizationSetup
         ("unlock_Loadout", "Выбор лоадаута", "Loadout select"),
     };
 
-    [MenuItem("AstroDrift/Setup Localization")]
+    // ОТКЛЮЧЕНО (инцидент 2026-09-22): помимо добавления ключей делает AssetDatabase.SaveAssets(),
+    // удаляет строки ключей из RetiredKeys из ВСЕХ локалей и перезаписывает значения из ForceKeys —
+    // то есть может затереть ручные правки переводов. Все ключи уже засеяны (проверено).
+    // [MenuItem("AstroDrift/Setup Localization")]
     public static void Setup()
     {
         var collection = AssetDatabase.LoadAssetAtPath<StringTableCollection>(CollectionPath);
@@ -124,6 +150,17 @@ public static class AstroDriftLocalizationSetup
         // Признак «ключ уже есть» — GetId(key) в Shared Data. GetEntry(key) у per-locale
         // таблицы для этого не годится: ключ мог быть добавлен раньше без строки,
         // и тогда AddEntry(key, …) падал бы/дублировал ключ на каждом прогоне.
+        // §4: вычистка ключей, потерявших потребителей (id — из Shared Data, строки — из всех локалей).
+        int removedKeys = 0;
+        foreach (var key in RetiredKeys)
+        {
+            long id = shared.GetId(key);
+            if (id == 0) continue;
+            foreach (var st in collection.StringTables) st?.RemoveEntry(id);
+            shared.RemoveKey(key);
+            removedKeys++;
+        }
+
         int addedKeys = 0;
         foreach (var e in Entries)
         {
@@ -153,8 +190,8 @@ public static class AstroDriftLocalizationSetup
         }
         EditorUtility.SetDirty(shared);
         AssetDatabase.SaveAssets();
-        Debug.Log($"AstroDrift Localization: ключей добавлено {addedKeys}, строк добавлено/заполнено {addedValues} (RU+EN). " +
-                  "Повторный запуск должен показать 0/0.");
+        Debug.Log($"AstroDrift Localization: ключей добавлено {addedKeys}, строк добавлено/заполнено {addedValues} (RU+EN), " +
+                  $"устаревших ключей удалено {removedKeys}. Повторный запуск должен показать 0/0/0.");
     }
 
     /// <summary>
@@ -165,7 +202,8 @@ public static class AstroDriftLocalizationSetup
     /// id — минимальный из совпавших), удаляет дубли и осиротевшие строки.
     /// Идемпотентен — повторный прогон не меняет файлы.
     /// </summary>
-    [MenuItem("AstroDrift/Repair Localization (one-shot)")]
+    // ОТКЛЮЧЕНО (инцидент 2026-09-22): удаляет дубли и осиротевшие строки локализации.
+    // [MenuItem("AstroDrift/Repair Localization (one-shot)")]
     public static void Repair()
     {
         var collection = AssetDatabase.LoadAssetAtPath<StringTableCollection>(CollectionPath);

@@ -52,6 +52,20 @@ public sealed class YandexGamesSaveService : ISaveService
         _dirty = true;
     }
 
+    // AstroSaveEntry знает только int/string — float едет строкой в InvariantCulture
+    // (запятая как десятичный разделитель в некоторых локалях иначе ломала бы разбор).
+    public void SetFloat(string key, float value)
+        => SetString(key, value.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+
+    public float GetFloat(string key, float defaultValue = 0f)
+    {
+        string s = GetString(key, "");
+        return !string.IsNullOrEmpty(s)
+               && float.TryParse(s, System.Globalization.NumberStyles.Float,
+                   System.Globalization.CultureInfo.InvariantCulture, out float v)
+            ? v : defaultValue;
+    }
+
     public void Flush()
     {
         if (!_dirty) return;
