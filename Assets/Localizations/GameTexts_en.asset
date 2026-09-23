@@ -346,6 +346,26 @@ MonoBehaviour:
     m_Localized: BACK
     m_Metadata:
       m_Items: []
+  - m_Id: 6644724122247168
+    m_Localized: All game progress will be deleted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190208
+    m_Localized: ARE YOU SURE?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190209
+    m_Localized: Your data cannot be restored after deletion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190210
+    m_Localized: YES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190211
+    m_Localized: NO
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

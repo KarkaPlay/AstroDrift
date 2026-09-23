@@ -37,6 +37,7 @@ public class SettingsScreen : MonoBehaviour
     [SerializeField] private Button backBtn;
     [SerializeField] private Button resetBtn;
     [SerializeField] private TMPro.TextMeshProUGUI resetLabel; // нода с LSE ключа settings_reset_progress
+    [SerializeField] private ResetConfirmation resetConfirmation;
 
     [Header("Каскад")]
     [Tooltip("Иконка настроек — первый слой каскада (SlideFade).")]
@@ -71,23 +72,41 @@ public class SettingsScreen : MonoBehaviour
         public Vector2 rest;
     }
 
+    private sealed class TransitionLayer
+    {
+        public CanvasGroup group;
+        public RectTransform rect;
+        public Vector2 rest;
+        public int order;
+    }
+
+    private sealed class Tween
+    {
+        public TransitionLayer layer;
+        public bool panelLayer;
+        public Vector2 fromPosition;
+        public Vector2 toPosition;
+        public float fromAlpha;
+        public float toAlpha;
+        public float delay;
+        public float duration;
+        public AnimationCurve curve;
+    }
+
     private readonly List<MenuLayer> _menuLayers = new List<MenuLayer>();
-    private readonly List<Coroutine> _menuFades = new List<Coroutine>();
-    private Coroutine _menuAnim;
     private Transform _menuAnimRoot;
 
     private const string MenuSceneName = "Menu";
     private const string ResetKey = "settings_reset_progress";
-    private const string ResetConfirmKey = "settings_reset_confirm";
 
     private static readonly Vector2 SlideDown = new Vector2(0f, -60f);
     private const float Dur = 0.30f;
 
     private bool _open;
-    private bool _resetArmed;              // первый тап по red-кнопке сделан — ждём второй
-    private Coroutine _cascade;
-    private readonly List<Coroutine> _layers = new List<Coroutine>();
     private bool _localeSubscribed;
+    private Coroutine _transition;
+    private readonly List<TransitionLayer> _panelLayers = new List<TransitionLayer>();
+    private bool _panelLayersCaptured;
 
     public bool IsOpen => _open;
 
@@ -113,8 +132,8 @@ public class SettingsScreen : MonoBehaviour
         // Configure остаётся для сборочных утилит.
         if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
         if (menuRoot == null) menuRoot = FindMenuRoot();
-        // _menuAnimRoot — объект СЦЕНЫ (StartPanel): префаб не может держать такую ссылку,
-        // поэтому резолвим в рантайме. Список слоёв собирается на уходе (rest снимается в покое).
+        if (transform.parent != null && transform.parent.gameObject.name != "StartPanel")
+            menuRoot = FindMenuRoot();
         _menuAnimRoot = menuRoot != null ? menuRoot.transform : null;
     }
 
@@ -152,103 +171,256 @@ public class SettingsScreen : MonoBehaviour
 
     // ——— Открытие / закрытие ———
 
-    /// <summary>Открыть экран каскадом (§4: иконка → заголовок → бокс, шаг 70 мс).</summary>
     public void Show()
     {
         if (_open) return;
         _open = true;
-        _resetArmed = false;
         RefreshResetLabel();
 
         if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
-        StopCascade();
-        RestoreLayersIdle(); // слои могли остаться погашенными уходом (§8) — возвращаем в покой
-        UiAnim.SetVisible(canvasGroup, true); // оживление до анимаций (§8)
-        canvasGroup.alpha = 1f;
-        canvasGroup.blocksRaycasts = true;
-        canvasGroup.interactable = true;
-
+        CapturePanelLayers();
+        UiAnim.EnsureActive(canvasGroup);
         BlockMenu(true);
         SyncSlidersFromAudio();
-
-        AnimateMenu(visible: false, leadIn: 0f); // меню уезжает, логотип остаётся на месте
-        PlayCascade(comingIn: true);
+        StartTransition(true);
         Analytics.Log("settings_opened");
     }
 
-    /// <summary>Закрыть экран и вернуть меню в исходное состояние (BACK).</summary>
     public void Close()
     {
         if (!_open) return;
         _open = false;
-        _resetArmed = false;
-
-        // Финальную деактивацию экрана делает MenuRoutine: корутины этого компонента
-        // умирают вместе с его SetActive(false), а до тех пор экран обязан быть жив.
-        PlayCascade(comingIn: false);
-        // Меню возвращается с задержкой — экран настроек успевает уйти; raycast-блок
-        // снимается по завершении возврата, а не сразу (иначе тап ловит Btn_TapToPlay).
-        AnimateMenu(visible: true, leadIn: menuReturnDelay);
+        StartTransition(false);
         Analytics.Log("settings_closed");
     }
 
-    private void PlayCascade(bool comingIn)
+    private void StartTransition(bool opening)
     {
-        StopCascade();
-        if (!gameObject.activeInHierarchy) { HideLayersImmediate(); UiAnim.SetVisible(canvasGroup, false); return; }
-        _cascade = StartCoroutine(CascadeRoutine(comingIn));
+        if (_transition != null)
+        {
+            StopCoroutine(_transition);
+            _transition = null;
+        }
+
+        if (_menuAnimRoot == null)
+        {
+            if (menuRoot == null) menuRoot = FindMenuRoot();
+            _menuAnimRoot = menuRoot != null ? menuRoot.transform : null;
+        }
+
+        if (opening)
+        {
+            CollectMenuLayers();
+            CapturePanelLayers();
+            PrepareLayersForOpening(_panelLayers);
+            PrepareMenuForTransition();
+        }
+        else
+        {
+            CapturePanelLayers();
+            CollectMenuLayers();
+            for (int i = 0; i < _panelLayers.Count; i++)
+            {
+                var group = _panelLayers[i].group;
+                if (group == null) continue;
+                group.blocksRaycasts = false;
+                group.interactable = false;
+            }
+        }
+
+        _transition = StartCoroutine(TransitionRoutine(opening));
     }
 
-    /// <summary>Гасит каскад вместе со ВСЕМИ слоями. Быстрый BACK или повторный вход иначе
-    /// оставляет висеть старые SlideFade — они дерутся за alpha и anchoredPosition новых.</summary>
-    private void StopCascade()
+    private void CapturePanelLayers()
     {
-        if (_cascade != null) { StopCoroutine(_cascade); _cascade = null; }
-        for (int i = 0; i < _layers.Count; i++)
-            if (_layers[i] != null) StopCoroutine(_layers[i]);
-        _layers.Clear();
-    }
-
-    private void HideLayersImmediate()
-    {
-        var rts = new[] { cascadeIcon, cascadeTitle, cascadeBox, cascadeBack };
-        for (int i = 0; i < rts.Length; i++)
-            if (rts[i] != null) UiAnim.SetVisible(Cg(rts[i]), false);
-    }
-
-    /// <summary>Слои каскада возвращаются в покой (включены, alpha 1). Мид-анимация не мешает:
-    /// вход всегда идёт из one place — rest-позиции фиксированы в префабе.</summary>
-    private void RestoreLayersIdle()
-    {
-        var rts = new[] { cascadeIcon, cascadeTitle, cascadeBox, cascadeBack };
-        for (int i = 0; i < rts.Length; i++)
-            if (rts[i] != null) UiAnim.SetVisible(Cg(rts[i]), true);
-    }
-
-    private IEnumerator CascadeRoutine(bool comingIn)
-    {
-        var curve = comingIn ? UiAnim.EaseOutSoft : UiAnim.EaseInQuick;
+        if (_panelLayersCaptured) return;
+        _panelLayers.Clear();
         var rts = new[] { cascadeIcon, cascadeTitle, cascadeBox, cascadeBack };
         for (int i = 0; i < rts.Length; i++)
         {
             var rt = rts[i];
             if (rt == null) continue;
             var cg = Cg(rt);
-            if (comingIn) UiAnim.SetVisible(cg, true);
-            _layers.Add(StartCoroutine(UiAnim.SlideFade(cg, rt, SlideDown, comingIn, Dur, 0f, curve,
-                deactivateWhenHidden: !comingIn)));
-            // каскад 70 мс между слоями — unscaled, не зависит от FPS
-            yield return WaitUnscaled(UiAnim.CascadeStep);
+            _panelLayers.Add(new TransitionLayer { group = cg, rect = rt, rest = rt.anchoredPosition, order = i });
         }
-        // ждём последний слой, затем при уходе гасим экран целиком
-        yield return WaitUnscaled(Dur);
-        _layers.Clear();
-        _cascade = null;
-        if (!comingIn) UiAnim.SetVisible(canvasGroup, false);
+        _panelLayersCaptured = true;
     }
 
-    /// <summary>Пауза на unscaled-времени: WaitForSecondsRealtime при редких кадрах
-    /// (свёрнутый Editor) откладывает шаг каскада на неопределённый срок.</summary>
+    private void PrepareLayersForOpening(List<TransitionLayer> layers)
+    {
+        for (int i = 0; i < layers.Count; i++)
+        {
+            var layer = layers[i];
+            if (layer.group == null || layer.rect == null) continue;
+            bool wasInactive = !layer.group.gameObject.activeSelf;
+            UiAnim.EnsureActive(layer.group);
+            if (wasInactive)
+            {
+                layer.rect.anchoredPosition = layer.rest - SlideDown;
+                layer.group.alpha = 0f;
+            }
+            layer.group.blocksRaycasts = false;
+            layer.group.interactable = false;
+        }
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true;
+            canvasGroup.interactable = true;
+        }
+    }
+
+    private void PrepareMenuForTransition()
+    {
+        for (int i = 0; i < _menuLayers.Count; i++)
+        {
+            var layer = _menuLayers[i];
+            if (layer.cg == null || layer.rt == null) continue;
+            UiAnim.EnsureActive(layer.cg);
+            layer.cg.blocksRaycasts = false;
+            layer.cg.interactable = false;
+        }
+    }
+
+    private IEnumerator TransitionRoutine(bool opening)
+    {
+        var tweens = new List<Tween>();
+        BuildPanelTweens(tweens, opening);
+        BuildMenuTweens(tweens, opening);
+
+        float elapsed = 0f;
+        float totalDuration = 0f;
+        for (int i = 0; i < tweens.Count; i++)
+            totalDuration = Mathf.Max(totalDuration, tweens[i].delay + tweens[i].duration);
+
+        while (elapsed < totalDuration)
+        {
+            ApplyTweens(tweens, elapsed);
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+        ApplyTweens(tweens, totalDuration);
+        FinishTransition(opening);
+        _transition = null;
+    }
+
+    private void BuildPanelTweens(List<Tween> tweens, bool opening)
+    {
+        var curve = opening ? UiAnim.EaseOutSoft : UiAnim.EaseInQuick;
+        for (int i = 0; i < _panelLayers.Count; i++)
+        {
+            var layer = _panelLayers[i];
+            if (layer.group == null || layer.rect == null) continue;
+            Vector2 current = layer.rect.anchoredPosition;
+            float alpha = layer.group.alpha;
+            Vector2 targetPosition = opening ? layer.rest : layer.rest - SlideDown;
+            float targetAlpha = opening ? 1f : 0f;
+            Vector2 fromPosition = opening && Mathf.Approximately(alpha, 0f) ? layer.rest - SlideDown : current;
+            float delay = opening ? layer.order * UiAnim.CascadeStep : (3 - layer.order) * UiAnim.CascadeStep;
+            tweens.Add(new Tween
+            {
+                layer = layer,
+                panelLayer = true,
+                fromPosition = fromPosition,
+                toPosition = targetPosition,
+                fromAlpha = alpha,
+                toAlpha = targetAlpha,
+                delay = delay,
+                duration = Dur,
+                curve = curve
+            });
+        }
+    }
+
+    private void BuildMenuTweens(List<Tween> tweens, bool opening)
+    {
+        var curve = opening ? UiAnim.EaseInQuick : UiAnim.EaseOutSoft;
+        float stagger = Mathf.Max(0f, menuStagger);
+        for (int i = 0; i < _menuLayers.Count; i++)
+        {
+            var layer = _menuLayers[i];
+            if (layer.cg == null || layer.rt == null) continue;
+            if (!opening) UiAnim.EnsureActive(layer.cg);
+            Vector2 current = layer.rt.anchoredPosition;
+            float alpha = layer.cg.alpha;
+            Vector2 targetPosition = opening ? layer.rest - menuSlide : layer.rest;
+            Vector2 fromPosition = !opening && Mathf.Approximately(alpha, 0f) ? layer.rest - menuSlide : current;
+            float targetAlpha = opening ? 0f : 1f;
+            float delay = opening ? i * stagger : menuReturnDelay + (_menuLayers.Count - 1 - i) * stagger;
+            tweens.Add(new Tween
+            {
+                layer = new TransitionLayer { group = layer.cg, rect = layer.rt, rest = layer.rest },
+                panelLayer = false,
+                fromPosition = fromPosition,
+                toPosition = targetPosition,
+                fromAlpha = alpha,
+                toAlpha = targetAlpha,
+                delay = delay,
+                duration = Mathf.Max(0.01f, menuDur),
+                curve = curve
+            });
+        }
+    }
+
+    private static void ApplyTweens(List<Tween> tweens, float elapsed)
+    {
+        for (int i = 0; i < tweens.Count; i++)
+        {
+            var tween = tweens[i];
+            if (tween.layer.group == null || tween.layer.rect == null) continue;
+            float t = elapsed - tween.delay;
+            if (t <= 0f) continue;
+            float k = tween.duration <= 0f ? 1f : Mathf.Clamp01(t / tween.duration);
+            float eased = tween.curve != null ? tween.curve.Evaluate(k) : k;
+            tween.layer.rect.anchoredPosition = Vector2.LerpUnclamped(tween.fromPosition, tween.toPosition, eased);
+            tween.layer.group.alpha = Mathf.LerpUnclamped(tween.fromAlpha, tween.toAlpha, eased);
+            if (tween.panelLayer && tween.toAlpha > 0f && k >= 1f)
+            {
+                tween.layer.group.blocksRaycasts = true;
+                tween.layer.group.interactable = true;
+            }
+        }
+    }
+
+    private void FinishTransition(bool opening)
+    {
+        FinishLayers(_panelLayers, opening);
+        for (int i = 0; i < _menuLayers.Count; i++)
+        {
+            var layer = _menuLayers[i];
+            if (layer.cg == null || layer.rt == null) continue;
+            layer.rt.anchoredPosition = layer.rest;
+            UiAnim.SetVisible(layer.cg, !opening);
+        }
+
+        if (opening)
+        {
+            BlockMenu(true);
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = true;
+            }
+        }
+        else
+        {
+            BlockMenu(false);
+            UiAnim.SetVisible(canvasGroup, false);
+        }
+    }
+
+    private static void FinishLayers(List<TransitionLayer> layers, bool visible)
+    {
+        for (int i = 0; i < layers.Count; i++)
+        {
+            var layer = layers[i];
+            if (layer.group == null || layer.rect == null) continue;
+            layer.rect.anchoredPosition = layer.rest;
+            UiAnim.SetVisible(layer.group, visible);
+        }
+    }
+
     private static IEnumerator WaitUnscaled(float seconds)
     {
         float t = 0f;
@@ -301,91 +473,19 @@ public class SettingsScreen : MonoBehaviour
         return null;
     }
 
-    // ——— Переход «меню → экран»: дети меню уезжают, логотип остаётся ———
 
-    /// <summary>Собирает детей меню, кроме логотипа. Позиция покоя снимается ТОЛЬКО здесь —
-    /// в момент ухода меню стоит в покое (адаптивная раскладка GameUI уже отработала).</summary>
     private void CollectMenuLayers()
     {
-        _menuLayers.Clear();
+        if (_menuLayers.Count > 0) return;
         if (_menuAnimRoot == null) return;
         for (int i = 0; i < _menuAnimRoot.childCount; i++)
         {
             var child = _menuAnimRoot.GetChild(i) as RectTransform;
-            if (child == null) continue;
-            if (child.name == keepVisibleName) continue; // логотип не убирается (§ТЗ)
-            // Только то, что реально на экране в покое. Иначе чужие спрятанные панели
-            // (UnlockTreePanel/StartXpGain — их гасит и включает GameUI) вернулись бы
-            // ВИДИМЫМИ на выходе из настроек: EnsureActive разбудил бы их заново.
-            if (!child.gameObject.activeSelf) continue;
+            if (child == null || child.name == keepVisibleName || !child.gameObject.activeSelf) continue;
             var cg = child.GetComponent<CanvasGroup>();
             if (cg == null) cg = child.gameObject.AddComponent<CanvasGroup>();
             _menuLayers.Add(new MenuLayer { cg = cg, rt = child, rest = child.anchoredPosition });
         }
-    }
-
-    private void AnimateMenu(bool visible, float leadIn)
-    {
-        StopMenuAnim();
-        if (_menuAnimRoot == null) _menuAnimRoot = menuRoot != null ? menuRoot.transform : null;
-        if (!visible || _menuLayers.Count == 0) CollectMenuLayers();
-        if (!gameObject.activeInHierarchy) { ApplyMenuImmediate(visible); return; }
-        _menuAnim = StartCoroutine(MenuRoutine(visible, leadIn));
-    }
-
-    private IEnumerator MenuRoutine(bool visible, float leadIn)
-    {
-        var curve = visible ? UiAnim.EaseOutSoft : UiAnim.EaseInQuick;
-        float dur = Mathf.Max(0.01f, menuDur);
-        float stagger = Mathf.Max(0f, menuStagger);
-        if (leadIn > 0f) yield return WaitUnscaled(leadIn);
-
-        for (int i = 0; i < _menuLayers.Count; i++)
-        {
-            var layer = _menuLayers[i];
-            if (layer.cg == null || layer.rt == null) continue;
-            if (visible) UiAnim.EnsureActive(layer.cg);
-            layer.rt.anchoredPosition = layer.rest; // покой до старта: прерванный уход не оставляет съезда
-            // наружу — от нижних к верхним, назад — в обратном порядке: у логотипа чисто
-            float delay = (visible ? _menuLayers.Count - 1 - i : i) * stagger;
-            _menuFades.Add(StartCoroutine(UiAnim.SlideFade(layer.cg, layer.rt, menuSlide, visible,
-                dur, delay, curve, deactivateWhenHidden: !visible)));
-        }
-
-        yield return WaitUnscaled(dur + stagger * Mathf.Max(0, _menuLayers.Count - 1) + 0.02f);
-        _menuFades.Clear();
-        _menuAnim = null;
-
-        if (!visible) yield break;
-        BlockMenu(false); // вернувшееся меню снова ловит тапы
-        // Экран гасим последним (§8: скрытое — неактивно). Здесь это безопасно: деактивация
-        // объекта = смерть его корутин, поэтому только в самом конце.
-        UiAnim.SetVisible(canvasGroup, false);
-    }
-
-    /// <summary>Гасит переход меню и возвращает все слои в покой. Быстрый BACK/повторный вход
-    /// иначе оставил бы висеть старые SlideFade — они дерутся за alpha и anchoredPosition.</summary>
-    private void StopMenuAnim()
-    {
-        if (_menuAnim != null) { StopCoroutine(_menuAnim); _menuAnim = null; }
-        for (int i = 0; i < _menuFades.Count; i++)
-            if (_menuFades[i] != null) StopCoroutine(_menuFades[i]);
-        _menuFades.Clear();
-        for (int i = 0; i < _menuLayers.Count; i++)
-            if (_menuLayers[i].rt != null) _menuLayers[i].rt.anchoredPosition = _menuLayers[i].rest;
-    }
-
-    /// <summary>Синхронный вариант на случай вызова вне иерархии (корутины не пойдут).</summary>
-    private void ApplyMenuImmediate(bool visible)
-    {
-        for (int i = 0; i < _menuLayers.Count; i++)
-        {
-            var layer = _menuLayers[i];
-            if (layer.cg == null || layer.rt == null) continue;
-            layer.rt.anchoredPosition = layer.rest;
-            UiAnim.SetVisible(layer.cg, visible);
-        }
-        if (visible) BlockMenu(false);
     }
 
     // ——— Слайдеры ———
@@ -427,25 +527,16 @@ public class SettingsScreen : MonoBehaviour
         if (musicValueText != null) musicValueText.text = Mathf.RoundToInt(music * 100f) + "%";
     }
 
-    // ——— Двухшаговый сброс прогресса (без нового попапа) ———
+    // ——— Подтверждение сброса прогресса ———
 
     private void OnResetTapped()
     {
-        if (!_resetArmed)
-        {
-            _resetArmed = true;
-            ApplyResetLabelKey(ResetConfirmKey); // «ТОЧНО СБРОСИТЬ?» — второй тап выполняет
-            return;
-        }
-
-        PilotProgressManager.Instance?.ResetProgress();
-        ScoreManager.Instance?.ResetProgress();
-        _resetArmed = false;
         RefreshResetLabel();
-        Analytics.Log("progress_reset");
+        if (resetConfirmation != null) resetConfirmation.Show();
+        else Debug.LogError("SettingsScreen: ResetConfirmation reference is missing.", this);
     }
 
-    private void RefreshResetLabel() => ApplyResetLabelKey(_resetArmed ? ResetConfirmKey : ResetKey);
+    private void RefreshResetLabel() => ApplyResetLabelKey(ResetKey);
 
     /// <summary>Смена ключа на существующем LSE (образец GameUI.SetShieldCaption) —
     /// прямую запись .text не используем: строка должна следовать за локалью.</summary>

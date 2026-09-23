@@ -312,13 +312,13 @@ public static class AstroDriftSceneSetup
         // Стартовое состояние §8: скрытое — неактивно (GameUI показывает его тиком анимации §8.3).
         EnsureCanvasGroup(xpGainGo, visible: false);
 
-        // ——— SettingsPanel (экран настроек): инстанс SettingsPanel.prefab внутри StartPanel ———
-        // Внутри StartPanel, а не в корне Canvas: логотип и меню остаются видны ПОД экраном
-        // (затемнение — Image цвета UiOverlay), логотип никуда не переезжает.
-        // Последний sibling → выше «Menu Buttons» в порядке raycast (кнопки меню недоступны,
-        // пока экран открыт) и выше Btn_TapToPlay.
+        // ——— SettingsPanel (экран настроек): инстанс SettingsPanel.prefab sibling под Canvas ———
+        // SettingsScreen анимирует детей StartPanel как соседнего меню, поэтому этот экран
+        // должен оставаться отдельным sibling над StartPanel, а не становиться его ребёнком.
+        // Последний sibling → выше StartPanel и Btn_TapToPlay, чтобы затемнение и контролы
+        // экрана были сверху, пока меню остаётся отдельным объектом.
         var settingsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabFolder + "/SettingsPanel.prefab");
-        GameObject settingsGo = FindInHierarchy(startGo.transform, "SettingsPanel");
+        GameObject settingsGo = FindSceneObject("SettingsPanel");
         if (settingsPrefab == null)
         {
             Debug.LogError("AstroDrift SceneSetup: не найден " + MenuPrefabFolder + "/SettingsPanel.prefab — экран настроек не собран (AstroDrift → Build Settings Prefab).");
@@ -327,7 +327,7 @@ public static class AstroDriftSceneSetup
         else if (settingsGo == null || PrefabUtility.GetPrefabInstanceHandle(settingsGo) == null)
         {
             if (settingsGo != null) Object.DestroyImmediate(settingsGo); // распакованная/старая — заменяем инстансом
-            settingsGo = (GameObject)PrefabUtility.InstantiatePrefab(settingsPrefab, startGo.transform);
+            settingsGo = (GameObject)PrefabUtility.InstantiatePrefab(settingsPrefab, canvas.transform);
             settingsGo.name = "SettingsPanel";
             log.Append("SettingsPanel: инстанс префаба создан; ");
         }
@@ -336,11 +336,12 @@ public static class AstroDriftSceneSetup
         SettingsScreen settingsScreen = null;
         if (settingsGo != null)
         {
+            settingsGo.transform.SetParent(canvas.transform, false);
             var srt = settingsGo.GetComponent<RectTransform>();
             srt.anchorMin = srt.anchorMax = srt.pivot = new Vector2(0.5f, 0.5f);
             srt.anchoredPosition = Vector2.zero;
             srt.sizeDelta = new Vector2(1080f, 1920f);
-            settingsGo.transform.SetAsLastSibling(); // topmost среди детей StartPanel
+            settingsGo.transform.SetAsLastSibling(); // topmost среди Canvas sibling-панелей
             settingsScreen = settingsGo.GetComponent<SettingsScreen>();
             if (settingsScreen == null) settingsScreen = settingsGo.AddComponent<SettingsScreen>();
             // menuRoot — сценовая ссылка (в префабе её быть не может)

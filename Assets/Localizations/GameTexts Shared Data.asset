@@ -343,6 +343,26 @@ MonoBehaviour:
     m_Key: settings_back
     m_Metadata:
       m_Items: []
+  - m_Id: 6644724122247168
+    m_Key: settings_reset_subtext
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190208
+    m_Key: reset_confirm_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190209
+    m_Key: reset_confirm_message
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190210
+    m_Key: reset_confirm_yes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 6644724164190211
+    m_Key: reset_confirm_no
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
